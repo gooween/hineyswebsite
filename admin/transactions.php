@@ -150,6 +150,42 @@ $activePage = 'transactions';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Transactions — Hiney's Admin</title>
 <style>
 :root { --card-border: #e9e8e4; }
@@ -528,14 +564,14 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                 </div>
                 <select name="method" class="filter-select" onchange="this.form.submit()">
                     <option value="">All Methods</option>
-                    <option value="cash"  <?= $filterMethod==='cash' ?'selected':'' ?>>💵 Cash</option>
-                    <option value="gcash" <?= $filterMethod==='gcash'?'selected':'' ?>>📱 GCash</option>
-                    <option value="cod"   <?= $filterMethod==='cod'  ?'selected':'' ?>>🚚 COD</option>
+                    <option value="cash"  <?= $filterMethod==='cash' ?'selected':'' ?>><i class="fa-solid fa-money-bill"></i> Cash</option>
+                    <option value="gcash" <?= $filterMethod==='gcash'?'selected':'' ?>><i class="fa-solid fa-mobile-screen"></i> GCash</option>
+                    <option value="cod"   <?= $filterMethod==='cod'  ?'selected':'' ?>><i class="fa-solid fa-truck"></i> COD</option>
                 </select>
                 <input type="date" name="from" class="date-input" value="<?= htmlspecialchars($dateFrom) ?>" onchange="this.form.submit()" title="Date from">
                 <input type="date" name="to"   class="date-input" value="<?= htmlspecialchars($dateTo) ?>"   onchange="this.form.submit()" title="Date to">
                 <?php if ($search || $filterMethod || $dateFrom || $dateTo): ?>
-                    <a href="transactions.php" style="font-size:0.8rem;color:var(--primary);text-decoration:none;white-space:nowrap;">✕ Clear</a>
+                    <a href="transactions.php" style="font-size:0.8rem;color:var(--primary);text-decoration:none;white-space:nowrap;"><i class="fa-solid fa-xmark"></i> Clear</a>
                 <?php endif; ?>
             </form>
         </div>
@@ -575,7 +611,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
             while ($t = $transactions->fetch_assoc()):
                 $initial = strtoupper(substr($t['full_name'], 0, 1));
                 $mClass  = 'm-' . $t['payment_method'];
-                $mIcon   = $t['payment_method'] === 'gcash' ? '📱' : ($t['payment_method'] === 'cod' ? '🚚' : '💵');
+                $mIcon   = $t['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : ($t['payment_method'] === 'cod' ? '<i class="fa-solid fa-truck"></i>' : '<i class="fa-solid fa-money-bill"></i>');
                 $osClass = $t['order_status'] === 'delivered' ? 'os-delivered' : 'os-other';
                 $osLabel = ucwords(str_replace('_', ' ', $t['order_status']));
             ?>
@@ -672,7 +708,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
 
         <?php else: ?>
         <div class="empty-state">
-            <div class="empty-icon">💰</div>
+            <div class="empty-icon"><i class="fa-solid fa-sack-dollar"></i></div>
             <div>No transactions found<?= ($search||$filterMethod||$dateFrom||$dateTo)?' — try adjusting filters.':'.'; ?></div>
         </div>
         <?php endif; ?>
@@ -747,9 +783,9 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                     <div class="form-group">
                         <label class="form-label">Payment Method <span class="req">*</span></label>
                         <select name="payment_method" class="form-select" required>
-                            <option value="cash">💵 Cash</option>
-                            <option value="gcash">📱 GCash</option>
-                            <option value="cod">🚚 COD</option>
+                            <option value="cash"><i class="fa-solid fa-money-bill"></i> Cash</option>
+                            <option value="gcash"><i class="fa-solid fa-mobile-screen"></i> GCash</option>
+                            <option value="cod"><i class="fa-solid fa-truck"></i> COD</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -769,7 +805,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                 </div>
 
                 <div style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#065f46;margin-top:4px;">
-                    ✅ <strong>Auto-action:</strong> Recording this transaction will automatically mark the linked order as <strong>Paid</strong>.
+                    ✓ <strong>Auto-action:</strong> Recording this transaction will automatically mark the linked order as <strong>Paid</strong>.
                 </div>
             </div>
             <div class="modal-footer">
@@ -832,7 +868,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                     <textarea name="notes" id="edit_notes" class="form-textarea" placeholder="Additional notes…"></textarea>
                 </div>
                 <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 13px;font-size:0.8rem;color:#92400e;margin-top:4px;">
-                    ⚠️ Amount, method, and order link cannot be changed. Delete and re-create if needed.
+                    <i class="fa-solid fa-triangle-exclamation"></i> Amount, method, and order link cannot be changed. Delete and re-create if needed.
                 </div>
             </div>
             <div class="modal-footer">
@@ -861,12 +897,12 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" id="del_id">
             <div class="modal-body" style="text-align:center;padding:28px 24px;">
-                <div class="delete-icon-wrap">🗑️</div>
+                <div class="delete-icon-wrap"><i class="fa-solid fa-trash"></i></div>
                 <div class="delete-title">Delete this transaction?</div>
                 <div class="delete-text">
                     Transaction <strong id="del_txn_label">#TXN0000</strong> linked to
                     Order <strong id="del_order_label">#0000</strong> will be permanently removed.<br><br>
-                    <span style="color:#ef4444;font-weight:600;">⚠️ The linked order will be marked as Unpaid</span>
+                    <span style="color:#ef4444;font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> The linked order will be marked as Unpaid</span>
                     if no other transactions remain.
                 </div>
             </div>
@@ -920,7 +956,7 @@ function previewOrder(sel) {
 
 // ── View modal ────────────────────────────────────────────────
 function openView(data) {
-    const methodIcons = { gcash:'📱 GCash', cash:'💵 Cash', cod:'🚚 COD' };
+    const methodIcons = { gcash:'<i class="fa-solid fa-mobile-screen"></i> GCash', cash:'<i class="fa-solid fa-money-bill"></i> Cash', cod:'<i class="fa-solid fa-truck"></i> COD' };
     const statusColors = {
         delivered:        ['#d1fae5','#065f46'],
         cancelled:        ['#fee2e2','#991b1b'],

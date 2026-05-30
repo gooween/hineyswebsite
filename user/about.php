@@ -19,6 +19,42 @@ if (!empty($_SESSION['user_id'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>About Us — Hiney's Eggs &amp; Live Chicken</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -324,7 +360,7 @@ a { text-decoration:none; color:inherit; }
 
 <!-- ── Hero ── -->
 <div class="hero">
-    <div class="hero-deco">🥚</div>
+    <div class="hero-deco"><i class="fa-solid fa-egg"></i></div>
     <div class="hero-inner">
         <div class="breadcrumb">
             <a href="home.php">Home</a>
@@ -381,10 +417,10 @@ a { text-decoration:none; color:inherit; }
         <div class="story-grid">
             <div class="story-image-wrap">
                 <div class="story-image-placeholder">
-                    <div class="story-image-icon">🐔</div>
+                    <div class="story-image-icon"><i class="fa-solid fa-drumstick-bite"></i></div>
                     <div class="story-image-label">Hiney's Farm</div>
                 </div>
-                <div class="story-badge">🥚 Est. 2010 · Loreto, Cortes</div>
+                <div class="story-badge"><i class="fa-solid fa-egg"></i> Est. 2010 · Loreto, Cortes</div>
             </div>
             <div class="story-content">
                 <div class="story-eyebrow">Our Story</div>
@@ -421,7 +457,7 @@ a { text-decoration:none; color:inherit; }
         <div class="mv-grid">
             <div class="mv-card">
                 <div class="mv-card-accent orange"></div>
-                <div class="mv-icon orange">🎯</div>
+                <div class="mv-icon orange"><i class="fa-solid fa-bullseye"></i></div>
                 <div class="mv-card-title">Our Mission</div>
                 <p class="mv-card-text">
                     To provide Loreto Cortes and surrounding areas with the freshest, most
@@ -431,7 +467,7 @@ a { text-decoration:none; color:inherit; }
             </div>
             <div class="mv-card">
                 <div class="mv-card-accent green"></div>
-                <div class="mv-icon green">🌱</div>
+                <div class="mv-icon green"><i class="fa-solid fa-seedling"></i></div>
                 <div class="mv-card-title">Our Vision</div>
                 <p class="mv-card-text">
                     To become Palawan's leading farm-to-table poultry brand — growing our flock,
@@ -453,32 +489,32 @@ a { text-decoration:none; color:inherit; }
         </div>
         <div class="values-grid">
             <div class="value-card">
-                <div class="value-icon">🥚</div>
+                <div class="value-icon"><i class="fa-solid fa-egg"></i></div>
                 <div class="value-title">Freshness First</div>
                 <p class="value-text">Eggs are collected and sorted daily. We never hold stock for more than 48 hours before delivery. What you get is what was laid this morning.</p>
             </div>
             <div class="value-card">
-                <div class="value-icon">🤝</div>
+                <div class="value-icon"><i class="fa-solid fa-handshake"></i></div>
                 <div class="value-title">Honest Dealings</div>
                 <p class="value-text">No hidden charges, no misleading labels. Our prices are straightforward, our weights are accurate, and our word is our bond.</p>
             </div>
             <div class="value-card">
-                <div class="value-icon">🌿</div>
+                <div class="value-icon"><i class="fa-solid fa-leaf"></i></div>
                 <div class="value-title">Responsible Farming</div>
                 <p class="value-text">Our chickens are raised in clean, spacious environments with proper nutrition and veterinary care — because healthy animals mean healthy food.</p>
             </div>
             <div class="value-card">
-                <div class="value-icon">❤️</div>
+                <div class="value-icon"><i class="fa-solid fa-heart"></i></div>
                 <div class="value-title">Community Focus</div>
                 <p class="value-text">We prioritize local buyers, support neighboring farms, and keep our pricing fair so that everyone — from households to small businesses — can afford quality.</p>
             </div>
             <div class="value-card">
-                <div class="value-icon">📦</div>
+                <div class="value-icon"><i class="fa-solid fa-box"></i></div>
                 <div class="value-title">Reliable Service</div>
                 <p class="value-text">When you place an order, it gets fulfilled. We communicate clearly, deliver on time, and follow up to make sure you're satisfied.</p>
             </div>
             <div class="value-card">
-                <div class="value-icon">🌾</div>
+                <div class="value-icon"><i class="fa-solid fa-wheat-awn"></i></div>
                 <div class="value-title">Sustainable Growth</div>
                 <p class="value-text">We grow at a pace that lets us maintain quality. Expanding too fast at the cost of freshness or care is something we will never do.</p>
             </div>
@@ -519,7 +555,7 @@ a { text-decoration:none; color:inherit; }
         </div>
         <div class="contact-grid">
             <div class="contact-card">
-                <div class="contact-icon ci-orange">📍</div>
+                <div class="contact-icon ci-orange"><i class="fa-solid fa-location-dot"></i></div>
                 <div class="contact-label">Location</div>
                 <div class="contact-value">
     Brgy. Loreto, Cortes<br>
@@ -527,12 +563,12 @@ a { text-decoration:none; color:inherit; }
 </div>
             </div>
             <div class="contact-card">
-                <div class="contact-icon ci-blue">📞</div>
+                <div class="contact-icon ci-blue"><i class="fa-solid fa-phone"></i></div>
                 <div class="contact-label">Phone / GCash</div>
                 <div class="contact-value">0917-XXX-XXXX<br><span style="font-size:0.78rem;color:var(--muted);">Mon–Sat, 7am–6pm</span></div>
             </div>
             <div class="contact-card">
-                <div class="contact-icon ci-green">✉️</div>
+                <div class="contact-icon ci-green"><i class="fa-solid fa-envelope"></i></div>
                 <div class="contact-label">Email</div>
                 <div class="contact-value">hineys@email.com<br><span style="font-size:0.78rem;color:var(--muted);">We reply within 24 hours</span></div>
             </div>
@@ -547,10 +583,10 @@ a { text-decoration:none; color:inherit; }
         <p class="cta-banner-sub">Browse our eggs and live chickens, place your order online, and we'll take care of the rest.</p>
         <div class="cta-btn-group">
             <a href="products.php" class="btn-white">
-                🥚 Browse Products
+                <i class="fa-solid fa-egg"></i> Browse Products
             </a>
             <a href="contact.php" class="btn-outline-white">
-                💬 Contact Us
+                <i class="fa-solid fa-comment"></i> Contact Us
             </a>
         </div>
     </div>
@@ -558,7 +594,7 @@ a { text-decoration:none; color:inherit; }
 
 <footer class="site-footer">
     &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-    Loreto, Cortes , Bohol 🌴 &nbsp;·&nbsp;
+    Loreto, Cortes , Bohol  &nbsp;·&nbsp;
     <a href="contact.php">Contact Us</a>
 </footer>
 

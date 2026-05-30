@@ -111,6 +111,42 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Payment Settings — Hiney's Admin</title>
 <style>
 :root { --card-border: #e9e8e4; }
@@ -268,7 +304,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
         <div>
             <div class="card" style="margin-bottom:20px;">
                 <div class="card-header">
-                    <div class="card-title">📱 GCash QR Code</div>
+                    <div class="card-title"><i class="fa-solid fa-mobile-screen"></i> GCash QR Code</div>
                 </div>
                 <div class="card-body">
 
@@ -282,9 +318,9 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
                         <?php if ($gcashQrPath && file_exists('../' . $gcashQrPath)): ?>
                             <img src="../<?= htmlspecialchars($gcashQrPath) ?>?v=<?= time() ?>"
                                  alt="GCash QR Code" class="qr-img" id="currentQrImg">
-                            <div style="font-size:0.82rem;color:#065f46;font-weight:600;">✅ QR Code is active</div>
+                            <div style="font-size:0.82rem;color:#065f46;font-weight:600;">✓ QR Code is active</div>
                         <?php else: ?>
-                            <span class="qr-none-icon">📷</span>
+                            <span class="qr-none-icon"><i class="fa-solid fa-camera"></i></span>
                             <div class="qr-none-text">No QR code uploaded yet</div>
                         <?php endif; ?>
                     </div>
@@ -297,7 +333,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
                             <input type="file" name="qr_image" id="qrFileInput"
                                    accept="image/jpeg,image/png,image/gif,image/webp"
                                    onchange="previewFile(this)">
-                            <span class="drop-zone-icon">📤</span>
+                            <span class="drop-zone-icon"><i class="fa-solid fa-upload"></i></span>
                             <div class="drop-zone-text">
                                 <strong>Click to upload</strong> or drag & drop
                             </div>
@@ -314,7 +350,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
 
                         <div class="card-footer" style="margin: 16px -22px -22px; border-radius:0 0 var(--radius) var(--radius);">
                             <button type="submit" class="btn btn-primary">
-                                📤 Upload QR Image
+                                <i class="fa-solid fa-upload"></i> Upload QR Image
                             </button>
                         </div>
                     </form>
@@ -332,7 +368,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
                     <form method="POST" action="gcash_settings.php"
                           onsubmit="return confirm('Remove the GCash QR image?')">
                         <input type="hidden" name="action" value="delete_qr">
-                        <button type="submit" class="btn btn-danger">🗑 Remove</button>
+                        <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Remove</button>
                     </form>
                 </div>
             </div>
@@ -343,7 +379,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
         <div>
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">⚙️ Payment & Delivery Settings</div>
+                    <div class="card-title"><i class="fa-solid fa-gear"></i> Payment & Delivery Settings</div>
                 </div>
                 <form method="POST" action="gcash_settings.php">
                     <input type="hidden" name="action" value="save_gcash_info">
@@ -400,7 +436,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
             <!-- Preview box -->
             <div class="card" style="margin-top:20px;">
                 <div class="card-header">
-                    <div class="card-title">👁 Customer Preview</div>
+                    <div class="card-title"><i class="fa-solid fa-eye"></i> Customer Preview</div>
                 </div>
                 <div class="card-body">
                     <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">
@@ -408,7 +444,7 @@ $deliveryFee    = getSetting($conn, 'delivery_fee',   '50.00');
                     </div>
                     <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:16px;">
                         <div style="font-size:0.82rem;font-weight:700;color:#1e40af;margin-bottom:10px;">
-                            📱 Send GCash Payment To:
+                            <i class="fa-solid fa-mobile-screen"></i> Send GCash Payment To:
                         </div>
                         <?php if ($gcashQrPath && file_exists('../' . $gcashQrPath)): ?>
                         <div style="text-align:center;margin-bottom:10px;">

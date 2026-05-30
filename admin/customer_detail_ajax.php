@@ -143,7 +143,7 @@ $initial = strtoupper(substr($c['full_name'], 0, 1));
         <div class="cp-email"><?= htmlspecialchars($c['email']) ?></div>
         <div class="cp-since">Member since <?= date('F j, Y', strtotime($c['created_at'])) ?></div>
         <span class="cp-status-badge <?= $c['is_active'] ? 'active' : 'inactive' ?>">
-            <?= $c['is_active'] ? '● Active' : '● Inactive' ?>
+            <?= $c['is_active'] ? 'Active' : 'Inactive' ?>
         </span>
     </div>
 </div>
@@ -177,7 +177,7 @@ $initial = strtoupper(substr($c['full_name'], 0, 1));
     </div>
     <div class="cp-detail-item">
         <div class="cp-detail-label">Account Status</div>
-        <div class="cp-detail-value"><?= $c['is_active'] ? '✅ Active' : '🚫 Deactivated' ?></div>
+        <div class="cp-detail-value"><?= $c['is_active'] ? '✓ Active' : '<i class="fa-solid fa-ban"></i> Deactivated' ?></div>
     </div>
     <div class="cp-detail-item">
         <div class="cp-detail-label">Pending Orders</div>
@@ -231,6 +231,6 @@ $initial = strtoupper(substr($c['full_name'], 0, 1));
 </div>
 <?php else: ?>
 <div style="text-align:center;padding:24px;color:#9ca3af;font-size:0.88rem;">
-    🛒 This customer hasn't placed any orders yet.
+    <i class="fa-solid fa-cart-shopping"></i> This customer hasn't placed any orders yet.
 </div>
 <?php endif; ?>

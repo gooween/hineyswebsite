@@ -148,11 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Different success messages depending on payment method
             if ($paymentMethod === 'gcash') {
                 redirect('orders.php', 'success',
-                    "🎉 Order #" . str_pad($orderId, 4, '0', STR_PAD_LEFT) .
+                    "<i class="fa-solid fa-champagne-glasses"></i> Order #" . str_pad($orderId, 4, '0', STR_PAD_LEFT) .
                     " placed! Once admin approves your order, you'll be asked to upload your GCash payment proof.");
             } else {
                 redirect('orders.php', 'success',
-                    "🎉 Order #" . str_pad($orderId, 4, '0', STR_PAD_LEFT) .
+                    "<i class="fa-solid fa-champagne-glasses"></i> Order #" . str_pad($orderId, 4, '0', STR_PAD_LEFT) .
                     " placed successfully! We'll confirm it shortly.");
             }
 
@@ -173,6 +173,42 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Checkout — Hiney's Eggs &amp; Live Chicken</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -404,7 +440,7 @@ a { text-decoration:none; color:inherit; }
                                onclick="selectDelivery('delivery')">
                             <input type="radio" name="delivery_type" value="delivery"
                                    <?= ($selectedDeliveryType !== 'pickup') ? 'checked' : '' ?>>
-                            <div class="delivery-option-icon">🚚</div>
+                            <div class="delivery-option-icon"><i class="fa-solid fa-truck"></i></div>
                             <div>
                                 <div class="delivery-option-name">Delivery</div>
                                 <div class="delivery-option-desc">We deliver to your door<br>+₱<?= number_format($deliveryFee, 2) ?> fee</div>
@@ -414,7 +450,7 @@ a { text-decoration:none; color:inherit; }
                                onclick="selectDelivery('pickup')">
                             <input type="radio" name="delivery_type" value="pickup"
                                    <?= ($selectedDeliveryType === 'pickup') ? 'checked' : '' ?>>
-                            <div class="delivery-option-icon">🏪</div>
+                            <div class="delivery-option-icon"><i class="fa-solid fa-shop"></i></div>
                             <div>
                                 <div class="delivery-option-name">Pick Up</div>
                                 <div class="delivery-option-desc">Pick up at the farm<br><span style="color:#10b981;font-weight:700;">FREE — no delivery fee</span></div>
@@ -435,10 +471,10 @@ a { text-decoration:none; color:inherit; }
 
                     <!-- Pickup info -->
                     <div class="pickup-info <?= ($selectedDeliveryType === 'pickup') ? 'show' : '' ?>" id="pickupInfo">
-                        <div class="pickup-info-title">📍 Pickup Location</div>
+                        <div class="pickup-info-title"><i class="fa-solid fa-location-dot"></i> Pickup Location</div>
                         <div class="pickup-info-address"><?= htmlspecialchars($pickupAddress) ?></div>
                         <div style="font-size:0.75rem;color:#065f46;margin-top:8px;">
-                            ✅ No delivery fee for pickup orders. Please coordinate your pickup schedule via our contact page.
+                            <i class="fa-solid fa-circle-check"></i> No delivery fee for pickup orders. Please coordinate your pickup schedule via our contact page.
                         </div>
                     </div>
 
@@ -463,7 +499,7 @@ a { text-decoration:none; color:inherit; }
                             <input type="radio" name="payment_method" value="cod"
                                    <?= ($_POST['payment_method'] ?? 'cod') === 'cod' ? 'checked' : '' ?>
                                    onchange="selectPayment('cod')">
-                            <div class="payment-option-icon">💵</div>
+                            <div class="payment-option-icon"><i class="fa-solid fa-money-bill"></i></div>
                             <div class="payment-option-info">
                                 <div class="payment-option-name">Cash on Delivery / Pickup (COD)</div>
                                 <div class="payment-option-desc">Pay with cash when your order arrives or when you pick it up.</div>
@@ -475,7 +511,7 @@ a { text-decoration:none; color:inherit; }
                             <input type="radio" name="payment_method" value="gcash"
                                    <?= ($_POST['payment_method'] ?? '') === 'gcash' ? 'checked' : '' ?>
                                    onchange="selectPayment('gcash')">
-                            <div class="payment-option-icon">📱</div>
+                            <div class="payment-option-icon"><i class="fa-solid fa-mobile-screen"></i></div>
                             <div class="payment-option-info">
                                 <div class="payment-option-name">GCash</div>
                                 <div class="payment-option-desc">Place your order now — you'll send payment and upload proof once admin approves your order.</div>
@@ -497,7 +533,7 @@ a { text-decoration:none; color:inherit; }
                             <div class="gcash-step"><div class="gcash-step-num">1</div><span>Place your order below — it will be submitted as pending.</span></div>
                             <div class="gcash-step"><div class="gcash-step-num">2</div><span>Admin reviews and <strong>approves</strong> your order.</span></div>
                             <div class="gcash-step"><div class="gcash-step-num">3</div><span>You'll be prompted in <strong>My Orders</strong> to send your GCash payment to <strong><?= htmlspecialchars($gcashNumber) ?></strong> (<?= htmlspecialchars($gcashName) ?>) and upload your screenshot.</span></div>
-                            <div class="gcash-step"><div class="gcash-step-num">4</div><span>Admin verifies your proof and marks it as paid. 🎉</span></div>
+                            <div class="gcash-step"><div class="gcash-step-num">4</div><span>Admin verifies your proof and marks it as paid. <i class="fa-solid fa-champagne-glasses"></i></span></div>
                         </div>
                     </div>
 
@@ -510,12 +546,12 @@ a { text-decoration:none; color:inherit; }
 
     <!-- RIGHT — Order Summary -->
     <div class="summary-card">
-        <div class="summary-header">🛒 Order Summary</div>
+        <div class="summary-header"><i class="fa-solid fa-cart-shopping"></i> Order Summary</div>
         <div>
             <div class="summary-items">
                 <?php foreach ($cartData as $item):
                     $isEgg = stripos($item['category'], 'egg') !== false;
-                    $emoji = $isEgg ? '🥚' : '🐔';
+                    $emoji = $isEgg ? '<i class="fa-solid fa-egg"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
                     $siCls = $isEgg ? 'si-egg' : 'si-chick';
                 ?>
                 <div class="summary-item">
@@ -554,13 +590,13 @@ a { text-decoration:none; color:inherit; }
 
         <div class="summary-footer">
             <button class="btn-place-order" id="btnPlaceOrder" onclick="submitOrder()">
-                ✅ Place Order — <span id="btnTotal">₱<?= number_format($grandTotal, 2) ?></span>
+                ✓ Place Order — <span id="btnTotal">₱<?= number_format($grandTotal, 2) ?></span>
             </button>
             <button class="btn-back-cart" onclick="location.href='cart.php'">← Back to Cart</button>
             <div class="trust-row">
-                <div class="trust-item">🔒 Secure</div>
-                <div class="trust-item">🌿 Farm Fresh</div>
-                <div class="trust-item">💯 Guaranteed</div>
+                <div class="trust-item"><i class="fa-solid fa-lock"></i> Secure</div>
+                <div class="trust-item"><i class="fa-solid fa-leaf"></i> Farm Fresh</div>
+                <div class="trust-item"><i class="fa-solid fa-shield-halved"></i> Guaranteed</div>
             </div>
         </div>
     </div>
@@ -570,7 +606,7 @@ a { text-decoration:none; color:inherit; }
 
 <footer class="site-footer">
     &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-    Loreto Cortes, Bohol 🌴 &nbsp;·&nbsp;
+    Loreto Cortes, Bohol  &nbsp;·&nbsp;
     <a href="contact.php">Contact Us</a>
 </footer>
 

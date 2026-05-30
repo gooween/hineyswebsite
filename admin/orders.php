@@ -216,6 +216,42 @@ $activePage = 'orders';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Orders — Hiney's Admin</title>
 <style>
 :root { --card-border:#e9e8e4; }
@@ -652,7 +688,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
             $isCancelled   = ($o['status'] === 'cancelled');
             $isDelivered   = ($o['status'] === 'delivered');
             $isFinalised   = ($isCancelled || $isDelivered);
-            $methodIcon    = $o['payment_method'] === 'gcash' ? '📱' : '💵';
+            $methodIcon    = $o['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
             $feeIsSet      = $o['delivery_fee'] !== null;
             $itemsSubtotal = (float)$o['items_subtotal'];
             $hasProof      = !empty($o['gcash_proof']);
@@ -682,7 +718,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                     <?php if ($feeIsSet): ?>
                         <div class="total-fee-set">+₱<?= number_format((float)$o['delivery_fee'], 2) ?> fee ✓</div>
                     <?php else: ?>
-                        <div class="total-fee-unset">Fee not set ⚠</div>
+                        <div class="total-fee-unset">Fee not set <i class="fa-solid fa-triangle-exclamation"></i></div>
                     <?php endif; ?>
                 <?php endif; ?>
             </td>
@@ -696,10 +732,10 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                 <?php if ($o['payment_method'] === 'gcash'): ?>
                     <?php if ($hasProof): ?>
                         <span class="proof-badge proof-yes" onclick="viewProof('<?= htmlspecialchars(addslashes($o['gcash_proof'])) ?>', '<?= str_pad($o['id'],4,'0',STR_PAD_LEFT) ?>')">
-                            📎 View
+                            <i class="fa-solid fa-paperclip"></i> View
                         </span>
                     <?php else: ?>
-                        <span class="proof-badge proof-no">⏳ None</span>
+                        <span class="proof-badge proof-no"><i class="fa-solid fa-clock"></i> None</span>
                     <?php endif; ?>
                 <?php else: ?>
                     <span style="font-size:0.72rem;color:var(--text-muted);">N/A</span>
@@ -744,7 +780,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                                 'items_subtotal'  => $itemsSubtotal,
                                 'delivery_address'=> $o['delivery_address'],
                             ]), ENT_QUOTES) ?>)">
-                            ✏ Update
+                            <i class="fa-solid fa-pen-to-square"></i> Update
                         </button>
                         <button class="btn-action btn-cancel"
                             onclick="openCancel(<?= $o['id'] ?>, '<?= htmlspecialchars(addslashes($o['full_name'])) ?>')">
@@ -777,7 +813,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
     <?php endif; ?>
 
     <?php else: ?>
-    <div class="empty-state"><div class="empty-icon">🛒</div><div>No orders found<?= ($search||$filterStatus||$filterPayment||$filterMethod)?' — try adjusting filters.':'.'; ?></div></div>
+    <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-cart-shopping"></i></div><div>No orders found<?= ($search||$filterStatus||$filterPayment||$filterMethod)?' — try adjusting filters.':'.'; ?></div></div>
     <?php endif; ?>
 </div>
 
@@ -821,7 +857,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
             <div class="modal-body">
 
                 <div class="order-summary-box">
-                    <div style="font-size:1.5rem;">🛒</div>
+                    <div style="font-size:1.5rem;"><i class="fa-solid fa-cart-shopping"></i></div>
                     <div style="flex:1;">
                         <div class="order-summary-id" id="approve_order_label">#0000</div>
                         <div class="order-summary-sub" id="approve_customer_label">Customer</div>
@@ -851,7 +887,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                 </div>
 
                 <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:12px 14px;font-size:0.85rem;color:#065f46;line-height:1.6;">
-                    ✅ <strong>Approving</strong> this order will notify the customer that their order is confirmed. If they chose GCash, they will be prompted to upload their payment proof.
+                    <i class="fa-solid fa-circle-check"></i> <strong>Approving</strong> this order will notify the customer that their order is confirmed. If they chose GCash, they will be prompted to upload their payment proof.
                 </div>
             </div>
             <div class="modal-footer">
@@ -881,7 +917,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
             <input type="hidden" name="id" id="reject_id">
             <div class="modal-body">
                 <div style="text-align:center;margin-bottom:18px;">
-                    <div style="font-size:3rem;margin-bottom:12px;">❌</div>
+                    <div style="font-size:3rem;margin-bottom:12px;">✕</div>
                     <div style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:4px;">Reject Order <span id="reject_order_label">#0000</span>?</div>
                     <div style="font-size:0.85rem;color:var(--text-muted);">from <strong id="reject_customer_label"></strong></div>
                 </div>
@@ -916,7 +952,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
             <div class="modal-body">
 
                 <div class="order-summary-box">
-                    <div style="font-size:1.5rem;">🛒</div>
+                    <div style="font-size:1.5rem;"><i class="fa-solid fa-cart-shopping"></i></div>
                     <div style="flex:1;">
                         <div class="order-summary-id" id="upd_order_label">#0000</div>
                         <div class="order-summary-sub" id="upd_customer_label">Customer</div>
@@ -939,17 +975,17 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                     <div class="form-group">
                         <label class="form-label">Order Status <span class="req">*</span></label>
                         <select name="status" id="upd_status" class="form-select" required onchange="updateStatusTracker(this.value)">
-                            <option value="approved">✅ Approved</option>
-                            <option value="processing">⚙️ Processing</option>
-                            <option value="out_for_delivery">🚚 Out for Delivery</option>
-                            <option value="delivered">🎉 Delivered</option>
-                            <option value="cancelled">❌ Cancelled</option>
+                            <option value="approved"><i class="fa-solid fa-circle-check"></i> Approved</option>
+                            <option value="processing"><i class="fa-solid fa-gear"></i> Processing</option>
+                            <option value="out_for_delivery"><i class="fa-solid fa-truck"></i> Out for Delivery</option>
+                            <option value="delivered"><i class="fa-solid fa-champagne-glasses"></i> Delivered</option>
+                            <option value="cancelled"><i class="fa-solid fa-circle-xmark"></i> Cancelled</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Payment Status <span class="req">*</span></label>
                         <select name="payment_status" id="upd_payment_status" class="form-select" required>
-                            <option value="unpaid">🔴 Unpaid</option>
+                            <option value="unpaid"><i class="fa-solid fa-circle-exclamation"></i> Unpaid</option>
                             <option value="paid">🟢 Paid</option>
                         </select>
                     </div>
@@ -957,7 +993,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
 
                 <div class="fee-section">
                     <div class="fee-section-title">
-                        🚚 Delivery Fee <span id="upd_fee_current_badge"></span>
+                        <i class="fa-solid fa-truck"></i> Delivery Fee <span id="upd_fee_current_badge"></span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Update Delivery Fee (₱)</label>
@@ -971,7 +1007,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
                 </div>
 
                 <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#92400e;line-height:1.5;">
-                    💡 Marking as <strong>Paid</strong> automatically creates a transaction record if none exists yet.
+                    <i class="fa-solid fa-lightbulb"></i> Marking as <strong>Paid</strong> automatically creates a transaction record if none exists yet.
                 </div>
             </div>
             <div class="modal-footer">
@@ -990,18 +1026,18 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
 <div class="modal-backdrop" id="cancelModal" onclick="backdropClose(event,'cancelModal')">
     <div class="modal-card sm">
         <div class="modal-header">
-            <div class="modal-title" style="color:#ef4444;">⚠ Cancel Order</div>
+            <div class="modal-title" style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Cancel Order</div>
             <button class="modal-close" onclick="closeModal('cancelModal')">✕</button>
         </div>
         <form method="POST" action="orders.php">
             <input type="hidden" name="action" value="cancel">
             <input type="hidden" name="id" id="cancel_id">
             <div class="modal-body" style="text-align:center;padding:28px 24px;">
-                <div style="font-size:3rem;margin-bottom:14px;">🚫</div>
+                <div style="font-size:3rem;margin-bottom:14px;"><i class="fa-solid fa-ban"></i></div>
                 <div style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:8px;">Cancel this order?</div>
                 <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">
                     Order <strong id="cancel_order_label">#0000</strong> from <strong id="cancel_customer_label"></strong> will be cancelled.<br><br>
-                    <span style="color:#10b981;font-weight:600;">✓ Stock will be automatically restored</span>
+                    <span style="color:#10b981;font-weight:600;"><i class="fa-solid fa-check"></i> Stock will be automatically restored</span>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1017,7 +1053,7 @@ table.data-table tbody tr:last-child td { border-bottom:none; }
 <div class="modal-backdrop" id="proofModal" onclick="backdropClose(event,'proofModal')">
     <div class="modal-card sm">
         <div class="modal-header">
-            <div class="modal-title">📎 GCash Payment Proof</div>
+            <div class="modal-title"><i class="fa-solid fa-paperclip"></i> GCash Payment Proof</div>
             <button class="modal-close" onclick="closeModal('proofModal')">✕</button>
         </div>
         <div class="modal-body">
@@ -1083,7 +1119,7 @@ function openApprove(data) {
     document.getElementById('approve_method_label').textContent   = data.payment_method.toUpperCase();
     document.getElementById('approve_total_label').textContent    = fmtPeso(data.total_amount);
     var addr = data.delivery_address||'';
-    document.getElementById('approve_address_label').textContent  = addr ? '📍 '+(addr.length>60?addr.substring(0,60)+'…':addr) : '';
+    document.getElementById('approve_address_label').textContent  = addr ? '<i class="fa-solid fa-location-dot"></i> '+(addr.length>60?addr.substring(0,60)+'…':addr) : '';
     document.getElementById('approve_delivery_fee').value = '';
     document.getElementById('approve_fee_preview').classList.remove('show');
     openModal('approveModal');
@@ -1123,14 +1159,14 @@ function openUpdate(data) {
     document.getElementById('upd_payment_status').value       = data.payment_status;
     document.getElementById('gcash_note').style.display       = data.payment_method==='gcash'?'flex':'none';
     var addr=data.delivery_address||'';
-    document.getElementById('upd_address_label').textContent  = addr?'📍 '+(addr.length>60?addr.substring(0,60)+'…':addr):'';
+    document.getElementById('upd_address_label').textContent  = addr?'<i class="fa-solid fa-location-dot"></i> '+(addr.length>60?addr.substring(0,60)+'…':addr):'';
     document.getElementById('upd_total_label').textContent    = fmtPeso(data.total_amount);
     document.getElementById('upd_delivery_fee').value         = '';
     var badgeEl=document.getElementById('upd_fee_current_badge');
     if(data.delivery_fee!==null&&data.delivery_fee!==undefined&&data.delivery_fee!=='') {
         badgeEl.className='fee-current-badge'; badgeEl.textContent=fmtPeso(data.delivery_fee)+' set';
     } else {
-        badgeEl.className='fee-unset-badge'; badgeEl.textContent='⚠ Not set';
+        badgeEl.className='fee-unset-badge'; badgeEl.textContent='<i class="fa-solid fa-triangle-exclamation"></i> Not set';
     }
     document.getElementById('fee_preview').classList.remove('show');
     updateStatusTracker(data.status);
@@ -1173,7 +1209,7 @@ function openView(orderId) {
     fetch('order_detail_ajax.php?id='+orderId)
         .then(r=>r.text())
         .then(html=>{ document.getElementById('view_content').innerHTML=html; })
-        .catch(()=>{ document.getElementById('view_content').innerHTML='<div style="text-align:center;padding:32px;color:var(--text-muted);">⚠️ Could not load details.</div>'; });
+        .catch(()=>{ document.getElementById('view_content').innerHTML='<div style="text-align:center;padding:32px;color:var(--text-muted);"><i class="fa-solid fa-triangle-exclamation"></i> Could not load details.</div>'; });
 }
 
 // ── Search ─────────────────────────────────────────────────────

@@ -75,6 +75,42 @@ $totalFound = $products ? $products->num_rows : 0;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Products — Hiney's Eggs &amp; Live Chicken</title>
 <style>
 /* ══════════════════════════════════════════════
@@ -668,7 +704,7 @@ a { text-decoration: none; color: inherit; }
             <span class="breadcrumb-sep">›</span>
             <span>Products</span>
         </div>
-        <div class="page-banner-eyebrow">🥚 Fresh from the Farm</div>
+        <div class="page-banner-eyebrow"><i class="fa-solid fa-egg"></i> Fresh from the Farm</div>
         <h1 class="page-banner-title">Our Products</h1>
         <p class="page-banner-sub">
             Eggs in every size, fresh live chickens — available daily from Hiney's farm.
@@ -728,17 +764,17 @@ a { text-decoration: none; color: inherit; }
                 $allActive = $categoryId === 0 ? 'active' : '';
                 ?>
                 <div class="cat-item <?= $allActive ?>" onclick="filterByCategory(0)">
-                    <span class="cat-item-emoji">🛒</span>
+                    <span class="cat-item-emoji"><i class="fa-solid fa-cart-shopping"></i></span>
                     All Products
                     <span class="cat-item-count"><?= $totalActive ?></span>
                 </div>
                 <?php
                 $categories->data_seek(0);
-                $catEmojis = ['Eggs' => '🥚', 'Live Chicken' => '🐔'];
+                $catEmojis = ['Eggs' => '<i class="fa-solid fa-egg"></i>', 'Live Chicken' => '<i class="fa-solid fa-drumstick-bite"></i>'];
                 while ($cat = $categories->fetch_assoc()):
                     $isActive = $categoryId === (int)$cat['id'] ? 'active' : '';
                     $cnt = $catCounts[$cat['id']] ?? 0;
-                    $emoji = $catEmojis[$cat['name']] ?? '📦';
+                    $emoji = $catEmojis[$cat['name']] ?? '<i class="fa-solid fa-box"></i>';
                 ?>
                 <div class="cat-item <?= $isActive ?>" onclick="filterByCategory(<?= $cat['id'] ?>)">
                     <span class="cat-item-emoji"><?= $emoji ?></span>
@@ -825,7 +861,7 @@ a { text-decoration: none; color: inherit; }
             <?php while ($p = $products->fetch_assoc()):
                 $isEgg    = stripos($p['category'], 'egg') !== false;
                 $thumbCls = $isEgg ? 'product-thumb-egg' : 'product-thumb-chick';
-                $emoji    = $isEgg ? '🥚' : '🐔';
+                $emoji    = $isEgg ? '<i class="fa-solid fa-egg"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
                 $stock    = (int)$p['stock'];
                 if ($stock <= 0)      { $stockCls='stock-out'; $stockLbl='Out of Stock'; }
                 elseif ($stock <= 10) { $stockCls='stock-low'; $stockLbl='Low Stock'; }
@@ -853,7 +889,7 @@ a { text-decoration: none; color: inherit; }
                         <button class="btn-add-cart <?= $stock<=0 ? 'disabled':'' ?>"
                                 <?= $stock<=0 ? 'disabled':'' ?>
                                 onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
-                            🛒 Add to Cart
+                            <i class="fa-solid fa-cart-shopping"></i> Add to Cart
                         </button>
                     </div>
                 </div>
@@ -862,7 +898,7 @@ a { text-decoration: none; color: inherit; }
 
         <?php else: ?>
             <div class="empty-state">
-                <span class="empty-state-icon">🔍</span>
+                <span class="empty-state-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
                 <div class="empty-state-title">No products found</div>
                 <div class="empty-state-sub">
                     <?php if ($search): ?>
@@ -884,7 +920,7 @@ a { text-decoration: none; color: inherit; }
 <!-- Footer -->
 <footer class="site-footer">
     &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-    Loreto Cortes, Bohol 🌴 &nbsp;·&nbsp;
+    Loreto Cortes, Bohol  &nbsp;·&nbsp;
     <a href="contact.php">Contact Us</a>
 </footer>
 
@@ -966,17 +1002,17 @@ function addToCart(productId, productName) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            showToast('✅ ' + productName + ' added to cart!', 'success');
+            showToast('✓ ' + productName + ' added to cart!', 'success');
             const badge = document.getElementById('cartBadge');
             if (badge && data.cart_count !== undefined) {
                 badge.textContent = data.cart_count;
                 badge.style.display = data.cart_count > 0 ? 'flex' : 'none';
             }
         } else {
-            showToast('❌ ' + (data.message || 'Could not add to cart.'), 'error');
+            showToast('✕ ' + (data.message || 'Could not add to cart.'), 'error');
         }
     })
-    .catch(() => showToast('❌ Network error. Please try again.', 'error'));
+    .catch(() => showToast('✕ Network error. Please try again.', 'error'));
 }
 
 // ── Toast ──────────────────────────────────────────────────────

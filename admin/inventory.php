@@ -93,6 +93,42 @@ $activePage = 'inventory';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Inventory — Hiney's Admin</title>
 <style>
 :root { --card-border: #e9e8e4; }
@@ -274,7 +310,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             while ($inv = $inventory->fetch_assoc()):
                 $qty   = (int)$inv['quantity'];
                 $reord = (int)$inv['reorder_level'];
-                $emoji = (stripos($inv['name'],'chicken')!==false||stripos($inv['category'],'chicken')!==false)?'🐔':'🥚';
+                $emoji = (stripos($inv['name'],'chicken')!==false||stripos($inv['category'],'chicken')!==false)?'<i class="fa-solid fa-drumstick-bite"></i>':'<i class="fa-solid fa-egg"></i>';
                 $pct   = $reord>0?min(100,round(($qty/max($reord*2,1))*100)):100;
                 $color = $qty<=0?'#ef4444':($qty<=$reord?'#f59e0b':'#10b981');
                 $bCls  = $qty<=0?'out':($qty<=$reord?'low':'ok');
@@ -317,7 +353,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             </tbody>
         </table>
         <?php else: ?>
-        <div class="empty-state"><div class="empty-icon">📦</div><div>No inventory records found.</div></div>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-box"></i></div><div>No inventory records found.</div></div>
         <?php endif; ?>
     </div>
 
@@ -336,7 +372,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             <tbody>
             <?php while ($log = $logs->fetch_assoc()):
                 $tc = match($log['type']){'in'=>'log-in','out'=>'log-out','adjustment'=>'log-adjustment',default=>'log-in'};
-                $tl = match($log['type']){'in'=>'↑ Stock In','out'=>'↓ Stock Out','adjustment'=>'⇄ Adjusted',default=>$log['type']};
+                $tl = match($log['type']){'in'=>'<i class="fa-solid fa-arrow-up"></i> Stock In','out'=>'<i class="fa-solid fa-arrow-down"></i> Stock Out','adjustment'=>'⇄ Adjusted',default=>$log['type']};
             ?>
             <tr>
                 <td style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;"><?= date('M j, Y g:i A',strtotime($log['created_at'])) ?></td>
@@ -350,7 +386,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             </tbody>
         </table>
         <?php else: ?>
-        <div class="empty-state"><div class="empty-icon">📋</div><div>No stock activity yet.</div></div>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clipboard-list"></i></div><div>No stock activity yet.</div></div>
         <?php endif; ?>
     </div>
 
@@ -370,15 +406,15 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             <input type="hidden" name="type" id="adj_type" value="in">
             <div class="modal-body">
                 <div class="product-info-box">
-                    <div style="font-size:1.4rem;" id="adj_emoji">🥚</div>
+                    <div style="font-size:1.4rem;" id="adj_emoji"><i class="fa-solid fa-egg"></i></div>
                     <div>
                         <div class="product-info-name" id="adj_name">—</div>
                         <div class="product-info-stock">Current stock: <strong id="adj_current">0</strong> units</div>
                     </div>
                 </div>
                 <div class="type-tabs">
-                    <div class="type-tab active" data-type="in" onclick="setType('in')">↑ Stock In</div>
-                    <div class="type-tab out" data-type="out" onclick="setType('out')">↓ Stock Out</div>
+                    <div class="type-tab active" data-type="in" onclick="setType('in')"><i class="fa-solid fa-arrow-up"></i> Stock In</div>
+                    <div class="type-tab out" data-type="out" onclick="setType('out')"><i class="fa-solid fa-arrow-down"></i> Stock Out</div>
                     <div class="type-tab adjust" data-type="adjustment" onclick="setType('adjustment')">⇄ Set Qty</div>
                 </div>
                 <div class="form-row">
@@ -434,7 +470,7 @@ function openAdjust(data) {
     document.getElementById('adj_current').textContent = data.qty.toLocaleString();
     document.getElementById('adj_reorder').value = data.reorder;
     document.getElementById('adj_qty').value = '';
-    document.getElementById('adj_emoji').textContent = data.name.toLowerCase().includes('chicken') ? '🐔' : '🥚';
+    document.getElementById('adj_emoji').textContent = data.name.toLowerCase().includes('chicken') ? '<i class="fa-solid fa-drumstick-bite"></i>' : '<i class="fa-solid fa-egg"></i>';
     setType('in');
     openModal('adjustModal');
 }

@@ -74,6 +74,42 @@ $activePage = 'contacts';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Contact Messages — Hiney's Admin</title>
 <style>
 :root { --card-border: #e9e8e4; }
@@ -392,7 +428,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
                 <h1 class="page-title">
-                    <div class="page-title-icon">📬</div>
+                    <div class="page-title-icon"><i class="fa-solid fa-inbox"></i></div>
                     Contact Messages
                 </h1>
             </div>
@@ -412,7 +448,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
     <div class="kpi-strip">
         <div class="kpi-mini">
             <div class="kpi-mini-accent ac-blue"></div>
-            <div class="kpi-mini-icon blue">📬</div>
+            <div class="kpi-mini-icon blue"><i class="fa-solid fa-inbox"></i></div>
             <div>
                 <div class="kpi-mini-val"><?= number_format($totalAll) ?></div>
                 <div class="kpi-mini-lbl">Total Messages</div>
@@ -420,7 +456,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
         </div>
         <div class="kpi-mini">
             <div class="kpi-mini-accent ac-red"></div>
-            <div class="kpi-mini-icon red">🔴</div>
+            <div class="kpi-mini-icon red"><i class="fa-solid fa-circle-exclamation"></i></div>
             <div>
                 <div class="kpi-mini-val"><?= number_format($unreadCount) ?></div>
                 <div class="kpi-mini-lbl">Unread</div>
@@ -428,7 +464,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
         </div>
         <div class="kpi-mini">
             <div class="kpi-mini-accent ac-green"></div>
-            <div class="kpi-mini-icon green">✅</div>
+            <div class="kpi-mini-icon green"><i class="fa-solid fa-circle-check"></i></div>
             <div>
                 <div class="kpi-mini-val"><?= number_format($readAll) ?></div>
                 <div class="kpi-mini-lbl">Read</div>
@@ -442,7 +478,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             <span class="toolbar-title">All Messages</span>
             <span class="count-pill"><?= number_format($totalCount) ?></span>
             <?php if ($unreadCount > 0): ?>
-                <span class="unread-pill">🔴 <?= $unreadCount ?> unread</span>
+                <span class="unread-pill"><i class="fa-solid fa-circle-exclamation"></i> <?= $unreadCount ?> unread</span>
             <?php endif; ?>
 
             <!-- Filter tabs -->
@@ -556,7 +592,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
                                 'is_read'    => (int)$m['is_read'],
                                 'created_at' => $m['created_at'],
                             ]), ENT_QUOTES) ?>)">
-                            👁 View
+                            <i class="fa-solid fa-eye"></i> View
                         </button>
 
                         <!-- Mark read/unread -->
@@ -564,14 +600,14 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
                             <input type="hidden" name="action" value="<?= $isUnread ? 'mark_read' : 'mark_unread' ?>">
                             <input type="hidden" name="id" value="<?= $m['id'] ?>">
                             <button type="submit" class="btn-action btn-toggle <?= $isUnread ? '' : 'unmark' ?>">
-                                <?= $isUnread ? '✓ Read' : '↩ Unread' ?>
+                                <?= $isUnread ? '✓ Read' : '<i class="fa-solid fa-rotate-left"></i> Unread' ?>
                             </button>
                         </form>
 
                         <!-- Delete -->
                         <button class="btn-action btn-del"
                             onclick="openDelete(<?= $m['id'] ?>, '<?= htmlspecialchars(addslashes($m['name'])) ?>')">
-                            🗑 Del
+                            <i class="fa-solid fa-trash"></i> Del
                         </button>
                     </div>
                 </td>
@@ -600,7 +636,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 
         <?php else: ?>
         <div class="empty-state">
-            <div class="empty-icon">📭</div>
+            <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
             <div style="font-size:0.9rem;font-weight:600;color:var(--dark);margin-bottom:4px;">No messages found</div>
             <div style="font-size:0.82rem;">
                 <?= $search ? 'Try different search terms.' : 'No contact messages yet.' ?>
@@ -616,7 +652,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 <div class="modal-backdrop" id="viewModal" onclick="backdropClose(event,'viewModal')">
     <div class="modal-card" role="dialog" aria-modal="true">
         <div class="modal-header">
-            <div class="modal-title">📩 Message Details</div>
+            <div class="modal-title"><i class="fa-solid fa-envelope-open"></i> Message Details</div>
             <button class="modal-close" onclick="closeModal('viewModal')">✕</button>
         </div>
         <div class="modal-body">
@@ -651,7 +687,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 
             <!-- Reply shortcut -->
             <div style="margin-top:14px;padding:12px 14px;background:#eff6ff;border-radius:9px;border:1px solid #bfdbfe;font-size:0.82rem;color:#1e40af;display:flex;align-items:center;gap:8px;">
-                <span>💡</span>
+                <span><i class="fa-solid fa-lightbulb"></i></span>
                 <span>To reply, email <strong id="view_reply_email">—</strong> or call <strong id="view_reply_phone">—</strong></span>
             </div>
         </div>
@@ -680,7 +716,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" id="delete_id">
             <div class="modal-body">
-                <div class="del-icon-wrap">🗑️</div>
+                <div class="del-icon-wrap"><i class="fa-solid fa-trash"></i></div>
                 <div class="del-title">Delete this message?</div>
                 <div class="del-text">
                     You are about to permanently delete the message from<br>
@@ -745,7 +781,7 @@ function openView(data) {
     const actionInput = document.getElementById('view_action');
     if (data.is_read) {
         actionInput.value    = 'mark_unread';
-        markBtn.textContent  = '↩ Mark as Unread';
+        markBtn.textContent  = '<i class="fa-solid fa-rotate-left"></i> Mark as Unread';
         markBtn.className    = 'btn btn-ghost';
     } else {
         actionInput.value    = 'mark_read';

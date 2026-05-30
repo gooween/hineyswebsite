@@ -116,6 +116,42 @@ $activePage = 'customers';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>Customers — Hiney's Admin</title>
 <style>
 :root { --card-border: #e9e8e4; }
@@ -602,7 +638,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 
         <?php else: ?>
         <div class="empty-state">
-            <div class="empty-icon">👥</div>
+            <div class="empty-icon"><i class="fa-solid fa-users"></i></div>
             <div class="empty-text">No customers found<?= ($search||$filterStatus) ? ' — try adjusting filters.' : '.' ?></div>
         </div>
         <?php endif; ?>
@@ -700,7 +736,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
             <input type="hidden" name="id" id="toggle_id">
             <input type="hidden" name="is_active" id="toggle_status_val">
             <div class="modal-body" style="text-align:center;padding:28px 24px;">
-                <div style="font-size:3rem;margin-bottom:12px;" id="toggle_icon">⚠️</div>
+                <div style="font-size:3rem;margin-bottom:12px;" id="toggle_icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:8px;" id="toggle_heading">Deactivate Account?</div>
                 <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;" id="toggle_desc">
                     Are you sure you want to deactivate <strong id="toggle_name"></strong>?
@@ -746,13 +782,13 @@ function openToggle(id, name, newStatus) {
 
     const btn = document.getElementById('toggle_submit_btn');
     if (newStatus === 0) {
-        document.getElementById('toggle_icon').textContent    = '🚫';
+        document.getElementById('toggle_icon').textContent    = '<i class="fa-solid fa-ban"></i>';
         document.getElementById('toggle_heading').textContent = 'Deactivate Account?';
         document.getElementById('toggle_desc').innerHTML      = `Are you sure you want to deactivate <strong>${name}</strong>? They will no longer be able to log in.`;
         btn.className  = 'btn btn-danger';
         btn.textContent = 'Deactivate';
     } else {
-        document.getElementById('toggle_icon').textContent    = '✅';
+        document.getElementById('toggle_icon').textContent    = '✓';
         document.getElementById('toggle_heading').textContent = 'Activate Account?';
         document.getElementById('toggle_desc').innerHTML      = `Are you sure you want to reactivate <strong>${name}</strong>'s account?`;
         btn.className  = 'btn btn-success';

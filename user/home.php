@@ -44,6 +44,42 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
     <title>Home — Hiney's Eggs &amp; Live Chicken</title>
     <style>
         /* Keep all existing styles exactly the same */
@@ -1175,7 +1211,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
         <section class="hero">
             <div class="hero-inner">
                 <div class="hero-content">
-                    <div class="hero-badge">🥚 Fresh &amp; Farm-Direct</div>
+                    <div class="hero-badge"><i class="fa-solid fa-egg"></i> Fresh &amp; Farm-Direct</div>
                     <h1 class="hero-title">
                         <?php if ($isLoggedIn): ?>
                             Welcome back,<br><span class="hero-title-accent"><?= htmlspecialchars($firstName) ?>!</span><br>
@@ -1189,11 +1225,11 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                         Hiney's farm to your doorstep. Fast delivery, guaranteed fresh.
                     </p>
                     <div class="hero-actions">
-                        <a href="products.php" class="btn-hero-primary">🛒 Shop Now</a>
+                        <a href="products.php" class="btn-hero-primary"><i class="fa-solid fa-cart-shopping"></i> Shop Now</a>
                         <?php if ($isLoggedIn): ?>
-                            <a href="orders.php" class="btn-hero-ghost">📦 My Orders</a>
+                            <a href="orders.php" class="btn-hero-ghost"><i class="fa-solid fa-box"></i> My Orders</a>
                         <?php else: ?>
-                            <a href="../index.php" class="btn-hero-ghost">🔑 Sign In</a>
+                            <a href="../index.php" class="btn-hero-ghost"><i class="fa-solid fa-right-to-bracket"></i> Sign In</a>
                         <?php endif; ?>
                     </div>
                     <div class="hero-stats">
@@ -1215,10 +1251,11 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                     <div class="hero-blob hero-blob-1"></div>
                     <div class="hero-blob hero-blob-2"></div>
                     <div class="hero-egg-wrap">
-                        <div class="hero-egg-inner">🥚</div>
-                        <div class="hero-float-card fc-1"><span class="fc-icon">✅</span><span>Farm Fresh</span></div>
-                        <div class="hero-float-card fc-2"><span class="fc-icon">🚚</span><span>Fast Delivery</span></div>
-                        <div class="hero-float-card fc-3"><span class="fc-icon">⭐</span><span>Top Quality</span></div>
+                        <img src="<?= $base ?>assets/images/hineys_logo.png" alt="Hiney's" class="hero-egg-inner">
+
+                        <div class="hero-float-card fc-1"><span class="fc-icon">✓</span><span>Farm Fresh</span></div>
+                        <div class="hero-float-card fc-2"><span class="fc-icon"><i class="fa-solid fa-truck"></i></span><span>Fast Delivery</span></div>
+                        <div class="hero-float-card fc-3"><span class="fc-icon"><i class="fa-solid fa-star"></i></span><span>Top Quality</span></div>
                     </div>
                 </div>
             </div>
@@ -1240,7 +1277,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                         <?php while ($p = $featured->fetch_assoc()):
                             $isEgg   = stripos($p['category'], 'egg') !== false;
                             $thumbCls = $isEgg ? 'product-thumb-egg' : 'product-thumb-chick';
-                            $emoji    = $isEgg ? '🥚' : '🐔';
+                            $emoji    = $isEgg ? '<i class="fa-solid fa-egg"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
                             $stock    = (int)$p['stock'];
                             if ($stock <= 0) {
                                 $stockCls = 'stock-out';
@@ -1272,7 +1309,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                                         <button class="btn-cart <?= $stock <= 0 ? 'disabled' : '' ?>"
                                             <?= $stock <= 0 ? 'disabled' : '' ?>
                                             onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
-                                            🛒 Add to Cart
+                                            <i class="fa-solid fa-cart-shopping"></i> Add to Cart
                                         </button>
                                     </div>
                                 </div>
@@ -1281,7 +1318,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                     </div>
                 <?php else: ?>
                     <div style="text-align:center;padding:48px;color:var(--text-muted);">
-                        <div style="font-size:3rem;margin-bottom:12px;">🥚</div>
+                        <div style="font-size:3rem;margin-bottom:12px;"><i class="fa-solid fa-egg"></i></div>
                         <div>No products available right now. Check back soon!</div>
                     </div>
                 <?php endif; ?>
@@ -1302,17 +1339,17 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                 </div>
                 <div class="features-grid">
                     <div class="feature-card">
-                        <div class="feature-icon-wrap fi-orange">🌿</div>
+                        <div class="feature-icon-wrap fi-orange"><i class="fa-solid fa-leaf"></i></div>
                         <div class="feature-title">100% Farm Fresh</div>
                         <div class="feature-desc">Every egg and chicken comes straight from our farm. No middlemen, no cold storage delays.</div>
                     </div>
                     <div class="feature-card">
-                        <div class="feature-icon-wrap fi-green">🚚</div>
+                        <div class="feature-icon-wrap fi-green"><i class="fa-solid fa-truck"></i></div>
                         <div class="feature-title">Fast Local Delivery</div>
                         <div class="feature-desc">We deliver right to your door within Bohol. Same or next day delivery.</div>
                     </div>
                     <div class="feature-card">
-                        <div class="feature-icon-wrap fi-blue">💯</div>
+                        <div class="feature-icon-wrap fi-blue"><i class="fa-solid fa-shield-halved"></i></div>
                         <div class="feature-title">Quality Guaranteed</div>
                         <div class="feature-desc">Not satisfied? We'll make it right. Every product is quality-checked.</div>
                     </div>
@@ -1358,10 +1395,10 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             <div class="container">
                 <div class="cta-card">
                     <div class="cta-card-inner">
-                        <span class="cta-emoji">🐔</span>
+                        <span class="cta-emoji"><i class="fa-solid fa-drumstick-bite"></i></span>
                         <h2 class="cta-title">Ready to Order?</h2>
                         <p class="cta-desc">Fresh eggs and live chickens are available now.<br>Place your order and we'll deliver straight to your door!</p>
-                        <a href="products.php" class="btn-cta">🛒 Shop Now</a>
+                        <a href="products.php" class="btn-cta"><i class="fa-solid fa-cart-shopping"></i> Shop Now</a>
                     </div>
                 </div>
             </div>
@@ -1369,7 +1406,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 
         <footer class="site-footer">
             &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-            Loreto Cortes, Bohol 🌴 &nbsp;·&nbsp;
+            Loreto Cortes, Bohol  &nbsp;·&nbsp;
             <a href="contact.php">Contact Us</a>
         </footer>
 
@@ -1379,7 +1416,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
     <div class="login-prompt-overlay" id="loginPrompt" onclick="if(event.target===this)closeLoginPrompt()">
         <div class="login-prompt-box" style="position:relative;">
             <button class="btn-close-prompt" onclick="closeLoginPrompt()">✕</button>
-            <div class="login-prompt-icon">🔒</div>
+            <div class="login-prompt-icon"><i class="fa-solid fa-lock"></i></div>
             <div class="login-prompt-title">Sign in to continue</div>
             <div class="login-prompt-desc">You need an account to add items to your cart and place orders.</div>
             <div class="login-prompt-actions">
@@ -1423,17 +1460,17 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showToast('✅ ' + productName + ' added to cart!', 'success');
+                        showToast('✓ ' + productName + ' added to cart!', 'success');
                         const badge = document.querySelector('.cart-badge');
                         if (badge && data.cart_count !== undefined) {
                             badge.textContent = data.cart_count;
                             badge.classList.toggle('hidden', data.cart_count === 0);
                         }
                     } else {
-                        showToast('❌ ' + (data.message || 'Could not add to cart.'), 'error');
+                        showToast('✕ ' + (data.message || 'Could not add to cart.'), 'error');
                     }
                 })
-                .catch(() => showToast('❌ Network error. Please try again.', 'error'));
+                .catch(() => showToast('✕ Network error. Please try again.', 'error'));
         }
 
         function showToast(msg, type = 'success') {

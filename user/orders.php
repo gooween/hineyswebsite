@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (move_uploaded_file($file['tmp_name'], $destPath)) {
                 $safePath = $conn->real_escape_string($publicPath);
                 $conn->query("UPDATE orders SET gcash_proof='{$safePath}', updated_at=NOW() WHERE id={$orderId}");
-                redirect('orders.php', 'success', '✅ Payment proof uploaded! The admin will verify it shortly.');
+                redirect('orders.php', 'success', '✓ Payment proof uploaded! The admin will verify it shortly.');
             } else {
                 $uploadError = 'Failed to save file. Please try again.';
             }
@@ -147,6 +147,42 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style id="hineys-icon-colors">
+/* === Hiney's icon colors === */
+/* Icons inside dark/colored or interactive areas keep their inherited color */
+.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
+button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
+.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
+.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
+.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
+.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
+    color: inherit !important;
+}
+/* Semantic colors for standalone content icons */
+.fa-egg { color: #f4a72c; }
+.fa-drumstick-bite { color: #c2703b; }
+.fa-circle-check, .fa-check, .fa-shield-halved,
+.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
+.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
+.fa-location-dot { color: #ef4444; }
+.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
+.fa-truck { color: #f97316; }
+.fa-triangle-exclamation, .fa-circle-exclamation,
+.fa-clock, .fa-star { color: #f59e0b; }
+.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
+.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
+.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
+.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
+.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
+.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
+.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
+.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
+.fa-gauge-high { color: #0ea5e9; }
+.fa-heart { color: #ef4444; }
+.fa-gear { color: #6b7280; }
+.fa-lightbulb { color: #f59e0b; }
+</style>
 <title>My Orders — Hiney's Eggs &amp; Live Chicken</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -325,7 +361,7 @@ a{text-decoration:none;color:inherit;}
 <div class="page-banner">
     <div class="page-banner-inner">
         <div class="breadcrumb"><a href="home.php">Home</a><span class="breadcrumb-sep">›</span><span>My Orders</span></div>
-        <div class="page-banner-title">📦 My Orders</div>
+        <div class="page-banner-title"><i class="fa-solid fa-box"></i> My Orders</div>
         <div class="page-banner-sub"><?= $totalOrders ?> order<?= $totalOrders!==1?'s':'' ?> total</div>
     </div>
 </div>
@@ -339,11 +375,11 @@ a{text-decoration:none;color:inherit;}
     <div class="status-tabs">
         <?php
         $tabs = [
-            ''                => ['All','🛒'],
-            'pending'         => ['Pending','⏳'],
-            'approved'        => ['Approved','✅'],
-            'processing'      => ['Processing','⚙️'],
-            'out_for_delivery'=> ['On the Way','🚚'],
+            ''                => ['All','<i class="fa-solid fa-cart-shopping"></i>'],
+            'pending'         => ['Pending','<i class="fa-solid fa-clock"></i>'],
+            'approved'        => ['Approved','✓'],
+            'processing'      => ['Processing','<i class="fa-solid fa-gear"></i>'],
+            'out_for_delivery'=> ['On the Way','<i class="fa-solid fa-truck"></i>'],
             'delivered'       => ['Delivered','✓'],
             'cancelled'       => ['Cancelled','✕'],
         ];
@@ -460,13 +496,13 @@ a{text-decoration:none;color:inherit;}
                     <div class="proof-upload-form">
                         <div class="proof-file-input-wrap">
                             <label class="proof-file-label" id="proof_label_<?= $o['id'] ?>">
-                                📎 Choose screenshot (JPG, PNG)
+                                <i class="fa-solid fa-paperclip"></i> Choose screenshot (JPG, PNG)
                             </label>
                             <input type="file" name="gcash_proof" accept="image/*"
                                    onchange="updateProofLabel(this, <?= $o['id'] ?>)" required>
                         </div>
                         <button type="submit" class="btn-upload-proof">
-                            ↑ Upload Proof
+                            <i class="fa-solid fa-arrow-up"></i> Upload Proof
                         </button>
                     </div>
                 </form>
@@ -491,7 +527,7 @@ a{text-decoration:none;color:inherit;}
                 <input type="hidden" name="action" value="upload_proof">
                 <input type="hidden" name="order_id" value="<?= $o['id'] ?>">
                 <div style="position:relative;overflow:hidden;">
-                    <button type="button" class="btn-reupload">🔄 Replace</button>
+                    <button type="button" class="btn-reupload"><i class="fa-solid fa-arrows-rotate"></i> Replace</button>
                     <input type="file" name="gcash_proof" accept="image/*"
                            style="position:absolute;inset:0;opacity:0;width:100%;cursor:pointer;"
                            onchange="this.closest('form').submit()" required>
@@ -503,7 +539,7 @@ a{text-decoration:none;color:inherit;}
         <!-- Footer -->
         <div class="order-card-footer">
             <div class="order-address">
-                <span>📍</span>
+                <span><i class="fa-solid fa-location-dot"></i></span>
                 <span class="order-address-text"><?= htmlspecialchars($o['delivery_address']) ?></span>
             </div>
             <button class="btn-view-order" onclick="viewOrder(<?= $o['id'] ?>)">View Details →</button>
@@ -514,14 +550,14 @@ a{text-decoration:none;color:inherit;}
 
     <?php else: ?>
     <div class="empty-state">
-        <span class="empty-icon">📦</span>
+        <span class="empty-icon"><i class="fa-solid fa-box"></i></span>
         <div class="empty-title"><?= $filterStatus?'No '.ucwords(str_replace('_',' ',$filterStatus)).' orders':'No orders yet' ?></div>
         <div class="empty-sub">
             <?= $filterStatus
                 ?'You have no orders with this status. <a href="orders.php" style="color:var(--primary);font-weight:600;">View all orders</a>'
                 :"You haven't placed any orders yet." ?>
         </div>
-        <?php if (!$filterStatus): ?><a href="products.php" class="btn-shop">🥚 Browse Products</a><?php endif; ?>
+        <?php if (!$filterStatus): ?><a href="products.php" class="btn-shop"><i class="fa-solid fa-egg"></i> Browse Products</a><?php endif; ?>
     </div>
     <?php endif; ?>
 
@@ -530,7 +566,7 @@ a{text-decoration:none;color:inherit;}
 
 <footer class="site-footer">
     &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-    Loreto Cortes, Bohol 🌴 &nbsp;·&nbsp;
+    Loreto Cortes, Bohol  &nbsp;·&nbsp;
     <a href="contact.php">Contact Us</a>
 </footer>
 </div>
@@ -562,10 +598,10 @@ a{text-decoration:none;color:inherit;}
 
 <script>
 const STATUS_CONFIG = {
-    pending:          {label:'Pending',          bg:'#fef3c7',color:'#92400e',icon:'⏳'},
-    approved:         {label:'Approved',         bg:'#dbeafe',color:'#1e40af',icon:'✅'},
-    processing:       {label:'Processing',       bg:'#ede9fe',color:'#5b21b6',icon:'⚙️'},
-    out_for_delivery: {label:'Out for Delivery', bg:'#ffedd5',color:'#9a3412',icon:'🚚'},
+    pending:          {label:'Pending',          bg:'#fef3c7',color:'#92400e',icon:'<i class="fa-solid fa-clock"></i>'},
+    approved:         {label:'Approved',         bg:'#dbeafe',color:'#1e40af',icon:'✓'},
+    processing:       {label:'Processing',       bg:'#ede9fe',color:'#5b21b6',icon:'<i class="fa-solid fa-gear"></i>'},
+    out_for_delivery: {label:'Out for Delivery', bg:'#ffedd5',color:'#9a3412',icon:'<i class="fa-solid fa-truck"></i>'},
     delivered:        {label:'Delivered',        bg:'#d1fae5',color:'#065f46',icon:'✓'},
     cancelled:        {label:'Cancelled',        bg:'#fee2e2',color:'#991b1b',icon:'✕'},
 };
@@ -580,10 +616,10 @@ function viewOrder(orderId) {
     fetch('orders.php?get_order='+orderId)
         .then(r=>r.json())
         .then(data=>{
-            if(!data.success){ document.getElementById('modalBody').innerHTML='<div class="modal-loading">❌ Could not load.</div>'; return; }
+            if(!data.success){ document.getElementById('modalBody').innerHTML='<div class="modal-loading">✕ Could not load.</div>'; return; }
             renderModal(data);
         })
-        .catch(()=>{ document.getElementById('modalBody').innerHTML='<div class="modal-loading">❌ Network error.</div>'; });
+        .catch(()=>{ document.getElementById('modalBody').innerHTML='<div class="modal-loading">✕ Network error.</div>'; });
 }
 
 function renderModal(data) {
@@ -597,7 +633,7 @@ function renderModal(data) {
     data.items.forEach(item=>{
         const isChick=item.category.toLowerCase().includes('chicken');
         itemRows+=`<tr>
-            <td><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-size:1rem;margin-right:6px;${isChick?'background:linear-gradient(135deg,#f0fdf4,#bbf7d0)':'background:linear-gradient(135deg,#fef9ee,#fdeec8)'}">${isChick?'🐔':'🥚'}</span>${esc(item.name)}<div style="font-size:0.72rem;color:var(--text-muted);">${esc(item.unit)}</div></td>
+            <td><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-size:1rem;margin-right:6px;${isChick?'background:linear-gradient(135deg,#f0fdf4,#bbf7d0)':'background:linear-gradient(135deg,#fef9ee,#fdeec8)'}">${isChick?'<i class="fa-solid fa-drumstick-bite"></i>':'<i class="fa-solid fa-egg"></i>'}</span>${esc(item.name)}<div style="font-size:0.72rem;color:var(--text-muted);">${esc(item.unit)}</div></td>
             <td style="text-align:center;font-weight:600;">${item.quantity}</td>
             <td style="text-align:right;">${fmtPeso(item.unit_price)}</td>
             <td style="text-align:right;font-weight:700;color:var(--primary);">${fmtPeso(item.subtotal)}</td>
@@ -612,16 +648,16 @@ function renderModal(data) {
     // GCash proof section
     let proofHtml='';
     if(o.payment_method==='gcash'&&o.gcash_proof) {
-        proofHtml=`<div class="modal-section"><div class="modal-section-title">📎 Payment Proof</div>
+        proofHtml=`<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-paperclip"></i> Payment Proof</div>
             <div class="modal-proof-wrap"><img src="../${esc(o.gcash_proof)}?v=${Date.now()}" alt="GCash Payment Proof" style="max-width:100%;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="viewProofImg('../${esc(o.gcash_proof)}')"></div></div>`;
     } else if(o.payment_method==='gcash'&&o.status==='approved') {
-        proofHtml=`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:0.82rem;color:#1e40af;margin-top:10px;">📎 No payment proof uploaded yet. Please upload it from the order list.</div>`;
+        proofHtml=`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:0.82rem;color:#1e40af;margin-top:10px;"><i class="fa-solid fa-paperclip"></i> No payment proof uploaded yet. Please upload it from the order list.</div>`;
     }
 
     // Transaction section
     let txnHtml='';
     if(data.txn) {
-        txnHtml=`<div class="modal-section"><div class="modal-section-title">💳 Transaction</div>
+        txnHtml=`<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-credit-card"></i> Transaction</div>
             <div class="modal-info-grid">
                 <div><div class="modal-info-label">Method</div><div class="modal-info-value">${data.txn.payment_method.toUpperCase()}</div></div>
                 <div><div class="modal-info-label">Reference</div><div class="modal-info-value">${esc(data.txn.reference_no||'—')}</div></div>
@@ -639,7 +675,7 @@ function renderModal(data) {
             <span style="font-size:1.5rem;">${cfg.icon}</span>
             <div><div style="font-size:0.95rem;font-weight:800;">${cfg.label}</div><div style="font-size:0.75rem;opacity:0.8;">Updated: ${fmtDate(o.updated_at)}</div></div>
         </div>
-        <div class="modal-section"><div class="modal-section-title">📋 Order Info</div>
+        <div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-clipboard-list"></i> Order Info</div>
             <div class="modal-info-grid">
                 <div><div class="modal-info-label">Order ID</div><div class="modal-info-value">#${String(o.id).padStart(4,'0')}</div></div>
                 <div><div class="modal-info-label">Date Placed</div><div class="modal-info-value">${fmtDate(o.created_at)}</div></div>
@@ -647,11 +683,11 @@ function renderModal(data) {
                 <div><div class="modal-info-label">Payment Status</div><div class="modal-info-value" style="color:${o.payment_status==='paid'?'var(--success)':'var(--danger)'};">${o.payment_status.charAt(0).toUpperCase()+o.payment_status.slice(1)}</div></div>
             </div>
         </div>
-        <div class="modal-section"><div class="modal-section-title">📍 Delivery</div>
+        <div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-location-dot"></i> Delivery</div>
             <div style="font-size:0.88rem;background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;">${esc(o.delivery_address)}</div>
             ${notesHtml}
         </div>
-        <div class="modal-section"><div class="modal-section-title">🛒 Items</div>
+        <div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-cart-shopping"></i> Items</div>
             <table class="modal-items-table"><thead><tr><th>Product</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Subtotal</th></tr></thead>
             <tbody>${itemRows}</tbody></table>
             ${feeRow}

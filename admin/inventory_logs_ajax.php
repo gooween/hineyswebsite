@@ -135,8 +135,8 @@ if ($logs) {
             default      => 'log-in'
         };
         $typeLabel = match($log['type']) {
-            'in'         => '↑ Stock In',
-            'out'        => '↓ Stock Out',
+            'in'         => '<i class="fa-solid fa-arrow-up"></i> Stock In',
+            'out'        => '<i class="fa-solid fa-arrow-down"></i> Stock Out',
             'adjustment' => '⇄ Set to',
             default      => $log['type']
         };
@@ -169,7 +169,7 @@ if ($logs) {
 </div>
 <?php else: ?>
 <div class="empty-logs">
-    <div class="empty-logs-icon">📋</div>
+    <div class="empty-logs-icon"><i class="fa-solid fa-clipboard-list"></i></div>
     <div>No stock history found for this product.</div>
 </div>
 <?php endif; ?>

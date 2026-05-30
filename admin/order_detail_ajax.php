@@ -68,12 +68,12 @@ $transactions = $conn->query("
 
 // Status display map
 $statusMap = [
-    'pending'          => ['⏳', '#92400e', '#fef3c7'],
-    'confirmed'        => ['✅', '#1e40af', '#dbeafe'],
-    'processing'       => ['⚙️', '#5b21b6', '#ede9fe'],
-    'out_for_delivery' => ['🚚', '#9a3412', '#ffedd5'],
-    'delivered'        => ['🎉', '#065f46', '#d1fae5'],
-    'cancelled'        => ['❌', '#991b1b', '#fee2e2'],
+    'pending'          => ['<i class="fa-solid fa-clock"></i>', '#92400e', '#fef3c7'],
+    'confirmed'        => ['✓', '#1e40af', '#dbeafe'],
+    'processing'       => ['<i class="fa-solid fa-gear"></i>', '#5b21b6', '#ede9fe'],
+    'out_for_delivery' => ['<i class="fa-solid fa-truck"></i>', '#9a3412', '#ffedd5'],
+    'delivered'        => ['<i class="fa-solid fa-champagne-glasses"></i>', '#065f46', '#d1fae5'],
+    'cancelled'        => ['✕', '#991b1b', '#fee2e2'],
 ];
 [$sEmoji, $sColor, $sBg] = $statusMap[$o['status']] ?? ['❓', '#374151', '#f3f4f6'];
 $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
@@ -145,7 +145,7 @@ $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
         <div class="od-status-sub" style="color:<?= $sColor ?>99;">Order #<?= str_pad($o['id'],4,'0',STR_PAD_LEFT) ?> · Placed <?= date('F j, Y \a\t g:i A', strtotime($o['created_at'])) ?></div>
     </div>
     <span class="od-pay-badge <?= $o['payment_status']==='paid'?'od-pay-paid':'od-pay-unpaid' ?>">
-        <?= $o['payment_status']==='paid' ? '✓ Paid' : '⏳ Unpaid' ?>
+        <?= $o['payment_status']==='paid' ? '✓ Paid' : '<i class="fa-solid fa-clock"></i> Unpaid' ?>
     </span>
 </div>
 
@@ -159,7 +159,7 @@ $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
         <div class="od-chip-label">Payment Method</div>
         <div class="od-chip-value">
             <span class="od-method-pill">
-                <?= $o['payment_method']==='gcash'?'📱':'💵' ?>
+                <?= $o['payment_method']==='gcash'?'<i class="fa-solid fa-mobile-screen"></i>':'<i class="fa-solid fa-money-bill"></i>' ?>
                 <?= strtoupper($o['payment_method']) ?>
             </span>
         </div>
@@ -176,9 +176,9 @@ $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
     <div class="od-avatar"><?= strtoupper(substr($o['full_name'],0,1)) ?></div>
     <div>
         <div class="od-cust-name"><?= htmlspecialchars($o['full_name']) ?></div>
-        <div class="od-cust-sub">✉️ <?= htmlspecialchars($o['email']) ?></div>
+        <div class="od-cust-sub"><i class="fa-solid fa-envelope"></i> <?= htmlspecialchars($o['email']) ?></div>
         <?php if ($o['phone']): ?>
-        <div class="od-cust-sub">📞 <?= htmlspecialchars($o['phone']) ?></div>
+        <div class="od-cust-sub"><i class="fa-solid fa-phone"></i> <?= htmlspecialchars($o['phone']) ?></div>
         <?php endif; ?>
     </div>
 </div>
@@ -207,7 +207,7 @@ $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
     <?php
     $n = 1;
     while ($item = $items->fetch_assoc()):
-        $emoji = (stripos($item['product_name'],'chicken')!==false || stripos((string)($item['category_name']??''),'chicken')!==false) ? '🐔' : '🥚';
+        $emoji = (stripos($item['product_name'],'chicken')!==false || stripos((string)($item['category_name']??''),'chicken')!==false) ? '<i class="fa-solid fa-drumstick-bite"></i>' : '<i class="fa-solid fa-egg"></i>';
     ?>
     <tr>
         <td style="color:#9ca3af;font-size:0.78rem;"><?= $n++ ?></td>
@@ -251,7 +251,7 @@ $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
 <?php if ($transactions && $transactions->num_rows > 0): ?>
 <?php while ($txn = $transactions->fetch_assoc()): ?>
 <div class="od-txn-row">
-    <div>✅</div>
+    <div>✓</div>
     <div style="flex:1;">
         <div style="font-size:0.8rem;color:#065f46;font-weight:600;">
             Transaction #<?= str_pad($txn['id'],4,'0',STR_PAD_LEFT) ?>
