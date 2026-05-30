@@ -6,8 +6,8 @@
 
 define('DB_HOST',    'localhost');
 define('DB_USER',    'root');
-define('DB_PASS',    '');
-define('DB_NAME',    'hineys_system');
+define('DB_PASS',    'hineysweb_db2026');
+define('DB_NAME',    'hineys_db');
 define('DB_CHARSET', 'utf8mb4');
 
 // ── Connect FIRST, then load auth ────────────────────────────
@@ -16,8 +16,8 @@ $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     http_response_code(500);
     die('<div style="font-family:sans-serif;padding:40px;color:#991b1b;">
-         <strong>Database connection failed.</strong><br><br>'
-         . htmlspecialchars($conn->connect_error) . '</div>');
+        <strong>Database connection failed.</strong><br><br>'
+        . htmlspecialchars($conn->connect_error) . '</div>');
 }
 
 $conn->set_charset(DB_CHARSET);
@@ -28,11 +28,13 @@ require_once __DIR__ . '/auth.php';
 
 // ── Helpers ───────────────────────────────────────────────────
 
-function clean(string $value, mysqli $conn): string {
+function clean(string $value, mysqli $conn): string
+{
     return $conn->real_escape_string(trim($value));
 }
 
-function redirect(string $url, string $type = '', string $message = ''): void {
+function redirect(string $url, string $type = '', string $message = ''): void
+{
     if ($type && $message) {
         $_SESSION['flash_type']    = $type;
         $_SESSION['flash_message'] = $message;
@@ -41,7 +43,8 @@ function redirect(string $url, string $type = '', string $message = ''): void {
     exit;
 }
 
-function flash(): string {
+function flash(): string
+{
     if (empty($_SESSION['flash_message'])) return '';
     $type    = $_SESSION['flash_type']    ?? 'info';
     $message = $_SESSION['flash_message'] ?? '';
@@ -58,18 +61,21 @@ function flash(): string {
         . htmlspecialchars($message) . "</div>";
 }
 
-function peso(float $amount): string {
+function peso(float $amount): string
+{
     return '₱' . number_format($amount, 2);
 }
 
-function cartCount(mysqli $conn): int {
+function cartCount(mysqli $conn): int
+{
     if (empty($_SESSION['user_id'])) return 0;
     $uid = (int)$_SESSION['user_id'];
     $res = $conn->query("SELECT COALESCE(SUM(quantity),0) AS cnt FROM cart WHERE user_id = {$uid}");
     return $res ? (int)($res->fetch_assoc()['cnt'] ?? 0) : 0;
 }
 
-function orderStatusBadge(string $status): string {
+function orderStatusBadge(string $status): string
+{
     $map = [
         'pending'          => ['#fff3cd', '#856404'],
         'confirmed'        => ['#cce5ff', '#004085'],
@@ -83,13 +89,15 @@ function orderStatusBadge(string $status): string {
     return "<span style=\"background:{$bg};color:{$color};padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;white-space:nowrap;\">{$label}</span>";
 }
 
-function paymentStatusBadge(string $status): string {
+function paymentStatusBadge(string $status): string
+{
     if ($status === 'paid')
         return "<span style=\"background:#d4edda;color:#155724;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;\">Paid</span>";
     return "<span style=\"background:#f8d7da;color:#721c24;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;\">Unpaid</span>";
 }
 
-function stockStatusBadge(int $qty, int $reorder): string {
+function stockStatusBadge(int $qty, int $reorder): string
+{
     if ($qty <= 0)
         return "<span style=\"background:#f8d7da;color:#721c24;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;\">Out of Stock</span>";
     if ($qty <= $reorder)
