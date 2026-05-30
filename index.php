@@ -16,6 +16,17 @@ if (!empty($_SESSION['user_id'])) {
     }
 }
 
+// ── Land on the public home page first ────────────────────────
+// A bare visit to the site (GET, no query string) goes straight to
+// the home page. The login form still appears for any explicit
+// request — Sign In links use index.php?login=1, the form posts via
+// POST, and logout / status notices carry ?msg=... — so none of
+// those are affected.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SERVER['QUERY_STRING'])) {
+    header('Location: user/home.php');
+    exit;
+}
+
 if (isset($_GET['logout'])) {
     session_unset();
     session_destroy();
@@ -75,41 +86,128 @@ if (isset($_GET['msg'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<style id="hineys-icon-colors">
-/* === Hiney's icon colors === */
-/* Icons inside dark/colored or interactive areas keep their inherited color */
-.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
-button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
-.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
-.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
-.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
-.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
-    color: inherit !important;
-}
-/* Semantic colors for standalone content icons */
-.fa-egg { color: #f4a72c; }
-.fa-drumstick-bite { color: #c2703b; }
-.fa-circle-check, .fa-check, .fa-shield-halved,
-.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
-.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
-.fa-location-dot { color: #ef4444; }
-.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
-.fa-truck { color: #f97316; }
-.fa-triangle-exclamation, .fa-circle-exclamation,
-.fa-clock, .fa-star { color: #f59e0b; }
-.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
-.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
-.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
-.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
-.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
-.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
-.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
-.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
-.fa-gauge-high { color: #0ea5e9; }
-.fa-heart { color: #ef4444; }
-.fa-gear { color: #6b7280; }
-.fa-lightbulb { color: #f59e0b; }
-</style>
+    <style id="hineys-icon-colors">
+        /* === Hiney's icon colors === */
+        /* Icons inside dark/colored or interactive areas keep their inherited color */
+        .navbar .fa-solid,
+        .mobile-drawer .fa-solid,
+        .sidebar .fa-solid,
+        button .fa-solid,
+        [class*="btn"] .fa-solid,
+        .badge .fa-solid,
+        .status-badge .fa-solid,
+        .status-tab .fa-solid,
+        .pay-badge .fa-solid,
+        .page-banner .fa-solid,
+        .page-header .fa-solid,
+        .hero .fa-solid,
+        .cta-card .fa-solid,
+        .about-strip .fa-solid,
+        .nav-cart .fa-solid,
+        .user-chip .fa-solid,
+        .info-card-top .fa-solid,
+        .sidebar-logout .fa-solid {
+            color: inherit !important;
+        }
+
+        /* Semantic colors for standalone content icons */
+        .fa-egg {
+            color: #f4a72c;
+        }
+
+        .fa-drumstick-bite {
+            color: #c2703b;
+        }
+
+        .fa-circle-check,
+        .fa-check,
+        .fa-shield-halved,
+        .fa-leaf,
+        .fa-seedling,
+        .fa-phone {
+            color: #10b981;
+        }
+
+        .fa-circle-xmark,
+        .fa-xmark,
+        .fa-trash,
+        .fa-ban,
+        .fa-location-dot {
+            color: #ef4444;
+        }
+
+        .fa-cart-shopping,
+        .fa-bag-shopping,
+        .fa-store,
+        .fa-shop {
+            color: #e67e22;
+        }
+
+        .fa-truck {
+            color: #f97316;
+        }
+
+        .fa-triangle-exclamation,
+        .fa-circle-exclamation,
+        .fa-clock,
+        .fa-star {
+            color: #f59e0b;
+        }
+
+        .fa-info-circle,
+        .fa-credit-card,
+        .fa-mobile-screen,
+        .fa-envelope,
+        .fa-envelope-open,
+        .fa-envelope-open-text,
+        .fa-inbox,
+        .fa-comment,
+        .fa-map,
+        .fa-paperclip {
+            color: #3b82f6;
+        }
+
+        .fa-sack-dollar,
+        .fa-money-bill,
+        .fa-money-bill-transfer {
+            color: #16a34a;
+        }
+
+        .fa-users,
+        .fa-user,
+        .fa-user-plus {
+            color: #6366f1;
+        }
+
+        .fa-box,
+        .fa-box-open,
+        .fa-boxes-stacked,
+        .fa-warehouse,
+        .fa-receipt,
+        .fa-clipboard-list,
+        .fa-file-lines {
+            color: #8b5cf6;
+        }
+
+        .fa-chart-bar,
+        .fa-chart-line,
+        .fa-chart-pie,
+        .fa-gauge-high {
+            color: #0ea5e9;
+        }
+
+        .fa-heart {
+            color: #ef4444;
+        }
+
+        .fa-gear {
+            color: #6b7280;
+        }
+
+        .fa-lightbulb {
+            color: #f59e0b;
+        }
+    </style>
     <title>Sign In — Hiney's Eggs &amp; Live Chicken</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');
@@ -590,6 +688,27 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
             line-height: 1.7;
         }
 
+        /* Back to site link */
+        .back-to-site {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .back-to-site a {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .back-to-site a:hover {
+            color: var(--amber);
+        }
+
         /* Responsive */
         @media (max-width: 900px) {
             .page {
@@ -668,6 +787,16 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         <div class="form-side">
             <div class="form-wrap">
 
+                <div class="back-to-site">
+                    <a href="user/home.php">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12" />
+                            <polyline points="12 19 5 12 12 5" />
+                        </svg>
+                        Back to store
+                    </a>
+                </div>
+
                 <div class="form-eyebrow">Welcome back</div>
                 <h2 class="form-title">Sign in to<br>your account</h2>
                 <p class="form-desc">
@@ -697,7 +826,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="index.php" id="loginForm" onsubmit="handleSubmit(event)">
+                <form method="POST" action="index.php?login=1" id="loginForm" onsubmit="handleSubmit(event)">
 
                     <div class="form-group">
                         <label class="label" for="email">Email address</label>

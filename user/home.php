@@ -44,42 +44,129 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<style id="hineys-icon-colors">
-/* === Hiney's icon colors === */
-/* Icons inside dark/colored or interactive areas keep their inherited color */
-.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
-button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
-.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
-.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
-.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
-.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
-    color: inherit !important;
-}
-/* Semantic colors for standalone content icons */
-.fa-egg { color: #f4a72c; }
-.fa-drumstick-bite { color: #c2703b; }
-.fa-circle-check, .fa-check, .fa-shield-halved,
-.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
-.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
-.fa-location-dot { color: #ef4444; }
-.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
-.fa-truck { color: #f97316; }
-.fa-triangle-exclamation, .fa-circle-exclamation,
-.fa-clock, .fa-star { color: #f59e0b; }
-.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
-.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
-.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
-.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
-.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
-.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
-.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
-.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
-.fa-gauge-high { color: #0ea5e9; }
-.fa-heart { color: #ef4444; }
-.fa-gear { color: #6b7280; }
-.fa-lightbulb { color: #f59e0b; }
-</style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style id="hineys-icon-colors">
+        /* === Hiney's icon colors === */
+        /* Icons inside dark/colored or interactive areas keep their inherited color */
+        .navbar .fa-solid,
+        .mobile-drawer .fa-solid,
+        .sidebar .fa-solid,
+        button .fa-solid,
+        [class*="btn"] .fa-solid,
+        .badge .fa-solid,
+        .status-badge .fa-solid,
+        .status-tab .fa-solid,
+        .pay-badge .fa-solid,
+        .page-banner .fa-solid,
+        .page-header .fa-solid,
+        .hero .fa-solid,
+        .cta-card .fa-solid,
+        .about-strip .fa-solid,
+        .nav-cart .fa-solid,
+        .user-chip .fa-solid,
+        .info-card-top .fa-solid,
+        .sidebar-logout .fa-solid {
+            color: inherit !important;
+        }
+
+        /* Semantic colors for standalone content icons */
+        .fa-egg {
+            color: #f4a72c;
+        }
+
+        .fa-drumstick-bite {
+            color: #c2703b;
+        }
+
+        .fa-circle-check,
+        .fa-check,
+        .fa-shield-halved,
+        .fa-leaf,
+        .fa-seedling,
+        .fa-phone {
+            color: #10b981;
+        }
+
+        .fa-circle-xmark,
+        .fa-xmark,
+        .fa-trash,
+        .fa-ban,
+        .fa-location-dot {
+            color: #ef4444;
+        }
+
+        .fa-cart-shopping,
+        .fa-bag-shopping,
+        .fa-store,
+        .fa-shop {
+            color: #e67e22;
+        }
+
+        .fa-truck {
+            color: #f97316;
+        }
+
+        .fa-triangle-exclamation,
+        .fa-circle-exclamation,
+        .fa-clock,
+        .fa-star {
+            color: #f59e0b;
+        }
+
+        .fa-info-circle,
+        .fa-credit-card,
+        .fa-mobile-screen,
+        .fa-envelope,
+        .fa-envelope-open,
+        .fa-envelope-open-text,
+        .fa-inbox,
+        .fa-comment,
+        .fa-map,
+        .fa-paperclip {
+            color: #3b82f6;
+        }
+
+        .fa-sack-dollar,
+        .fa-money-bill,
+        .fa-money-bill-transfer {
+            color: #16a34a;
+        }
+
+        .fa-users,
+        .fa-user,
+        .fa-user-plus {
+            color: #6366f1;
+        }
+
+        .fa-box,
+        .fa-box-open,
+        .fa-boxes-stacked,
+        .fa-warehouse,
+        .fa-receipt,
+        .fa-clipboard-list,
+        .fa-file-lines {
+            color: #8b5cf6;
+        }
+
+        .fa-chart-bar,
+        .fa-chart-line,
+        .fa-chart-pie,
+        .fa-gauge-high {
+            color: #0ea5e9;
+        }
+
+        .fa-heart {
+            color: #ef4444;
+        }
+
+        .fa-gear {
+            color: #6b7280;
+        }
+
+        .fa-lightbulb {
+            color: #f59e0b;
+        }
+    </style>
     <title>Home — Hiney's Eggs &amp; Live Chicken</title>
     <style>
         /* Keep all existing styles exactly the same */
@@ -215,12 +302,30 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         }
 
         .hero-title {
-            font-size: clamp(2rem, 4vw, 3.2rem);
+            margin-bottom: 24px;
+        }
+
+        .hero-title-brand {
+            display: block;
+            font-size: clamp(6rem, 12vw, 10rem);
             font-weight: 900;
-            color: #fff;
-            line-height: 1.15;
-            letter-spacing: -0.03em;
-            margin-bottom: 20px;
+            color: #f39c12;
+            text-transform: uppercase;
+            letter-spacing: -0.08em;
+            line-height: 0.85;
+            margin-bottom: 18px;
+            text-shadow:
+                0 4px 12px rgba(243, 156, 18, 0.3),
+                0 10px 30px rgba(243, 156, 18, 0.2);
+        }
+
+        .hero-title-small {
+            display: block;
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.25;
+            letter-spacing: -0.02em;
         }
 
         .hero-title-accent {
@@ -1214,15 +1319,19 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
                     <div class="hero-badge"><i class="fa-solid fa-egg"></i> Fresh &amp; Farm-Direct</div>
                     <h1 class="hero-title">
                         <?php if ($isLoggedIn): ?>
-                            Welcome back,<br><span class="hero-title-accent"><?= htmlspecialchars($firstName) ?>!</span><br>
+                            Welcome Back,<br>
+                            <span class="hero-title-brand"><?= htmlspecialchars($firstName) ?>!</span>
                         <?php else: ?>
-                            Farm Fresh<br><span class="hero-title-accent">Eggs &amp; Chicken</span><br>
+                            <span class="hero-title-brand">HINEY'S</span>
+                            <span class="hero-title-small">Bohol's Trusted Source for</span>
+                            <span class="hero-title-small">Fresh Eggs & Live Chickens</span>
                         <?php endif; ?>
-                        Delivered to You
                     </h1>
+
                     <p class="hero-desc">
-                        Order premium quality eggs and live chickens straight from
-                        Hiney's farm to your doorstep. Fast delivery, guaranteed fresh.
+                        Bringing farm-fresh eggs and healthy live chickens directly from
+                        Hiney's farm to homes and businesses across Bohol. Quality,
+                        freshness, and service you can trust.
                     </p>
                     <div class="hero-actions">
                         <a href="products.php" class="btn-hero-primary"><i class="fa-solid fa-cart-shopping"></i> Shop Now</a>
@@ -1251,7 +1360,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
                     <div class="hero-blob hero-blob-1"></div>
                     <div class="hero-blob hero-blob-2"></div>
                     <div class="hero-egg-wrap">
-                        <img src="<?= $base ?>assets/images/hineys_logo.png" alt="Hiney's" class="hero-egg-inner">
+                        <img src="../assets/images/hineys_logo.png" alt="Hiney's" class="hero-egg-inner">
 
                         <div class="hero-float-card fc-1"><span class="fc-icon">✓</span><span>Farm Fresh</span></div>
                         <div class="hero-float-card fc-2"><span class="fc-icon"><i class="fa-solid fa-truck"></i></span><span>Fast Delivery</span></div>
@@ -1406,7 +1515,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
 
         <footer class="site-footer">
             &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-            Loreto Cortes, Bohol  &nbsp;·&nbsp;
+            Loreto Cortes, Bohol &nbsp;·&nbsp;
             <a href="contact.php">Contact Us</a>
         </footer>
 
