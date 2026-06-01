@@ -16,6 +16,7 @@ $cartItems  = $isLoggedIn ? cartCount($conn) : 0;
 // ── Featured products (active, with stock) ───────────────────
 $featured = $conn->query("
     SELECT p.id, p.name, p.description, p.price, p.unit,
+           p.image_url,
            c.name AS category,
            COALESCE(i.quantity, 0) AS stock
     FROM products p
@@ -1345,8 +1346,12 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                         ?>
                             <div class="product-card">
                                 <div class="product-thumb <?= $thumbCls ?>">
-                                    <div class="product-thumb-bg"><?= $emoji ?></div>
-                                    <div class="product-thumb-emoji"><?= $emoji ?></div>
+                                    <?php if (!empty($p['image_url'])): ?>
+                                        <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">
+                                    <?php else: ?>
+                                        <div class="product-thumb-bg"><?= $emoji ?></div>
+                                        <div class="product-thumb-emoji"><?= $emoji ?></div>
+                                    <?php endif; ?>
                                     <span class="stock-badge <?= $stockCls ?>"><?= $stockLbl ?></span>
                                 </div>
                                 <div class="product-body">
