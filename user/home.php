@@ -46,8 +46,6 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style id="hineys-icon-colors">
-        /* === Hiney's icon colors === */
-        /* Icons inside dark/colored or interactive areas keep their inherited color */
         .navbar .fa-solid,
         .mobile-drawer .fa-solid,
         .sidebar .fa-solid,
@@ -69,7 +67,6 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             color: inherit !important;
         }
 
-        /* Semantic colors for standalone content icons */
         .fa-egg {
             color: #f4a72c;
         }
@@ -169,7 +166,6 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
     </style>
     <title>Home — Hiney's Eggs &amp; Live Chicken</title>
     <style>
-        /* Keep all existing styles exactly the same */
         *,
         *::before,
         *::after {
@@ -220,9 +216,9 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             display: block;
         }
 
-        /* Hero */
+        /* ── Hero ── */
         .hero {
-            background: linear-gradient(135deg, #1a1a2e 0%, #2c3e50 50%, #1a2744 100%);
+            background: var(--bg);
             position: relative;
             overflow: hidden;
             padding: 80px 0 90px;
@@ -232,14 +228,16 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse 700px 500px at 80% 50%, rgba(230, 126, 34, 0.18) 0%, transparent 70%), radial-gradient(ellipse 400px 400px at 10% 80%, rgba(243, 156, 18, 0.10) 0%, transparent 60%);
+            background:
+                radial-gradient(ellipse 700px 500px at 80% 50%, rgba(230, 126, 34, 0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 400px at 10% 80%, rgba(243, 156, 18, 0.04) 0%, transparent 60%);
         }
 
         .hero-blob {
             position: absolute;
             border-radius: 50%;
             filter: blur(60px);
-            opacity: 0.25;
+            opacity: 0.08;
             animation: blobFloat 8s ease-in-out infinite;
         }
 
@@ -284,13 +282,38 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             z-index: 1;
         }
 
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            padding-left: 0;
+            margin-left: -60px;
+        }
+
+        .hero-owner-bg {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            width: 55%;
+            background: url('../assets/images/owner_img.png') center center / cover no-repeat;
+            opacity: 0.55;
+            -webkit-mask-image:
+                linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.4) 18%, black 40%, black 100%),
+                linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+            -webkit-mask-composite: destination-in;
+            mask-image:
+                linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.4) 18%, black 40%, black 100%),
+                linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+            mask-composite: intersect;
+        }
+
         .hero-badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(230, 126, 34, 0.15);
-            border: 1px solid rgba(230, 126, 34, 0.3);
-            color: #fba860;
+            background: var(--primary);
+            border: 1px solid var(--primary-dark);
+            color: #ffffff;
             font-size: 0.78rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -307,37 +330,33 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 
         .hero-title-brand {
             display: block;
-            font-size: clamp(6rem, 12vw, 10rem);
+            font-size: clamp(5rem, 11vw, 9rem);
             font-weight: 900;
             color: #f39c12;
             text-transform: uppercase;
             letter-spacing: -0.08em;
             line-height: 0.85;
-            margin-bottom: 18px;
-            text-shadow:
-                0 4px 12px rgba(243, 156, 18, 0.3),
-                0 10px 30px rgba(243, 156, 18, 0.2);
+            margin-bottom: 16px;
+            text-shadow: 0 4px 12px rgba(243, 156, 18, 0.3), 0 10px 30px rgba(243, 156, 18, 0.15);
         }
 
         .hero-title-small {
             display: block;
-            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            font-size: clamp(1.1rem, 2vw, 1.6rem);
             font-weight: 700;
-            color: #ffffff;
-            line-height: 1.25;
+            color: var(--dark2);
+            line-height: 1.3;
             letter-spacing: -0.02em;
-        }
-
-        .hero-title-accent {
-            color: var(--secondary);
+            text-shadow: none;
         }
 
         .hero-desc {
-            font-size: 1.05rem;
-            color: #9ca3b8;
+            font-size: 1rem;
+            color: var(--text-muted);
             line-height: 1.75;
             margin-bottom: 36px;
-            max-width: 480px;
+            max-width: 460px;
+            text-shadow: none;
         }
 
         .hero-actions {
@@ -367,13 +386,44 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             box-shadow: 0 10px 30px rgba(230, 126, 34, 0.5);
         }
 
+        /* ── Hero owner photo (left bg, behind text) ── */
+        .hero-visual {
+            display: none;
+        }
+
+        /* right col not used */
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            padding-left: 16px;
+        }
+
+        .hero-owner-bg {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            width: 55%;
+            background: url('../assets/images/owner_img.png') center center / cover no-repeat;
+            opacity: 0.9;
+            -webkit-mask-image:
+                linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.5) 20%, black 42%, black 100%),
+                linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+            -webkit-mask-composite: destination-in;
+            mask-image:
+                linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.5) 20%, black 42%, black 100%),
+                linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+            mask-composite: intersect;
+        }
+
         .btn-hero-ghost {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            color: #e5e7eb;
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
             font-size: 0.9rem;
             font-weight: 600;
             padding: 13px 22px;
@@ -382,127 +432,28 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
         }
 
         .btn-hero-ghost:hover {
-            background: rgba(255, 255, 255, 0.14);
+            background: var(--primary);
             color: #fff;
         }
 
-        .hero-visual {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-
-        .hero-egg-wrap {
-            width: 340px;
-            height: 340px;
-            background: radial-gradient(circle at 35% 35%, rgba(230, 126, 34, 0.25), rgba(230, 126, 34, 0.06) 60%, transparent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(230, 126, 34, 0.2);
-            position: relative;
-            animation: eggPulse 4s ease-in-out infinite;
-        }
-
-        @keyframes eggPulse {
-
-            0%,
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.15);
-            }
-
-            50% {
-                transform: scale(1.02);
-                box-shadow: 0 0 0 20px rgba(230, 126, 34, 0);
-            }
-        }
-
-        .hero-egg-inner {
-            font-size: 8rem;
-            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3));
-            animation: eggFloat 3s ease-in-out infinite;
-        }
-
-        @keyframes eggFloat {
-
-            0%,
-            100% {
-                transform: translateY(0) rotate(-5deg);
-            }
-
-            50% {
-                transform: translateY(-16px) rotate(5deg);
-            }
-        }
-
-        .hero-float-card {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 10px 14px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.8rem;
-            font-weight: 600;
+        .hero-stat-num {
+            font-size: 1.6rem;
+            font-weight: 800;
             color: var(--dark2);
-            backdrop-filter: blur(10px);
-            animation: cardBob 3s ease-in-out infinite;
+            letter-spacing: -0.03em;
+            line-height: 1;
         }
 
-        .hero-float-card .fc-icon {
-            font-size: 1.2rem;
+        .hero-stat-num span {
+            color: var(--primary);
         }
 
-        .hero-float-card.fc-1 {
-            top: 30px;
-            left: -20px;
-            animation-delay: -1s;
-        }
-
-        .hero-float-card.fc-2 {
-            bottom: 50px;
-            right: -20px;
-            animation-delay: -2s;
-        }
-
-        .hero-float-card.fc-3 {
-            top: 50%;
-            left: -40px;
-            transform: translateY(-50%);
-            animation-delay: -0.5s;
-        }
-
-        @keyframes cardBob {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-8px);
-            }
-        }
-
-        .hero-float-card.fc-3 {
-            animation: cardBob3 3s ease-in-out infinite;
-        }
-
-        @keyframes cardBob3 {
-
-            0%,
-            100% {
-                transform: translateY(-50%);
-            }
-
-            50% {
-                transform: translateY(calc(-50% - 8px));
-            }
+        .hero-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
         }
 
         .hero-stats {
@@ -510,33 +461,10 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             gap: 28px;
             margin-top: 36px;
             padding-top: 28px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--border);
         }
 
-        .hero-stat-item {
-            text-align: left;
-        }
-
-        .hero-stat-num {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: #fff;
-            letter-spacing: -0.03em;
-            line-height: 1;
-        }
-
-        .hero-stat-num span {
-            color: var(--secondary);
-        }
-
-        .hero-stat-label {
-            font-size: 0.75rem;
-            color: #6b7a99;
-            margin-top: 3px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
+        /* ── Sections ── */
         .section {
             padding: 72px 0;
         }
@@ -906,6 +834,24 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             position: absolute;
             inset: 0;
             background: radial-gradient(ellipse 600px 400px at 90% 50%, rgba(230, 126, 34, 0.12) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .about-chicken-bg {
+            position: absolute;
+            inset: 0;
+            background: url('../assets/images/chicken.jpg') center center / cover no-repeat;
+            opacity: 0.18;
+            mix-blend-mode: luminosity;
+            -webkit-mask-image:
+                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            -webkit-mask-composite: destination-in;
+            mask-image:
+                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            mask-composite: intersect;
+            z-index: 0;
         }
 
         .about-inner {
@@ -1259,6 +1205,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             color: var(--text-muted);
         }
 
+        /* Responsive */
         @media(max-width:900px) {
             .hero-inner {
                 grid-template-columns: 1fr;
@@ -1314,7 +1261,12 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 
         <!-- HERO -->
         <section class="hero">
+            <div class="hero-blob hero-blob-1"></div>
+            <div class="hero-blob hero-blob-2"></div>
+            <div class="hero-owner-bg"></div>
             <div class="hero-inner">
+
+                <!-- LEFT: Brand text (owner photo blends behind) -->
                 <div class="hero-content">
                     <div class="hero-badge"><i class="fa-solid fa-egg"></i> Fresh &amp; Farm-Direct</div>
                     <h1 class="hero-title">
@@ -1324,10 +1276,9 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                         <?php else: ?>
                             <span class="hero-title-brand">HINEY'S</span>
                             <span class="hero-title-small">Bohol's Trusted Source for</span>
-                            <span class="hero-title-small">Fresh Eggs & Live Chickens</span>
+                            <span class="hero-title-small">Fresh Eggs &amp; Live Chickens</span>
                         <?php endif; ?>
                     </h1>
-
                     <p class="hero-desc">
                         Bringing farm-fresh eggs and healthy live chickens directly from
                         Hiney's farm to homes and businesses across Bohol. Quality,
@@ -1338,7 +1289,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                         <?php if ($isLoggedIn): ?>
                             <a href="orders.php" class="btn-hero-ghost"><i class="fa-solid fa-box"></i> My Orders</a>
                         <?php else: ?>
-                            <a href="../index.php" class="btn-hero-ghost"><i class="fa-solid fa-right-to-bracket"></i> Sign In</a>
+                            <a href="../index.php?login=1" class="btn-hero-ghost"><i class="fa-solid fa-right-to-bracket"></i> Sign In</a>
                         <?php endif; ?>
                     </div>
                     <div class="hero-stats">
@@ -1356,17 +1307,10 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                         </div>
                     </div>
                 </div>
-                <div class="hero-visual">
-                    <div class="hero-blob hero-blob-1"></div>
-                    <div class="hero-blob hero-blob-2"></div>
-                    <div class="hero-egg-wrap">
-                        <img src="../assets/images/hineys_logo.png" alt="Hiney's" class="hero-egg-inner">
 
-                        <div class="hero-float-card fc-1"><span class="fc-icon">✓</span><span>Farm Fresh</span></div>
-                        <div class="hero-float-card fc-2"><span class="fc-icon"><i class="fa-solid fa-truck"></i></span><span>Fast Delivery</span></div>
-                        <div class="hero-float-card fc-3"><span class="fc-icon"><i class="fa-solid fa-star"></i></span><span>Top Quality</span></div>
-                    </div>
-                </div>
+                <!-- RIGHT: empty (owner photo is now hero left bg) -->
+                <div class="hero-visual"></div>
+
             </div>
         </section>
 
@@ -1384,7 +1328,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                 <?php if ($featured && $featured->num_rows > 0): ?>
                     <div class="products-grid">
                         <?php while ($p = $featured->fetch_assoc()):
-                            $isEgg   = stripos($p['category'], 'egg') !== false;
+                            $isEgg    = stripos($p['category'], 'egg') !== false;
                             $thumbCls = $isEgg ? 'product-thumb-egg' : 'product-thumb-chick';
                             $emoji    = $isEgg ? '<i class="fa-solid fa-egg"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
                             $stock    = (int)$p['stock'];
@@ -1468,6 +1412,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 
         <!-- ABOUT SNIPPET -->
         <section class="about-strip">
+            <div class="about-chicken-bg"></div>
             <div class="about-inner">
                 <div>
                     <span class="about-eyebrow">Our Story</span>
@@ -1521,7 +1466,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 
     </div>
 
-    <!-- Login prompt modal (shown when guest tries to add to cart) -->
+    <!-- Login prompt modal -->
     <div class="login-prompt-overlay" id="loginPrompt" onclick="if(event.target===this)closeLoginPrompt()">
         <div class="login-prompt-box" style="position:relative;">
             <button class="btn-close-prompt" onclick="closeLoginPrompt()">✕</button>
@@ -1529,7 +1474,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
             <div class="login-prompt-title">Sign in to continue</div>
             <div class="login-prompt-desc">You need an account to add items to your cart and place orders.</div>
             <div class="login-prompt-actions">
-                <button class="btn-login-prompt" onclick="location.href='../index.php'">Sign In</button>
+                <button class="btn-login-prompt" onclick="location.href='../index.php?login=1'">Sign In</button>
                 <button class="btn-register-prompt" onclick="location.href='../register.php'">Create Account</button>
             </div>
         </div>
@@ -1558,7 +1503,6 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                 showLoginPrompt();
                 return;
             }
-
             fetch('cart_action.php', {
                     method: 'POST',
                     headers: {

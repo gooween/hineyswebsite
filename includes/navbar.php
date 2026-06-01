@@ -21,39 +21,124 @@ $base = '../';
 <!-- Font Awesome 6 CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style id="hineys-icon-colors">
-/* === Hiney's icon colors === */
-/* Icons inside dark/colored or interactive areas keep their inherited color */
-.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
-button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
-.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
-.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
-.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
-.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
-    color: inherit !important;
-}
-/* Semantic colors for standalone content icons */
-.fa-egg { color: #f4a72c; }
-.fa-drumstick-bite { color: #c2703b; }
-.fa-circle-check, .fa-check, .fa-shield-halved,
-.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
-.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
-.fa-location-dot { color: #ef4444; }
-.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
-.fa-truck { color: #f97316; }
-.fa-triangle-exclamation, .fa-circle-exclamation,
-.fa-clock, .fa-star { color: #f59e0b; }
-.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
-.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
-.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
-.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
-.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
-.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
-.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
-.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
-.fa-gauge-high { color: #0ea5e9; }
-.fa-heart { color: #ef4444; }
-.fa-gear { color: #6b7280; }
-.fa-lightbulb { color: #f59e0b; }
+    /* === Hiney's icon colors === */
+    .navbar .fa-solid,
+    .mobile-drawer .fa-solid,
+    .sidebar .fa-solid,
+    button .fa-solid,
+    [class*="btn"] .fa-solid,
+    .badge .fa-solid,
+    .status-badge .fa-solid,
+    .status-tab .fa-solid,
+    .pay-badge .fa-solid,
+    .page-banner .fa-solid,
+    .page-header .fa-solid,
+    .hero .fa-solid,
+    .cta-card .fa-solid,
+    .about-strip .fa-solid,
+    .nav-cart .fa-solid,
+    .user-chip .fa-solid,
+    .info-card-top .fa-solid,
+    .sidebar-logout .fa-solid {
+        color: inherit !important;
+    }
+
+    .fa-egg {
+        color: #f4a72c;
+    }
+
+    .fa-drumstick-bite {
+        color: #c2703b;
+    }
+
+    .fa-circle-check,
+    .fa-check,
+    .fa-shield-halved,
+    .fa-leaf,
+    .fa-seedling,
+    .fa-phone {
+        color: #10b981;
+    }
+
+    .fa-circle-xmark,
+    .fa-xmark,
+    .fa-trash,
+    .fa-ban,
+    .fa-location-dot {
+        color: #ef4444;
+    }
+
+    .fa-cart-shopping,
+    .fa-bag-shopping,
+    .fa-store,
+    .fa-shop {
+        color: #e67e22;
+    }
+
+    .fa-truck {
+        color: #f97316;
+    }
+
+    .fa-triangle-exclamation,
+    .fa-circle-exclamation,
+    .fa-clock,
+    .fa-star {
+        color: #f59e0b;
+    }
+
+    .fa-info-circle,
+    .fa-credit-card,
+    .fa-mobile-screen,
+    .fa-envelope,
+    .fa-envelope-open,
+    .fa-envelope-open-text,
+    .fa-inbox,
+    .fa-comment,
+    .fa-map,
+    .fa-paperclip {
+        color: #3b82f6;
+    }
+
+    .fa-sack-dollar,
+    .fa-money-bill,
+    .fa-money-bill-transfer {
+        color: #16a34a;
+    }
+
+    .fa-users,
+    .fa-user,
+    .fa-user-plus {
+        color: #6366f1;
+    }
+
+    .fa-box,
+    .fa-box-open,
+    .fa-boxes-stacked,
+    .fa-warehouse,
+    .fa-receipt,
+    .fa-clipboard-list,
+    .fa-file-lines {
+        color: #8b5cf6;
+    }
+
+    .fa-chart-bar,
+    .fa-chart-line,
+    .fa-chart-pie,
+    .fa-gauge-high {
+        color: #0ea5e9;
+    }
+
+    .fa-heart {
+        color: #ef4444;
+    }
+
+    .fa-gear {
+        color: #6b7280;
+    }
+
+    .fa-lightbulb {
+        color: #f59e0b;
+    }
 </style>
 
 <style>
@@ -100,7 +185,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         z-index: 1000;
     }
 
-    /* Brand */
     .nav-brand {
         display: flex;
         align-items: center;
@@ -135,7 +219,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         text-transform: uppercase;
     }
 
-    /* Links */
     .nav-links {
         flex: 1;
         display: flex;
@@ -174,7 +257,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-weight: 600;
     }
 
-    /* Actions */
     .nav-actions {
         display: flex;
         align-items: center;
@@ -182,7 +264,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         margin-left: 16px;
     }
 
-    /* Cart */
     .nav-cart {
         position: relative;
         display: flex;
@@ -224,7 +305,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         display: none;
     }
 
-    /* User chip */
     .user-chip {
         display: flex;
         align-items: center;
@@ -277,7 +357,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         background: var(--primary-dark);
     }
 
-    /* Hamburger */
     .hamburger {
         display: none;
         flex-direction: column;
@@ -306,7 +385,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         transition: transform 0.2s;
     }
 
-    /* Mobile drawer */
     .mobile-drawer {
         display: none;
         position: fixed;
@@ -386,10 +464,10 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
     </a>
 
     <ul class="nav-links">
-        <li><a class="<?= $activePage == 'home' ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a></li>
+        <li><a class="<?= $activePage == 'home'     ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a></li>
         <li><a class="<?= $activePage == 'products' ? 'active' : '' ?>" href="<?= $base ?>user/products.php"><i class="fa-solid fa-store"></i> Products</a></li>
-        <li><a class="<?= $activePage == 'about' ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a></li>
-        <li><a class="<?= $activePage == 'contact' ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a></li>
+        <li><a class="<?= $activePage == 'about'    ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a></li>
+        <li><a class="<?= $activePage == 'contact'  ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a></li>
     </ul>
 
     <div class="nav-actions">
@@ -399,13 +477,12 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
                 Cart
                 <span class="cart-badge <?= $cartItems == 0 ? 'hidden' : '' ?>"><?= $cartItems ?></span>
             </a>
-
             <a class="user-chip" href="<?= $base ?>user/profile.php">
                 <div class="user-avatar"><?= htmlspecialchars($userInitial) ?></div>
                 <?= htmlspecialchars($userName) ?>
             </a>
         <?php else: ?>
-            <a class="btn-login" href="<?= $base ?>index.php">
+            <a class="btn-login" href="<?= $base ?>index.php?login=1">
                 <i class="fa-solid fa-right-to-bracket"></i> Login
             </a>
         <?php endif; ?>
@@ -417,10 +494,10 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
 </nav>
 
 <div class="mobile-drawer" id="mobileDrawer">
-    <a class="<?= $activePage == 'home' ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a>
+    <a class="<?= $activePage == 'home'     ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a>
     <a class="<?= $activePage == 'products' ? 'active' : '' ?>" href="<?= $base ?>user/products.php"><i class="fa-solid fa-store"></i> Products</a>
-    <a class="<?= $activePage == 'about' ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a>
-    <a class="<?= $activePage == 'contact' ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a>
+    <a class="<?= $activePage == 'about'    ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a>
+    <a class="<?= $activePage == 'contact'  ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a>
     <?php if ($isLoggedIn): ?>
         <div class="mobile-drawer-divider"></div>
         <a href="<?= $base ?>user/cart.php"><i class="fa-solid fa-cart-shopping"></i> Cart <?= $cartItems > 0 ? "($cartItems)" : '' ?></a>
@@ -428,7 +505,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         <a href="<?= $base ?>user/profile.php"><i class="fa-solid fa-user"></i> My Profile</a>
     <?php else: ?>
         <div class="mobile-drawer-divider"></div>
-        <a href="<?= $base ?>index.php"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        <a href="<?= $base ?>index.php?login=1"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
         <a href="<?= $base ?>register.php"><i class="fa-solid fa-user-plus"></i> Register</a>
     <?php endif; ?>
 </div>
@@ -445,7 +522,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         }
     });
     <?php if ($isLoggedIn): ?>
-            // Cart badge polling
             (function() {
                 function syncBadge() {
                     fetch('<?= $base ?>user/cart_action.php', {

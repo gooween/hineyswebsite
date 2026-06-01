@@ -16,12 +16,7 @@ if (!empty($_SESSION['user_id'])) {
     }
 }
 
-// ── Land on the public home page first ────────────────────────
-// A bare visit to the site (GET, no query string) goes straight to
-// the home page. The login form still appears for any explicit
-// request — Sign In links use index.php?login=1, the form posts via
-// POST, and logout / status notices carry ?msg=... — so none of
-// those are affected.
+// Land on home first — Login links use ?login=1 so they bypass this.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SERVER['QUERY_STRING'])) {
     header('Location: user/home.php');
     exit;
@@ -87,8 +82,6 @@ if (isset($_GET['msg'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style id="hineys-icon-colors">
-        /* === Hiney's icon colors === */
-        /* Icons inside dark/colored or interactive areas keep their inherited color */
         .navbar .fa-solid,
         .mobile-drawer .fa-solid,
         .sidebar .fa-solid,
@@ -110,7 +103,6 @@ if (isset($_GET['msg'])) {
             color: inherit !important;
         }
 
-        /* Semantic colors for standalone content icons */
         .fa-egg {
             color: #f4a72c;
         }
@@ -287,18 +279,6 @@ if (isset($_GET['msg'])) {
             align-items: center;
             gap: 12px;
             margin-bottom: 72px;
-        }
-
-        .brand-egg {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, var(--amber-lt), var(--amber));
-            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            box-shadow: 0 4px 16px rgba(217, 119, 6, 0.4);
         }
 
         .brand-name {
@@ -566,17 +546,6 @@ if (isset($_GET['msg'])) {
             height: 15px;
             accent-color: var(--amber);
             cursor: pointer;
-        }
-
-        .forgot-link {
-            font-size: 0.82rem;
-            color: var(--amber);
-            font-weight: 600;
-            text-decoration: none;
-        }
-
-        .forgot-link:hover {
-            text-decoration: underline;
         }
 
         /* Button */
@@ -904,7 +873,6 @@ if (isset($_GET['msg'])) {
             const btn = document.getElementById('pwToggle');
             const eyeOpen = `<svg id="eyeIcon" viewBox="0 0 24 24" stroke-width="1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
             const eyeClosed = `<svg id="eyeIcon" viewBox="0 0 24 24" stroke-width="1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-
             if (pw.type === 'password') {
                 pw.type = 'text';
                 btn.innerHTML = eyeClosed;
