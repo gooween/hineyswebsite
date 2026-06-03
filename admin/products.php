@@ -168,13 +168,21 @@ if ($filterCat) $where .= " AND p.category_id = {$filterCat}";
 if ($filterUnit) $where .= " AND p.unit = '{$conn->real_escape_string($filterUnit)}'";
 
 
-$totalResult = $conn->query("SELECT COUNT(*) AS cnt FROM products p {$where}");
+$totalResult = $conn->query("SELECT COUNT(*) AS cnt FROM products p LEFT JOIN categories c ON c.id = p.category_id {$where}");
 $totalCount  = (int)($totalResult->fetch_assoc()['cnt'] ?? 0);
 $totalPages  = max(1, (int)ceil($totalCount / $perPage));
 
 $products = $conn->query("
     SELECT p.*, c.name AS category_name,
-           COALESCE(i.quantity, 0) AS stock,
+           COALESCE((
+               SELECT CASE
+                   WHEN p.unit = 'per tray'
+                   THEN COUNT(sb.id)
+                   ELSE SUM(sb.remaining)
+               END
+               FROM stock_batches sb
+               WHERE sb.product_id = p.id AND sb.status = 'active'
+           ), 0) AS stock,
            COALESCE(i.reorder_level, 10) AS reorder_level
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
