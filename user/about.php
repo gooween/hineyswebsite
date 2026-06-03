@@ -203,6 +203,24 @@ if (!empty($_SESSION['user_id'])) {
             position: absolute;
             inset: 0;
             background: radial-gradient(ellipse 800px 500px at 65% 40%, rgba(230, 126, 34, 0.15), transparent 70%);
+            z-index: 0;
+        }
+
+        .hero-farm-bg {
+            position: absolute;
+            inset: 0;
+            background: url('../assets/images/farm.png') center center / cover no-repeat;
+            opacity: 0.12;
+            mix-blend-mode: luminosity;
+            -webkit-mask-image:
+                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            -webkit-mask-composite: destination-in;
+            mask-image:
+                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            mask-composite: intersect;
+            z-index: 0;
         }
 
         .hero-deco {
@@ -899,6 +917,7 @@ if (!empty($_SESSION['user_id'])) {
 
         <!-- ── Hero ── -->
         <div class="hero">
+            <div class="hero-farm-bg"></div>
             <div class="hero-deco"><i class="fa-solid fa-egg"></i></div>
             <div class="hero-inner">
                 <div class="breadcrumb">
@@ -963,8 +982,8 @@ if (!empty($_SESSION['user_id'])) {
                 <div class="story-grid">
                     <div class="story-image-wrap">
                         <div class="story-image-placeholder">
-                            <div class="story-image-icon"><i class="fa-solid fa-drumstick-bite"></i></div>
-                            <div class="story-image-label">Hiney's Farm</div>
+                            <img src="" alt="Hiney's Farm" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:20px;opacity:0.9;">
+                            <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(26,37,47,0.25),rgba(44,62,80,0.15));border-radius:20px;z-index:1;"></div>
                         </div>
                         <div class="story-badge"><i class="fa-solid fa-egg"></i> Est. 2010 · Loreto, Cortes</div>
                     </div>

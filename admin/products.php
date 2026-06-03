@@ -1,15 +1,8 @@
 <?php
-// ============================================================
-// Hiney's Eggs and Live Chicken Business
-// File: admin/products.php
-// Purpose: Products CRUD — list + add + edit + delete
-// ============================================================
-
 session_start();
 require_once '../config/db.php';
 requireAdmin();
 
-// ── POST Handler ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = trim($_POST['action'] ?? '');
 
@@ -54,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $image_url = clean($_POST['image_url'] ?? '', $conn);
         $is_active = (int)($_POST['is_active'] ?? 1);
         $reorder   = (int)($_POST['reorder_level'] ?? 10);
+        $new_stock = (int)($_POST['stock_qty'] ?? -1);
 
         if ($id && $name && $cat_id && $price > 0) {
             $conn->query("UPDATE products SET
@@ -66,25 +60,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 is_active   = {$is_active}
                 WHERE id = {$id}");
             $conn->query("UPDATE inventory SET reorder_level = {$reorder}, last_updated = NOW() WHERE product_id = {$id}");
+
+            // Update stock if provided
+            if ($new_stock >= 0) {
+                $old = $conn->query("SELECT quantity FROM inventory WHERE product_id = {$id}")->fetch_assoc();
+                $old_qty = (int)($old['quantity'] ?? 0);
+                $diff = $new_stock - $old_qty;
+                if ($diff != 0) {
+                    $conn->query("UPDATE inventory SET quantity = {$new_stock}, last_updated = NOW() WHERE product_id = {$id}");
+                    $uid = (int)$_SESSION['user_id'];
+                    $type = $diff > 0 ? 'in' : 'out';
+                    $abs = abs($diff);
+                    $reason = $conn->real_escape_string('Manual stock adjustment via edit');
+                    $conn->query("INSERT INTO inventory_logs (product_id, type, quantity, reason, created_by, created_at)
+                                  VALUES ({$id}, '{$type}', {$abs}, '{$reason}', {$uid}, NOW())");
+                }
+            }
+
             redirect('products.php', 'success', 'Product updated successfully.');
         } else {
             redirect('products.php', 'error', 'Please fill in all required fields.');
         }
     }
 
-    if ($action === 'delete') {
-        $id = (int)($_POST['id'] ?? 0);
+    // Archive (soft delete with reason)
+    if ($action === 'archive') {
+        $id     = (int)($_POST['id'] ?? 0);
+        $reason = clean($_POST['archive_reason'] ?? 'No reason provided', $conn);
+        $uid    = (int)$_SESSION['user_id'];
         if ($id) {
             $conn->query("UPDATE products SET is_active = 0 WHERE id = {$id}");
-            redirect('products.php', 'success', 'Product deactivated successfully.');
+            // Log to archive table if it exists, fallback to inventory_logs style
+            $conn->query("INSERT INTO product_archive_log (product_id, reason, archived_by, archived_at)
+                          VALUES ({$id}, '{$reason}', {$uid}, NOW())
+                          ON DUPLICATE KEY UPDATE reason=VALUES(reason), archived_at=NOW()");
+            if ($conn->error) {
+                // Table may not exist yet — create it on the fly
+                $conn->query("CREATE TABLE IF NOT EXISTS product_archive_log (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    product_id INT NOT NULL,
+                    reason TEXT,
+                    archived_by INT,
+                    archived_at DATETIME,
+                    INDEX (product_id)
+                )");
+                $conn->query("INSERT INTO product_archive_log (product_id, reason, archived_by, archived_at)
+                              VALUES ({$id}, '{$reason}', {$uid}, NOW())");
+            }
+            redirect('products.php', 'success', 'Product archived successfully.');
         } else {
             redirect('products.php', 'error', 'Invalid product.');
         }
     }
 
+    // Restore from archive
+    if ($action === 'restore') {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id) {
+            $conn->query("UPDATE products SET is_active = 1 WHERE id = {$id}");
+            redirect('products.php', 'success', 'Product restored successfully.');
+        } else {
+            redirect('products.php', 'error', 'Invalid product.');
+        }
+    }
+
+    // Hard delete
     if ($action === 'delete_hard') {
         $id = (int)($_POST['id'] ?? 0);
         if ($id) {
+            $conn->query("DELETE FROM product_archive_log WHERE product_id = {$id}");
             $conn->query("DELETE FROM inventory_logs WHERE product_id = {$id}");
             $conn->query("DELETE FROM inventory WHERE product_id = {$id}");
             $conn->query("DELETE FROM products WHERE id = {$id}");
@@ -95,28 +139,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ── Fetch categories ─────────────────────────────────────────
 $categories = [];
 $catResult  = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
 while ($row = $catResult->fetch_assoc()) $categories[] = $row;
 
-// Build a map: category name → id for JS
 $catMap = [];
 foreach ($categories as $c) $catMap[strtolower($c['name'])] = $c['id'];
 
-// ── Pagination + search ──────────────────────────────────────
 $perPage      = 15;
 $page         = max(1, (int)($_GET['page'] ?? 1));
 $search       = trim($_GET['q'] ?? '');
 $filterCat    = (int)($_GET['cat'] ?? 0);
 $filterStatus = trim($_GET['status'] ?? '');
+$filterUnit   = trim($_GET['unit'] ?? '');
+$showArchive  = $_GET['view'] === 'archive';
 $offset       = ($page - 1) * $perPage;
 
 $where = "WHERE 1=1";
-if ($search)       $where .= " AND (p.name LIKE '%{$conn->real_escape_string($search)}%' OR p.description LIKE '%{$conn->real_escape_string($search)}%')";
-if ($filterCat)    $where .= " AND p.category_id = {$filterCat}";
-if ($filterStatus === 'active')   $where .= " AND p.is_active = 1";
-if ($filterStatus === 'inactive') $where .= " AND p.is_active = 0";
+if ($showArchive) {
+    $where .= " AND p.is_active = 0";
+} else {
+    if ($filterStatus === 'active')   $where .= " AND p.is_active = 1";
+    elseif ($filterStatus === 'inactive') $where .= " AND p.is_active = 0";
+    else $where .= " AND p.is_active = 1"; // default: only active
+}
+if ($search)    $where .= " AND (p.name LIKE '%{$conn->real_escape_string($search)}%' OR p.description LIKE '%{$conn->real_escape_string($search)}%')";
+if ($filterCat) $where .= " AND p.category_id = {$filterCat}";
+if ($filterUnit) $where .= " AND p.unit = '{$conn->real_escape_string($filterUnit)}'";
+
 
 $totalResult = $conn->query("SELECT COUNT(*) AS cnt FROM products p {$where}");
 $totalCount  = (int)($totalResult->fetch_assoc()['cnt'] ?? 0);
@@ -162,15 +212,15 @@ $activePage = 'products';
         .user-chip .fa-solid,
         .info-card-top .fa-solid,
         .sidebar-logout .fa-solid {
-            color: inherit !important;
+            color: inherit !important
         }
 
         .fa-egg {
-            color: #f4a72c;
+            color: #f4a72c
         }
 
         .fa-drumstick-bite {
-            color: #c2703b;
+            color: #c2703b
         }
 
         .fa-circle-check,
@@ -179,7 +229,7 @@ $activePage = 'products';
         .fa-leaf,
         .fa-seedling,
         .fa-phone {
-            color: #10b981;
+            color: #10b981
         }
 
         .fa-circle-xmark,
@@ -187,25 +237,25 @@ $activePage = 'products';
         .fa-trash,
         .fa-ban,
         .fa-location-dot {
-            color: #ef4444;
+            color: #ef4444
         }
 
         .fa-cart-shopping,
         .fa-bag-shopping,
         .fa-store,
         .fa-shop {
-            color: #e67e22;
+            color: #e67e22
         }
 
         .fa-truck {
-            color: #f97316;
+            color: #f97316
         }
 
         .fa-triangle-exclamation,
         .fa-circle-exclamation,
         .fa-clock,
         .fa-star {
-            color: #f59e0b;
+            color: #f59e0b
         }
 
         .fa-info-circle,
@@ -218,19 +268,19 @@ $activePage = 'products';
         .fa-comment,
         .fa-map,
         .fa-paperclip {
-            color: #3b82f6;
+            color: #3b82f6
         }
 
         .fa-sack-dollar,
         .fa-money-bill,
         .fa-money-bill-transfer {
-            color: #16a34a;
+            color: #16a34a
         }
 
         .fa-users,
         .fa-user,
         .fa-user-plus {
-            color: #6366f1;
+            color: #6366f1
         }
 
         .fa-box,
@@ -240,26 +290,26 @@ $activePage = 'products';
         .fa-receipt,
         .fa-clipboard-list,
         .fa-file-lines {
-            color: #8b5cf6;
+            color: #8b5cf6
         }
 
         .fa-chart-bar,
         .fa-chart-line,
         .fa-chart-pie,
         .fa-gauge-high {
-            color: #0ea5e9;
+            color: #0ea5e9
         }
 
         .fa-heart {
-            color: #ef4444;
+            color: #ef4444
         }
 
         .fa-gear {
-            color: #6b7280;
+            color: #6b7280
         }
 
         .fa-lightbulb {
-            color: #f59e0b;
+            color: #f59e0b
         }
     </style>
     <title>Products — Hiney's Admin</title>
@@ -346,6 +396,10 @@ $activePage = 'products';
             letter-spacing: 0.03em;
         }
 
+        .count-pill.archive {
+            background: #6b7280;
+        }
+
         .search-wrap {
             position: relative;
             display: flex;
@@ -389,7 +443,6 @@ $activePage = 'products';
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 9px center;
-            transition: border-color 0.15s;
         }
 
         .filter-select:focus {
@@ -417,6 +470,29 @@ $activePage = 'products';
         .btn-add:hover {
             background: #cf6d17;
             transform: translateY(-1px);
+        }
+
+        .btn-archive-view {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .btn-archive-view:hover,
+        .btn-archive-view.active {
+            background: #f3f4f6;
+            color: var(--dark);
+            border-color: #d1d5db;
         }
 
         .table-wrapper {
@@ -467,6 +543,10 @@ $activePage = 'products';
             border-bottom: none;
         }
 
+        table.data-table tbody tr.archived-row {
+            opacity: 0.7;
+        }
+
         .btn-action {
             display: inline-flex;
             align-items: center;
@@ -499,6 +579,16 @@ $activePage = 'products';
 
         .btn-delete:hover {
             background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-restore {
+            color: #10b981;
+            border-color: #10b981;
+        }
+
+        .btn-restore:hover {
+            background: #10b981;
             color: #fff;
         }
 
@@ -561,6 +651,11 @@ $activePage = 'products';
         .status-dot.inactive {
             background: #fee2e2;
             color: #991b1b;
+        }
+
+        .status-dot.archived {
+            background: #f3f4f6;
+            color: #6b7280;
         }
 
         .status-dot::before {
@@ -679,6 +774,11 @@ $activePage = 'products';
             pointer-events: none;
         }
 
+        /* Flash auto-dismiss */
+        .flash-msg {
+            transition: opacity 0.5s ease;
+        }
+
         /* Modals */
         .modal-backdrop {
             position: fixed;
@@ -714,12 +814,12 @@ $activePage = 'products';
         @keyframes modalSlide {
             from {
                 opacity: 0;
-                transform: translateY(20px) scale(0.97);
+                transform: translateY(20px) scale(0.97)
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0) scale(1)
             }
         }
 
@@ -844,12 +944,6 @@ $activePage = 'products';
         .form-textarea:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12);
-        }
-
-        .form-input[readonly] {
-            background: var(--page-bg);
-            color: var(--text-muted);
-            cursor: not-allowed;
         }
 
         .form-textarea {
@@ -1007,7 +1101,6 @@ $activePage = 'products';
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.15s;
         }
 
         .img-remove-btn:hover {
@@ -1027,7 +1120,7 @@ $activePage = 'products';
 
         @keyframes spin {
             to {
-                transform: rotate(360deg);
+                transform: rotate(360deg)
             }
         }
 
@@ -1138,25 +1231,25 @@ $activePage = 'products';
         .crop-handle.tl {
             top: -5px;
             left: -5px;
-            cursor: nw-resize;
+            cursor: nw-resize
         }
 
         .crop-handle.tr {
             top: -5px;
             right: -5px;
-            cursor: ne-resize;
+            cursor: ne-resize
         }
 
         .crop-handle.bl {
             bottom: -5px;
             left: -5px;
-            cursor: sw-resize;
+            cursor: sw-resize
         }
 
         .crop-handle.br {
             bottom: -5px;
             right: -5px;
-            cursor: se-resize;
+            cursor: se-resize
         }
 
         .crop-controls {
@@ -1230,10 +1323,22 @@ $activePage = 'products';
             background: #cf6d17;
         }
 
-            {
+        .delete-icon-wrap {
             width: 60px;
             height: 60px;
             background: #fee2e2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 1.8rem;
+        }
+
+        .archive-icon-wrap {
+            width: 60px;
+            height: 60px;
+            background: #f3f4f6;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1260,6 +1365,11 @@ $activePage = 'products';
         .delete-name {
             font-weight: 700;
             color: #ef4444;
+        }
+
+        .archive-name {
+            font-weight: 700;
+            color: #374151;
         }
 
         .mobile-menu-btn {
@@ -1310,7 +1420,6 @@ $activePage = 'products';
 <body>
     <div class="admin-layout">
         <?php include '../includes/sidebar.php'; ?>
-
         <div class="main-content">
 
             <div class="page-header">
@@ -1323,9 +1432,9 @@ $activePage = 'products';
                                 <line x1="3" y1="18" x2="21" y2="18" />
                             </svg>
                         </button>
-                        <h1 class="page-title">Products</h1>
+                        <h1 class="page-title"><?= $showArchive ? 'Archived Products' : 'Products' ?></h1>
                     </div>
-                    <div class="page-title-sub">Manage your product catalog — eggs and live chicken inventory</div>
+                    <div class="page-title-sub"><?= $showArchive ? 'Products that have been archived — restore or permanently delete.' : 'Manage your product catalog — eggs and live chicken inventory' ?></div>
                 </div>
             </div>
 
@@ -1333,40 +1442,65 @@ $activePage = 'products';
 
             <div class="toolbar">
                 <div class="toolbar-left">
-                    <span class="toolbar-title">All Products</span>
-                    <span class="count-pill"><?= number_format($totalCount) ?></span>
-                    <form method="GET" style="display:contents;">
-                        <div class="search-wrap">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                            <input type="text" name="q" class="search-input" placeholder="Search products…" value="<?= htmlspecialchars($search) ?>">
-                        </div>
-                        <select name="cat" class="filter-select" onchange="this.form.submit()">
-                            <option value="">All Categories</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat['id'] ?>" <?= $filterCat == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select name="status" class="filter-select" onchange="this.form.submit()">
-                            <option value="">All Status</option>
-                            <option value="active" <?= $filterStatus === 'active'   ? 'selected' : '' ?>>Active</option>
-                            <option value="inactive" <?= $filterStatus === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-                        </select>
-                        <?php if ($search || $filterCat || $filterStatus): ?>
-                            <a href="products.php" style="font-size:0.8rem;color:var(--primary);text-decoration:none;white-space:nowrap;">✕ Clear filters</a>
-                        <?php endif; ?>
-                    </form>
+                    <span class="toolbar-title"><?= $showArchive ? 'Archive' : 'All Products' ?></span>
+                    <span class="count-pill <?= $showArchive ? 'archive' : '' ?>"><?= number_format($totalCount) ?></span>
+                    <?php if (!$showArchive): ?>
+                        <form method="GET" style="display:contents;">
+                            <div class="search-wrap">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" name="q" class="search-input" placeholder="Search products…" value="<?= htmlspecialchars($search) ?>">
+                            </div>
+                            <select name="cat" class="filter-select" onchange="this.form.submit()" id="catFilterSel">
+                                <option value="">All Categories</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?= $cat['id'] ?>" <?= $filterCat == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <select name="unit" class="filter-select" id="unitFilterSel" onchange="this.form.submit()" style="display:<?= $filterCat ? 'block' : 'none' ?>">
+                                <option value="">All Units</option>
+                                <?php
+                                // Show units based on selected category
+                                $unitOptions = [];
+                                if ($filterCat) {
+                                    $catName = '';
+                                    foreach ($categories as $c) {
+                                        if ($c['id'] == $filterCat) {
+                                            $catName = strtolower($c['name']);
+                                            break;
+                                        }
+                                    }
+                                    if (str_contains($catName, 'egg'))     $unitOptions = ['per tray' => 'Per Tray', 'per piece' => 'Per Piece'];
+                                    if (str_contains($catName, 'chicken')) $unitOptions = ['alive' => 'Alive Chicken', 'processed' => 'Processed Chicken'];
+                                }
+                                foreach ($unitOptions as $val => $label):
+                                ?>
+                                    <option value="<?= $val ?>" <?= $filterUnit === $val ? 'selected' : '' ?>><?= $label ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($search || $filterCat || $filterUnit): ?>
+                                <a href="products.php" style="font-size:0.8rem;color:var(--primary);text-decoration:none;white-space:nowrap;">✕ Clear</a>
+                            <?php endif; ?>
+                        </form>
+                    <?php endif; ?>
                 </div>
                 <div class="toolbar-right">
-                    <button class="btn-add" onclick="openModal('addModal')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Add Product
-                    </button>
+                    <?php if ($showArchive): ?>
+                        <a href="products.php" class="btn-archive-view">← Back to Products</a>
+                    <?php else: ?>
+                        <a href="products.php?view=archive" class="btn-archive-view">
+                            <i class="fa-solid fa-box-archive"></i> Archive
+                        </a>
+                        <button class="btn-add" onclick="openModal('addModal')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Add Product
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -1380,9 +1514,8 @@ $activePage = 'products';
                                 <th>Category</th>
                                 <th>Price</th>
                                 <th>Stock</th>
-                                <th>Reorder</th>
                                 <th>Status</th>
-                                <th style="text-align:center;width:130px;">Actions</th>
+                                <th style="text-align:center;width:<?= $showArchive ? '160px' : '130px' ?>;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1394,7 +1527,7 @@ $activePage = 'products';
                                 $stockPct   = $p['reorder_level'] > 0 ? min(100, round(($p['stock'] / max($p['reorder_level'] * 2, 1)) * 100)) : 100;
                                 $stockColor = $p['stock'] <= 0 ? '#ef4444' : ($p['stock'] <= $p['reorder_level'] ? '#f59e0b' : '#10b981');
                             ?>
-                                <tr>
+                                <tr <?= $showArchive ? 'class="archived-row"' : '' ?>>
                                     <td style="color:var(--text-muted);font-size:0.78rem;font-weight:600;"><?= $rowNum++ ?></td>
                                     <td>
                                         <div class="product-cell">
@@ -1430,44 +1563,64 @@ $activePage = 'products';
                                             </div>
                                         </div>
                                     </td>
-                                    <td style="color:var(--text-muted);font-size:0.85rem;"><?= number_format((int)$p['reorder_level']) ?></td>
                                     <td>
-                                        <span class="status-dot <?= $p['is_active'] ? 'active' : 'inactive' ?>">
-                                            <?= $p['is_active'] ? 'Active' : 'Inactive' ?>
+                                        <span class="status-dot <?= $showArchive ? 'archived' : ($p['is_active'] ? 'active' : 'inactive') ?>">
+                                            <?= $showArchive ? 'Archived' : ($p['is_active'] ? 'Active' : 'Inactive') ?>
                                         </span>
                                     </td>
                                     <td style="text-align:center;">
                                         <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
-                                            <button class="btn-action btn-edit"
-                                                onclick="openEdit(<?= htmlspecialchars(json_encode([
-                                                                        'id'            => $p['id'],
-                                                                        'category_id'   => $p['category_id'],
-                                                                        'category_name' => strtolower($p['category_name'] ?? ''),
-                                                                        'name'          => $p['name'],
-                                                                        'description'   => $p['description'],
-                                                                        'price'         => $p['price'],
-                                                                        'unit'          => $p['unit'],
-                                                                        'image_url'     => $p['image_url'],
-                                                                        'is_active'     => $p['is_active'],
-                                                                        'reorder_level' => $p['reorder_level'],
-                                                                    ]), ENT_QUOTES) ?>)">
-                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                </svg>
-                                                Edit
-                                            </button>
-                                            <button class="btn-action btn-delete"
-                                                onclick="openDelete(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
-                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                    <polyline points="3 6 5 6 21 6" />
-                                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                    <path d="M10 11v6" />
-                                                    <path d="M14 11v6" />
-                                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                                                </svg>
-                                                Delete
-                                            </button>
+                                            <?php if ($showArchive): ?>
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="restore">
+                                                    <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                                                    <button type="submit" class="btn-action btn-restore">
+                                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <polyline points="1 4 1 10 7 10" />
+                                                            <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
+                                                        </svg>
+                                                        Restore
+                                                    </button>
+                                                </form>
+                                                <button class="btn-action btn-delete"
+                                                    onclick="openHardDelete(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
+                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="3 6 5 6 21 6" />
+                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn-action btn-edit"
+                                                    onclick="openEdit(<?= htmlspecialchars(json_encode([
+                                                                            'id'            => $p['id'],
+                                                                            'category_id'   => $p['category_id'],
+                                                                            'category_name' => strtolower($p['category_name'] ?? ''),
+                                                                            'name'          => $p['name'],
+                                                                            'description'   => $p['description'],
+                                                                            'price'         => $p['price'],
+                                                                            'unit'          => $p['unit'],
+                                                                            'image_url'     => $p['image_url'],
+                                                                            'is_active'     => $p['is_active'],
+                                                                            'reorder_level' => $p['reorder_level'],
+                                                                            'stock'         => $p['stock'],
+                                                                        ]), ENT_QUOTES) ?>)">
+                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                    </svg>
+                                                    Edit
+                                                </button>
+                                                <button class="btn-action btn-delete"
+                                                    onclick="openArchive(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
+                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="21 8 21 21 3 21 3 8" />
+                                                        <rect x="1" y="3" width="22" height="5" />
+                                                        <line x1="10" y1="12" x2="14" y2="12" />
+                                                    </svg>
+                                                    Archive
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -1477,7 +1630,7 @@ $activePage = 'products';
 
                     <?php if ($totalPages > 1): ?>
                         <div class="pagination">
-                            <div>Showing <?= number_format($offset + 1) ?>–<?= number_format(min($offset + $perPage, $totalCount)) ?> of <?= number_format($totalCount) ?> products</div>
+                            <div>Showing <?= number_format($offset + 1) ?>–<?= number_format(min($offset + $perPage, $totalCount)) ?> of <?= number_format($totalCount) ?></div>
                             <div class="pagination-pages">
                                 <?php
                                 $qs = http_build_query(array_merge($_GET, ['page' => max(1, $page - 1)]));
@@ -1507,9 +1660,9 @@ $activePage = 'products';
 
                 <?php else: ?>
                     <div class="empty-state">
-                        <div class="empty-icon"><i class="fa-solid fa-box"></i></div>
-                        <div class="empty-text">No products found</div>
-                        <div class="empty-sub"><?= ($search || $filterCat || $filterStatus) ? 'Try adjusting your search or filters.' : 'Click "Add Product" to add your first product.' ?></div>
+                        <div class="empty-icon"><i class="fa-solid fa-<?= $showArchive ? 'box-archive' : 'box' ?>"></i></div>
+                        <div class="empty-text"><?= $showArchive ? 'No archived products' : 'No products found' ?></div>
+                        <div class="empty-sub"><?= $showArchive ? 'Archived products will appear here.' : 'Click "Add Product" to add your first product.' ?></div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1517,7 +1670,7 @@ $activePage = 'products';
         </div>
     </div>
 
-    <!-- ══ ADD MODAL ══ -->
+    <!-- ADD MODAL -->
     <div class="modal-backdrop" id="addModal" onclick="backdropClose(event,'addModal')">
         <div class="modal-card" role="dialog" aria-modal="true">
             <div class="modal-header">
@@ -1538,7 +1691,7 @@ $activePage = 'products';
                     <div class="form-grid">
                         <div class="form-group span-2">
                             <label class="form-label">Product Name <span class="req">*</span></label>
-                            <input type="text" name="name" class="form-input" placeholder="e.g. Egg Large, Live Chicken" required>
+                            <input type="text" name="name" class="form-input" placeholder="e.g. Egg Large, Chicken" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Category <span class="req">*</span></label>
@@ -1560,7 +1713,6 @@ $activePage = 'products';
                             <textarea name="description" class="form-textarea" placeholder="Short product description…"></textarea>
                         </div>
                     </div>
-
                     <div class="form-section-label">Pricing</div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1575,13 +1727,9 @@ $activePage = 'products';
                             </select>
                         </div>
                     </div>
-
                     <div class="form-section-label">Product Image</div>
                     <div class="form-group span-2">
-                        <div class="img-upload-wrap" id="add_upload_wrap"
-                            ondragover="this.classList.add('dragover');event.preventDefault();"
-                            ondragleave="this.classList.remove('dragover');"
-                            ondrop="handleDrop(event,'add')">
+                        <div class="img-upload-wrap" id="add_upload_wrap" ondragover="this.classList.add('dragover');event.preventDefault();" ondragleave="this.classList.remove('dragover');" ondrop="handleDrop(event,'add')">
                             <input type="file" accept="image/*" onchange="uploadToCloudinary(this,'add')">
                             <div class="upload-placeholder">
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);margin:0 auto 6px;display:block;">
@@ -1603,7 +1751,6 @@ $activePage = 'products';
                         </div>
                         <div class="upload-status" id="add_upload_status"></div>
                     </div>
-
                     <div class="form-section-label">Inventory Setup</div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1631,7 +1778,7 @@ $activePage = 'products';
         </div>
     </div>
 
-    <!-- ══ EDIT MODAL ══ -->
+    <!-- EDIT MODAL -->
     <div class="modal-backdrop" id="editModal" onclick="backdropClose(event,'editModal')">
         <div class="modal-card" role="dialog" aria-modal="true">
             <div class="modal-header">
@@ -1673,7 +1820,6 @@ $activePage = 'products';
                             <textarea name="description" id="edit_description" class="form-textarea"></textarea>
                         </div>
                     </div>
-
                     <div class="form-section-label">Pricing & Status</div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1688,13 +1834,9 @@ $activePage = 'products';
                             </select>
                         </div>
                     </div>
-
                     <div class="form-section-label">Product Image</div>
                     <div class="form-group span-2">
-                        <div class="img-upload-wrap" id="edit_upload_wrap"
-                            ondragover="this.classList.add('dragover');event.preventDefault();"
-                            ondragleave="this.classList.remove('dragover');"
-                            ondrop="handleDrop(event,'edit')">
+                        <div class="img-upload-wrap" id="edit_upload_wrap" ondragover="this.classList.add('dragover');event.preventDefault();" ondragleave="this.classList.remove('dragover');" ondrop="handleDrop(event,'edit')">
                             <input type="file" accept="image/*" onchange="uploadToCloudinary(this,'edit')">
                             <div class="upload-placeholder">
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);margin:0 auto 6px;display:block;">
@@ -1716,13 +1858,17 @@ $activePage = 'products';
                         </div>
                         <div class="upload-status" id="edit_upload_status"></div>
                     </div>
-
-                    <div class="form-section-label">Inventory Settings</div>
+                    <div class="form-section-label">Inventory</div>
                     <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Current Stock</label>
+                            <input type="number" name="stock_qty" id="edit_stock_qty" class="form-input" min="0">
+                            <span class="form-hint">Changing this logs a stock adjustment automatically</span>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Reorder Level</label>
                             <input type="number" name="reorder_level" id="edit_reorder_level" class="form-input" min="0">
-                            <span class="form-hint">Alert threshold for low stock</span>
+                            <span class="form-hint">Alert when stock falls below this</span>
                         </div>
                     </div>
                 </div>
@@ -1739,8 +1885,51 @@ $activePage = 'products';
         </div>
     </div>
 
-    <!-- ══ DELETE MODAL ══ -->
-    <div class="modal-backdrop" id="deleteModal" onclick="backdropClose(event,'deleteModal')">
+    <!-- ARCHIVE MODAL -->
+    <div class="modal-backdrop" id="archiveModal" onclick="backdropClose(event,'archiveModal')">
+        <div class="modal-card sm" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="21 8 21 21 3 21 3 8" />
+                        <rect x="1" y="3" width="22" height="5" />
+                        <line x1="10" y1="12" x2="14" y2="12" />
+                    </svg>
+                    Archive Product
+                </div>
+                <button class="modal-close" onclick="closeModal('archiveModal')">✕</button>
+            </div>
+            <form method="POST" action="products.php">
+                <input type="hidden" name="action" value="archive">
+                <input type="hidden" name="id" id="archive_id">
+                <div class="modal-body">
+                    <div class="archive-icon-wrap"><i class="fa-solid fa-box-archive" style="color:#6b7280;"></i></div>
+                    <div class="delete-title">Archive Product?</div>
+                    <div class="delete-text">
+                        <span class="archive-name" id="archive_name"></span> will be hidden from customers and moved to the archive.<br><br>
+                        You can restore it anytime from the Archive section.
+                    </div>
+                    <div style="margin-top:16px;">
+                        <label style="font-size:0.8rem;font-weight:600;color:var(--dark);display:block;margin-bottom:5px;">Reason (optional)</label>
+                        <input type="text" name="archive_reason" class="form-input" placeholder="e.g. Out of season, discontinued…" style="width:100%;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('archiveModal')">Cancel</button>
+                    <button type="submit" class="btn" style="background:#6b7280;color:#fff;border-color:#6b7280;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="21 8 21 21 3 21 3 8" />
+                            <rect x="1" y="3" width="22" height="5" />
+                        </svg>
+                        Archive
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- HARD DELETE MODAL -->
+    <div class="modal-backdrop" id="hardDeleteModal" onclick="backdropClose(event,'hardDeleteModal')">
         <div class="modal-card sm" role="dialog" aria-modal="true">
             <div class="modal-header">
                 <div class="modal-title">
@@ -1749,30 +1938,29 @@ $activePage = 'products';
                         <line x1="12" y1="9" x2="12" y2="13" />
                         <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
-                    <span style="color:#ef4444;">Delete Product</span>
+                    <span style="color:#ef4444;">Permanently Delete</span>
                 </div>
-                <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+                <button class="modal-close" onclick="closeModal('hardDeleteModal')">✕</button>
             </div>
             <form method="POST" action="products.php">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="id" id="delete_id">
+                <input type="hidden" name="action" value="delete_hard">
+                <input type="hidden" name="id" id="hard_delete_id">
                 <div class="modal-body">
                     <div class="delete-icon-wrap"><i class="fa-solid fa-trash"></i></div>
-                    <div class="delete-title">Deactivate Product?</div>
+                    <div class="delete-title">Permanently Delete?</div>
                     <div class="delete-text">
-                        Are you sure you want to deactivate<br>
-                        <span class="delete-name" id="delete_name"></span>?<br><br>
-                        The product will be hidden from customers but order history will be preserved.
+                        <span class="delete-name" id="hard_delete_name"></span> will be permanently removed along with all its inventory and log records.<br><br>
+                        <strong style="color:#ef4444;">This cannot be undone.</strong>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('hardDeleteModal')">Cancel</button>
                     <button type="submit" class="btn btn-danger">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                         </svg>
-                        Deactivate
+                        Delete Forever
                     </button>
                 </div>
             </form>
@@ -1781,7 +1969,7 @@ $activePage = 'products';
 
     <?php require_once '../config/cloudinary.php'; ?>
 
-    <!-- ══ CROP MODAL ══ -->
+    <!-- CROP MODAL -->
     <div class="crop-backdrop" id="cropBackdrop">
         <div class="crop-modal">
             <div class="crop-header">
@@ -1816,26 +2004,52 @@ $activePage = 'products';
         const CLOUDINARY_CLOUD_NAME = '<?= CLOUDINARY_CLOUD_NAME ?>';
         const CLOUDINARY_UPLOAD_PRESET = '<?= CLOUDINARY_UPLOAD_PRESET ?>';
 
+        // ── Category filter → show/hide unit filter ──────────────────
+        const catFilterSel = document.getElementById('catFilterSel');
+        const unitFilterSel = document.getElementById('unitFilterSel');
+        if (catFilterSel && unitFilterSel) {
+            catFilterSel.addEventListener('change', function() {
+                // Just submit — PHP will re-render with correct unit options
+                // Unit filter visibility is handled server-side
+            });
+        }
+
+        // ── Auto-dismiss flash messages ──────────────────────────────
+        document.querySelectorAll('.flash-msg, [class*="alert-"], [class*="flash-"]').forEach(el => {
+            setTimeout(() => {
+                el.style.transition = 'opacity 0.5s ease';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 520);
+            }, 4000);
+        });
+        // Also target the flash output from flash() helper
+        document.addEventListener('DOMContentLoaded', () => {
+            // Generic: any div with success/error background rendered by flash()
+            document.querySelectorAll('[style*="background:#d1fae5"],[style*="background:#fee2e2"],[style*="background: #d1fae5"],[style*="background: #fee2e2"]').forEach(el => {
+                setTimeout(() => {
+                    el.style.transition = 'opacity 0.5s ease';
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 520);
+                }, 4000);
+            });
+        });
+
         // ── Units per category ───────────────────────────────────────
         const UNIT_MAP = {
             egg: [{
-                    val: 'per tray',
-                    label: 'Per Tray'
-                },
-                {
-                    val: 'per piece',
-                    label: 'Per Piece'
-                }
-            ],
+                val: 'per tray',
+                label: 'Per Tray'
+            }, {
+                val: 'per piece',
+                label: 'Per Piece'
+            }],
             chicken: [{
-                    val: 'alive',
-                    label: 'Alive Chicken'
-                },
-                {
-                    val: 'processed',
-                    label: 'Processed Chicken'
-                }
-            ],
+                val: 'alive',
+                label: 'Alive Chicken'
+            }, {
+                val: 'processed',
+                label: 'Processed Chicken'
+            }],
         };
 
         function getCatType(catSelectId) {
@@ -1877,31 +2091,37 @@ $activePage = 'products';
             if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m => closeModal(m.id));
         });
 
-        // ── Open Edit modal ──────────────────────────────────────────
+        function openArchive(id, name) {
+            document.getElementById('archive_id').value = id;
+            document.getElementById('archive_name').textContent = name;
+            openModal('archiveModal');
+        }
+
+        function openHardDelete(id, name) {
+            document.getElementById('hard_delete_id').value = id;
+            document.getElementById('hard_delete_name').textContent = name;
+            openModal('hardDeleteModal');
+        }
+
         function openEdit(data) {
             document.getElementById('edit_id').value = data.id;
             document.getElementById('edit_name').value = data.name;
             document.getElementById('edit_description').value = data.description || '';
             document.getElementById('edit_price').value = data.price;
             document.getElementById('edit_reorder_level').value = data.reorder_level;
+            document.getElementById('edit_stock_qty').value = data.stock;
             document.getElementById('edit_image_url').value = data.image_url || '';
             document.getElementById('edit_is_active').value = data.is_active;
-
-            // Set category
             const catSel = document.getElementById('edit_category_id');
             catSel.value = data.category_id;
-            // Populate units first, then set current unit
             updateUnits('edit', data.category_id);
             const unitSel = document.getElementById('edit_unit');
-            // Try to match existing unit value
             for (let opt of unitSel.options) {
                 if (opt.value === data.unit) {
                     opt.selected = true;
                     break;
                 }
             }
-
-            // Show existing image preview
             const prev = document.getElementById('edit_preview');
             const prevImg = document.getElementById('edit_preview_img');
             if (data.image_url) {
@@ -1914,18 +2134,10 @@ $activePage = 'products';
                 document.getElementById('edit_upload_wrap').classList.remove('has-image');
             }
             document.getElementById('edit_upload_status').textContent = '';
-
             openModal('editModal');
         }
 
-        // ── Open Delete modal ────────────────────────────────────────
-        function openDelete(id, name) {
-            document.getElementById('delete_id').value = id;
-            document.getElementById('delete_name').textContent = name;
-            openModal('deleteModal');
-        }
-
-        // ── Cloudinary upload ────────────────────────────────────────
+        // ── Image upload ─────────────────────────────────────────────
         async function uploadToCloudinary(input, prefix) {
             const file = input.files[0];
             if (!file) return;
@@ -1933,7 +2145,6 @@ $activePage = 'products';
                 setUploadStatus(prefix, 'File too large. Max 5MB.', 'err');
                 return;
             }
-            // Open crop modal instead of uploading directly
             openCrop(file, prefix);
         }
 
@@ -1941,8 +2152,7 @@ $activePage = 'products';
             e.preventDefault();
             document.getElementById(prefix + '_upload_wrap').classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            if (!file) return;
-            openCrop(file, prefix);
+            if (file) openCrop(file, prefix);
         }
 
         function removeImage(prefix) {
@@ -1966,9 +2176,9 @@ $activePage = 'products';
         }
 
         // ── Crop logic ───────────────────────────────────────────────
-        let _cropPrefix = null;
-        let _cropImg = new Image();
-        let _cropRatioW = 1,
+        let _cropPrefix = null,
+            _cropImg = new Image(),
+            _cropRatioW = 1,
             _cropRatioH = 1;
         let _cropBox = {
             x: 0,
@@ -1976,7 +2186,6 @@ $activePage = 'products';
             w: 0,
             h: 0
         };
-        let _canvasRect = null;
         let _dragging = false,
             _resizing = false,
             _handle = null;
@@ -1994,14 +2203,12 @@ $activePage = 'products';
                 _cropImg.onload = () => {
                     const canvas = document.getElementById('cropCanvas');
                     const wrap = document.getElementById('cropCanvasWrap');
-                    const maxW = wrap.clientWidth || 520;
-                    const maxH = 340;
+                    const maxW = wrap.clientWidth || 520,
+                        maxH = 340;
                     const scale = Math.min(maxW / _cropImg.naturalWidth, maxH / _cropImg.naturalHeight, 1);
                     canvas.width = Math.round(_cropImg.naturalWidth * scale);
                     canvas.height = Math.round(_cropImg.naturalHeight * scale);
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(_cropImg, 0, 0, canvas.width, canvas.height);
-                    // Default crop: centered square
+                    canvas.getContext('2d').drawImage(_cropImg, 0, 0, canvas.width, canvas.height);
                     const side = Math.min(canvas.width, canvas.height) * 0.8;
                     _cropBox = {
                         x: (canvas.width - side) / 2,
@@ -2009,7 +2216,6 @@ $activePage = 'products';
                         w: side,
                         h: side
                     };
-                    // Reset ratio button
                     document.querySelectorAll('.crop-ratio-btn').forEach(b => b.classList.remove('active'));
                     document.querySelector('.crop-ratio-btn').classList.add('active');
                     _cropRatioW = 1;
@@ -2026,18 +2232,16 @@ $activePage = 'products';
             const canvas = document.getElementById('cropCanvas');
             const box = document.getElementById('cropBox');
             const wrap = document.getElementById('cropCanvasWrap');
-            const cr = canvas.getBoundingClientRect();
-            const wr = wrap.getBoundingClientRect();
-            const offX = cr.left - wr.left;
-            const offY = cr.top - wr.top;
-            // Clamp
+            const cr = canvas.getBoundingClientRect(),
+                wr = wrap.getBoundingClientRect();
+            const offX = cr.left - wr.left,
+                offY = cr.top - wr.top;
             _cropBox.x = Math.max(0, Math.min(_cropBox.x, canvas.width - _cropBox.w));
             _cropBox.y = Math.max(0, Math.min(_cropBox.y, canvas.height - _cropBox.h));
             _cropBox.w = Math.max(30, Math.min(_cropBox.w, canvas.width - _cropBox.x));
             _cropBox.h = Math.max(30, Math.min(_cropBox.h, canvas.height - _cropBox.y));
-            // Scale from canvas coords to screen coords
-            const scaleX = cr.width / canvas.width;
-            const scaleY = cr.height / canvas.height;
+            const scaleX = cr.width / canvas.width,
+                scaleY = cr.height / canvas.height;
             box.style.left = (offX + _cropBox.x * scaleX) + 'px';
             box.style.top = (offY + _cropBox.y * scaleY) + 'px';
             box.style.width = (_cropBox.w * scaleX) + 'px';
@@ -2064,28 +2268,19 @@ $activePage = 'products';
             }
         }
 
-        // Mouse / touch drag
         const cropWrap = document.getElementById('cropCanvasWrap');
-
         cropWrap.addEventListener('mousedown', e => {
             const box = document.getElementById('cropBox');
             const canvas = document.getElementById('cropCanvas');
             const cr = canvas.getBoundingClientRect();
-            const wr = cropWrap.getBoundingClientRect();
-            const scaleX = canvas.width / cr.width;
-            const scaleY = canvas.height / cr.height;
-            const mx = (e.clientX - cr.left) * scaleX;
-            const my = (e.clientY - cr.top) * scaleY;
-
+            const scaleX = canvas.width / cr.width,
+                scaleY = canvas.height / cr.height;
             if (e.target.dataset.handle) {
                 _resizing = true;
                 _handle = e.target.dataset.handle;
             } else if (e.target === box || box.contains(e.target)) {
                 _dragging = true;
-            } else {
-                return;
-            }
-
+            } else return;
             _dragStart = {
                 x: e.clientX,
                 y: e.clientY,
@@ -2096,16 +2291,14 @@ $activePage = 'products';
             };
             e.preventDefault();
         });
-
         window.addEventListener('mousemove', e => {
             if (!_dragging && !_resizing) return;
             const canvas = document.getElementById('cropCanvas');
             const cr = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / cr.width;
-            const scaleY = canvas.height / cr.height;
-            const dx = (e.clientX - _dragStart.x) * scaleX;
-            const dy = (e.clientY - _dragStart.y) * scaleY;
-
+            const scaleX = canvas.width / cr.width,
+                scaleY = canvas.height / cr.height;
+            const dx = (e.clientX - _dragStart.x) * scaleX,
+                dy = (e.clientY - _dragStart.y) * scaleY;
             if (_dragging) {
                 _cropBox.x = _dragStart.bx + dx;
                 _cropBox.y = _dragStart.by + dy;
@@ -2126,7 +2319,6 @@ $activePage = 'products';
                     bh = Math.max(30, bh - dy);
                     by = _dragStart.by + (_dragStart.bh - bh);
                 }
-                // Apply ratio lock
                 if (_cropRatioW && _cropRatioH) {
                     if (_handle.includes('r') || _handle.includes('l')) bh = bw * (_cropRatioH / _cropRatioW);
                     else bw = bh * (_cropRatioW / _cropRatioH);
@@ -2140,7 +2332,6 @@ $activePage = 'products';
             }
             updateCropBox();
         });
-
         window.addEventListener('mouseup', () => {
             _dragging = false;
             _resizing = false;
@@ -2153,26 +2344,19 @@ $activePage = 'products';
 
         async function applyCrop() {
             const canvas = document.getElementById('cropCanvas');
-            const outCanvas = document.createElement('canvas');
+            const out = document.createElement('canvas');
             const size = 800;
-            outCanvas.width = size;
-            outCanvas.height = _cropRatioW && _cropRatioH ? size * (_cropRatioH / _cropRatioW) : Math.round(_cropBox.h * (size / _cropBox.w));
-            const ctx = outCanvas.getContext('2d');
-            // Scale factors from display canvas to source image
-            const sx = _cropImg.naturalWidth / canvas.width;
-            const sy = _cropImg.naturalHeight / canvas.height;
-            ctx.drawImage(
-                _cropImg,
-                _cropBox.x * sx, _cropBox.y * sy, _cropBox.w * sx, _cropBox.h * sy,
-                0, 0, outCanvas.width, outCanvas.height
-            );
-
+            out.width = size;
+            out.height = _cropRatioW && _cropRatioH ? size * (_cropRatioH / _cropRatioW) : Math.round(_cropBox.h * (size / _cropBox.w));
+            const ctx = out.getContext('2d');
+            const sx = _cropImg.naturalWidth / canvas.width,
+                sy = _cropImg.naturalHeight / canvas.height;
+            ctx.drawImage(_cropImg, _cropBox.x * sx, _cropBox.y * sy, _cropBox.w * sx, _cropBox.h * sy, 0, 0, out.width, out.height);
             document.getElementById('cropBackdrop').classList.remove('open');
             const prefix = _cropPrefix;
             showSpinner(prefix, true);
             setUploadStatus(prefix, 'Uploading cropped image…', '');
-
-            outCanvas.toBlob(async blob => {
+            out.toBlob(async blob => {
                 const fd = new FormData();
                 fd.append('file', blob, 'product.jpg');
                 fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
@@ -2199,13 +2383,11 @@ $activePage = 'products';
                 }
             }, 'image/jpeg', 0.92);
         }
-
         window.addEventListener('resize', () => {
             if (document.getElementById('cropBackdrop').classList.contains('open')) updateCropBox();
         });
 
-        // ── Reset add modal on open ──────────────────────────────────
-        document.getElementById('addModal').addEventListener('transitionend', function() {});
+        // Reset add modal
         document.querySelector('[onclick="openModal(\'addModal\')"]')?.addEventListener('click', () => {
             document.getElementById('addForm').reset();
             document.getElementById('add_image_url').value = '';
@@ -2213,6 +2395,7 @@ $activePage = 'products';
             document.getElementById('add_preview_img').src = '';
             document.getElementById('add_upload_status').textContent = '';
             document.getElementById('add_unit').innerHTML = '<option value="">— Select Category first —</option>';
+            document.getElementById('add_upload_wrap').classList.remove('has-image');
         });
     </script>
 </body>

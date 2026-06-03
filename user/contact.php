@@ -1,14 +1,6 @@
 <?php
-// ============================================================
-// Hiney's Eggs and Live Chicken Business
-// File: user/contact.php
-// Purpose: Contact / inquiry page — saves to contacts table
-// PUBLIC — no login required
-// ============================================================
-
 session_start();
 require_once '../config/db.php';
-// Public page — login not required to browse
 $isLoggedIn = !empty($_SESSION['user_id']);
 
 $activePage = 'contact';
@@ -17,7 +9,6 @@ $cartItems  = $isLoggedIn ? cartCount($conn) : 0;
 $success = '';
 $error   = '';
 
-// ── PRG: Handle POST ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name    = trim($_POST['name']    ?? '');
     $email   = trim($_POST['email']   ?? '');
@@ -28,10 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$name || !$message) {
         $_SESSION['contact_error'] = 'Name and message are required.';
     } else {
-        $stmt = $conn->prepare("
-            INSERT INTO contacts (name, email, phone, subject, message, is_read, created_at)
-            VALUES (?, ?, ?, ?, ?, 0, NOW())
-        ");
+        $stmt = $conn->prepare("INSERT INTO contacts (name, email, phone, subject, message, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())");
         $stmt->bind_param('sssss', $name, $email, $phone, $subject, $message);
         if ($stmt->execute()) {
             $_SESSION['contact_success'] = 'Your message has been sent! We\'ll get back to you soon. 😊';
@@ -40,24 +28,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
     }
-
     header('Location: contact.php');
     exit;
 }
 
-// ── Read flash messages ───────────────────────────────────────
 if (!empty($_SESSION['contact_success'])) {
     $success = $_SESSION['contact_success'];
     unset($_SESSION['contact_success']);
 }
 if (!empty($_SESSION['contact_error'])) {
-    $error = $_SESSION['contact_error'];
+    $error   = $_SESSION['contact_error'];
     unset($_SESSION['contact_error']);
 }
 
-// Pre-fill from session (logged-in user)
-$prefillName  = $_SESSION['full_name']  ?? '';
-$prefillEmail = $_SESSION['email']      ?? '';
+$prefillName  = $_SESSION['full_name'] ?? '';
+$prefillEmail = $_SESSION['email']     ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -67,8 +52,6 @@ $prefillEmail = $_SESSION['email']      ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style id="hineys-icon-colors">
-        /* === Hiney's icon colors === */
-        /* Icons inside dark/colored or interactive areas keep their inherited color */
         .navbar .fa-solid,
         .mobile-drawer .fa-solid,
         .sidebar .fa-solid,
@@ -87,16 +70,15 @@ $prefillEmail = $_SESSION['email']      ?? '';
         .user-chip .fa-solid,
         .info-card-top .fa-solid,
         .sidebar-logout .fa-solid {
-            color: inherit !important;
+            color: inherit !important
         }
 
-        /* Semantic colors for standalone content icons */
         .fa-egg {
-            color: #f4a72c;
+            color: #f4a72c
         }
 
         .fa-drumstick-bite {
-            color: #c2703b;
+            color: #c2703b
         }
 
         .fa-circle-check,
@@ -105,7 +87,7 @@ $prefillEmail = $_SESSION['email']      ?? '';
         .fa-leaf,
         .fa-seedling,
         .fa-phone {
-            color: #10b981;
+            color: #10b981
         }
 
         .fa-circle-xmark,
@@ -113,25 +95,25 @@ $prefillEmail = $_SESSION['email']      ?? '';
         .fa-trash,
         .fa-ban,
         .fa-location-dot {
-            color: #ef4444;
+            color: #ef4444
         }
 
         .fa-cart-shopping,
         .fa-bag-shopping,
         .fa-store,
         .fa-shop {
-            color: #e67e22;
+            color: #e67e22
         }
 
         .fa-truck {
-            color: #f97316;
+            color: #f97316
         }
 
         .fa-triangle-exclamation,
         .fa-circle-exclamation,
         .fa-clock,
         .fa-star {
-            color: #f59e0b;
+            color: #f59e0b
         }
 
         .fa-info-circle,
@@ -144,19 +126,19 @@ $prefillEmail = $_SESSION['email']      ?? '';
         .fa-comment,
         .fa-map,
         .fa-paperclip {
-            color: #3b82f6;
+            color: #3b82f6
         }
 
         .fa-sack-dollar,
         .fa-money-bill,
         .fa-money-bill-transfer {
-            color: #16a34a;
+            color: #16a34a
         }
 
         .fa-users,
         .fa-user,
         .fa-user-plus {
-            color: #6366f1;
+            color: #6366f1
         }
 
         .fa-box,
@@ -166,39 +148,36 @@ $prefillEmail = $_SESSION['email']      ?? '';
         .fa-receipt,
         .fa-clipboard-list,
         .fa-file-lines {
-            color: #8b5cf6;
+            color: #8b5cf6
         }
 
         .fa-chart-bar,
         .fa-chart-line,
         .fa-chart-pie,
         .fa-gauge-high {
-            color: #0ea5e9;
+            color: #0ea5e9
         }
 
         .fa-heart {
-            color: #ef4444;
+            color: #ef4444
         }
 
         .fa-gear {
-            color: #6b7280;
+            color: #6b7280
         }
 
         .fa-lightbulb {
-            color: #f59e0b;
+            color: #f59e0b
         }
     </style>
     <title>Contact Us — Hiney's Eggs &amp; Live Chicken</title>
     <style>
-        /* ══════════════════════════════════════════════
-   RESET & ROOT
-══════════════════════════════════════════════ */
         *,
         *::before,
         *::after {
             box-sizing: border-box;
             margin: 0;
-            padding: 0;
+            padding: 0
         }
 
         :root {
@@ -225,25 +204,22 @@ $prefillEmail = $_SESSION['email']      ?? '';
         }
 
         html {
-            scroll-behavior: smooth;
+            scroll-behavior: smooth
         }
 
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--bg);
             color: var(--text);
-            line-height: 1.6;
-
+            line-height: 1.6
         }
 
         a {
             text-decoration: none;
-            color: inherit;
+            color: inherit
         }
 
-        /* ══════════════════════════════════════════════
-   PAGE HEADER
-══════════════════════════════════════════════ */
+        /* Page header */
         .page-header {
             background: linear-gradient(135deg, #1a1a2e 0%, #2c3e50 100%);
             padding: 52px 0 56px;
@@ -256,6 +232,25 @@ $prefillEmail = $_SESSION['email']      ?? '';
             position: absolute;
             inset: 0;
             background: radial-gradient(ellipse 600px 400px at 80% 50%, rgba(230, 126, 34, 0.15) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        /* chicken_meat.png background */
+        .page-header-bg {
+            position: absolute;
+            inset: 0;
+            background: url('../assets/images/chicken_meat.png') center center / cover no-repeat;
+            opacity: 0.15;
+            mix-blend-mode: luminosity;
+            -webkit-mask-image:
+                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            -webkit-mask-composite: destination-in;
+            mask-image:
+                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            mask-composite: intersect;
+            z-index: 0;
         }
 
         .page-header-inner {
@@ -270,27 +265,25 @@ $prefillEmail = $_SESSION['email']      ?? '';
             gap: 24px;
         }
 
-        .page-header-text {}
-
         .page-breadcrumb {
             display: flex;
             align-items: center;
             gap: 6px;
             font-size: 0.78rem;
             color: #6b7a99;
-            margin-bottom: 12px;
+            margin-bottom: 12px
         }
 
         .page-breadcrumb a {
-            color: var(--secondary);
+            color: var(--secondary)
         }
 
         .page-breadcrumb a:hover {
-            color: #fff;
+            color: #fff
         }
 
         .page-breadcrumb span {
-            color: #3d4f61;
+            color: #3d4f61
         }
 
         .page-title {
@@ -299,41 +292,39 @@ $prefillEmail = $_SESSION['email']      ?? '';
             color: #fff;
             letter-spacing: -0.03em;
             line-height: 1.1;
-            margin-bottom: 8px;
+            margin-bottom: 8px
         }
 
         .page-title-accent {
-            color: var(--secondary);
+            color: var(--secondary)
         }
 
         .page-sub {
             font-size: 0.95rem;
             color: #8fa3b3;
-            line-height: 1.65;
+            line-height: 1.65
         }
 
         .page-header-emoji {
             font-size: 5rem;
             opacity: 0.25;
             flex-shrink: 0;
-            animation: floatEmoji 4s ease-in-out infinite;
+            animation: floatEmoji 4s ease-in-out infinite
         }
 
         @keyframes floatEmoji {
 
             0%,
             100% {
-                transform: translateY(0) rotate(-5deg);
+                transform: translateY(0) rotate(-5deg)
             }
 
             50% {
-                transform: translateY(-12px) rotate(5deg);
+                transform: translateY(-12px) rotate(5deg)
             }
         }
 
-        /* ══════════════════════════════════════════════
-   LAYOUT
-══════════════════════════════════════════════ */
+        /* Layout */
         .page-body {
             max-width: 1100px;
             margin: 0 auto;
@@ -341,45 +332,41 @@ $prefillEmail = $_SESSION['email']      ?? '';
             display: grid;
             grid-template-columns: 1fr 380px;
             gap: 32px;
-            align-items: start;
+            align-items: start
         }
 
         @media(max-width:900px) {
             .page-body {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr
             }
 
             .contact-sidebar {
-                order: -1;
+                order: -1
             }
         }
 
         @media(max-width:600px) {
             .page-body {
-                padding: 28px 16px 56px;
+                padding: 28px 16px 56px
             }
 
             .page-header-inner {
-                padding: 0 16px;
+                padding: 0 16px
             }
         }
 
-        /* ══════════════════════════════════════════════
-   FORM CARD
-══════════════════════════════════════════════ */
+        /* Form card */
         .form-card {
             background: var(--card-bg);
             border-radius: var(--radius);
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            overflow: hidden;
+            overflow: hidden
         }
 
         .form-card-header {
-            padding: 24px 28px 0;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 18px;
-            margin-bottom: 4px;
+            padding: 24px 28px 18px;
+            border-bottom: 1px solid var(--border)
         }
 
         .form-card-title {
@@ -388,20 +375,19 @@ $prefillEmail = $_SESSION['email']      ?? '';
             color: var(--dark2);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 8px
         }
 
         .form-card-sub {
             font-size: 0.82rem;
             color: var(--text-muted);
-            margin-top: 4px;
+            margin-top: 4px
         }
 
         .contact-form {
-            padding: 24px 28px 28px;
+            padding: 24px 28px 28px
         }
 
-        /* Alert boxes */
         .alert {
             padding: 14px 16px;
             border-radius: 10px;
@@ -411,47 +397,46 @@ $prefillEmail = $_SESSION['email']      ?? '';
             align-items: flex-start;
             gap: 10px;
             margin-bottom: 20px;
-            line-height: 1.5;
+            line-height: 1.5
         }
 
         .alert-success {
             background: var(--success-bg);
             border: 1px solid #a7f3d0;
-            color: #065f46;
+            color: #065f46
         }
 
         .alert-error {
             background: var(--danger-bg);
             border: 1px solid #fecaca;
-            color: #991b1b;
+            color: #991b1b
         }
 
         .alert-icon {
             font-size: 1.1rem;
             flex-shrink: 0;
-            margin-top: 1px;
+            margin-top: 1px
         }
 
-        /* Form rows */
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 16px;
-            margin-bottom: 16px;
+            margin-bottom: 16px
         }
 
         @media(max-width:520px) {
             .form-row {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr
             }
         }
 
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 16px
         }
 
         .form-group:last-child {
-            margin-bottom: 0;
+            margin-bottom: 0
         }
 
         .form-label {
@@ -459,12 +444,12 @@ $prefillEmail = $_SESSION['email']      ?? '';
             font-size: 0.83rem;
             font-weight: 600;
             color: var(--dark2);
-            margin-bottom: 6px;
+            margin-bottom: 6px
         }
 
         .form-label .req {
             color: var(--danger);
-            margin-left: 2px;
+            margin-left: 2px
         }
 
         .form-control {
@@ -477,22 +462,22 @@ $prefillEmail = $_SESSION['email']      ?? '';
             color: var(--text);
             background: #fff;
             transition: border-color var(--transition), box-shadow var(--transition);
-            outline: none;
+            outline: none
         }
 
         .form-control:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12);
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
         }
 
         .form-control::placeholder {
-            color: #b0b7c0;
+            color: #b0b7c0
         }
 
         textarea.form-control {
             resize: vertical;
             min-height: 130px;
-            line-height: 1.6;
+            line-height: 1.6
         }
 
         select.form-control {
@@ -501,16 +486,20 @@ $prefillEmail = $_SESSION['email']      ?? '';
             background-repeat: no-repeat;
             background-position: right 14px center;
             appearance: none;
-            padding-right: 36px;
+            padding-right: 36px
         }
 
-        .form-hint {
-            font-size: 0.75rem;
+        .char-counter {
+            font-size: 0.72rem;
             color: var(--text-muted);
-            margin-top: 4px;
+            text-align: right;
+            margin-top: 4px
         }
 
-        /* Submit button */
+        .char-counter.warn {
+            color: var(--danger)
+        }
+
         .btn-submit {
             width: 100%;
             padding: 13px 24px;
@@ -528,84 +517,64 @@ $prefillEmail = $_SESSION['email']      ?? '';
             justify-content: center;
             gap: 8px;
             margin-top: 8px;
-            box-shadow: 0 4px 16px rgba(230, 126, 34, 0.3);
-            letter-spacing: 0.01em;
+            box-shadow: 0 4px 16px rgba(230, 126, 34, 0.3)
         }
 
         .btn-submit:hover {
             background: var(--primary-dark);
             transform: translateY(-1px);
-            box-shadow: 0 8px 24px rgba(230, 126, 34, 0.4);
+            box-shadow: 0 8px 24px rgba(230, 126, 34, 0.4)
         }
 
-        .btn-submit:active {
-            transform: translateY(0);
-        }
-
-        /* Character counter */
-        .char-counter {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            text-align: right;
-            margin-top: 4px;
-        }
-
-        .char-counter.warn {
-            color: var(--danger);
-        }
-
-        /* ══════════════════════════════════════════════
-   SIDEBAR
-══════════════════════════════════════════════ */
+        /* Sidebar */
         .contact-sidebar {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 20px
         }
 
-        /* Info card */
         .info-card {
             background: var(--card-bg);
             border-radius: var(--radius);
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            overflow: hidden;
+            overflow: hidden
         }
 
         .info-card-top {
             background: linear-gradient(135deg, var(--dark2), #1a252f);
             padding: 24px;
             position: relative;
-            overflow: hidden;
+            overflow: hidden
         }
 
         .info-card-top::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse at 80% 0%, rgba(230, 126, 34, 0.2), transparent 70%);
+            background: radial-gradient(ellipse at 80% 0%, rgba(230, 126, 34, 0.2), transparent 70%)
         }
 
         .info-card-top-inner {
             position: relative;
-            z-index: 1;
+            z-index: 1
         }
 
         .info-card-top-title {
             font-size: 1rem;
             font-weight: 700;
             color: #fff;
-            margin-bottom: 4px;
+            margin-bottom: 4px
         }
 
         .info-card-top-sub {
             font-size: 0.8rem;
             color: #8fa3b3;
-            line-height: 1.5;
+            line-height: 1.5
         }
 
         .info-card-body {
-            padding: 20px;
+            padding: 20px
         }
 
         .contact-info-item {
@@ -613,16 +582,16 @@ $prefillEmail = $_SESSION['email']      ?? '';
             align-items: flex-start;
             gap: 14px;
             padding: 14px 0;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--border)
         }
 
         .contact-info-item:last-child {
             border-bottom: none;
-            padding-bottom: 0;
+            padding-bottom: 0
         }
 
         .contact-info-item:first-child {
-            padding-top: 0;
+            padding-top: 0
         }
 
         .ci-icon {
@@ -633,26 +602,24 @@ $prefillEmail = $_SESSION['email']      ?? '';
             align-items: center;
             justify-content: center;
             font-size: 1.1rem;
-            flex-shrink: 0;
+            flex-shrink: 0
         }
 
         .ci-orange {
-            background: var(--primary-light);
+            background: var(--primary-light)
         }
 
         .ci-green {
-            background: #ecfdf5;
+            background: #ecfdf5
         }
 
         .ci-blue {
-            background: #eff6ff;
+            background: #eff6ff
         }
 
         .ci-purple {
-            background: #f5f3ff;
+            background: #f5f3ff
         }
-
-        .ci-content {}
 
         .ci-label {
             font-size: 0.72rem;
@@ -660,23 +627,22 @@ $prefillEmail = $_SESSION['email']      ?? '';
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--text-muted);
-            margin-bottom: 2px;
+            margin-bottom: 2px
         }
 
         .ci-value {
             font-size: 0.88rem;
             font-weight: 600;
             color: var(--dark2);
-            line-height: 1.4;
+            line-height: 1.4
         }
 
-        /* Hours card */
         .hours-card {
             background: var(--card-bg);
             border-radius: var(--radius);
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            padding: 20px;
+            padding: 20px
         }
 
         .hours-title {
@@ -686,7 +652,7 @@ $prefillEmail = $_SESSION['email']      ?? '';
             margin-bottom: 14px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 6px
         }
 
         .hours-row {
@@ -695,31 +661,22 @@ $prefillEmail = $_SESSION['email']      ?? '';
             align-items: center;
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
-            font-size: 0.85rem;
+            font-size: 0.85rem
         }
 
         .hours-row:last-child {
             border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .hours-row:first-of-type {
-            padding-top: 0;
+            padding-bottom: 0
         }
 
         .hours-day {
             color: var(--text-muted);
-            font-weight: 500;
+            font-weight: 500
         }
 
         .hours-time {
             color: var(--dark2);
-            font-weight: 600;
-        }
-
-        .hours-closed {
-            color: var(--danger);
-            font-weight: 600;
+            font-weight: 600
         }
 
         .badge-open {
@@ -732,7 +689,7 @@ $prefillEmail = $_SESSION['email']      ?? '';
             font-weight: 700;
             padding: 3px 10px;
             border-radius: 20px;
-            margin-left: 8px;
+            margin-left: 8px
         }
 
         .badge-open::before {
@@ -741,28 +698,27 @@ $prefillEmail = $_SESSION['email']      ?? '';
             height: 6px;
             background: var(--success);
             border-radius: 50%;
-            animation: blink 1.5s ease-in-out infinite;
+            animation: blink 1.5s ease-in-out infinite
         }
 
         @keyframes blink {
 
             0%,
             100% {
-                opacity: 1;
+                opacity: 1
             }
 
             50% {
-                opacity: 0.3;
+                opacity: 0.3
             }
         }
 
-        /* Map placeholder card */
         .map-card {
             background: var(--card-bg);
             border-radius: var(--radius);
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            overflow: hidden;
+            overflow: hidden
         }
 
         .map-placeholder {
@@ -775,22 +731,20 @@ $prefillEmail = $_SESSION['email']      ?? '';
             gap: 8px;
             color: #3b82f6;
             position: relative;
-            overflow: hidden;
+            overflow: hidden
         }
 
         .map-placeholder::before {
             content: '';
             position: absolute;
             inset: 0;
-            background:
-                repeating-linear-gradient(0deg, rgba(59, 130, 246, 0.06) 0, rgba(59, 130, 246, 0.06) 1px, transparent 1px, transparent 28px),
-                repeating-linear-gradient(90deg, rgba(59, 130, 246, 0.06) 0, rgba(59, 130, 246, 0.06) 1px, transparent 1px, transparent 28px);
+            background: repeating-linear-gradient(0deg, rgba(59, 130, 246, 0.06) 0, rgba(59, 130, 246, 0.06) 1px, transparent 1px, transparent 28px), repeating-linear-gradient(90deg, rgba(59, 130, 246, 0.06) 0, rgba(59, 130, 246, 0.06) 1px, transparent 1px, transparent 28px)
         }
 
         .map-emoji {
             font-size: 2.5rem;
             position: relative;
-            z-index: 1;
+            z-index: 1
         }
 
         .map-label {
@@ -798,7 +752,7 @@ $prefillEmail = $_SESSION['email']      ?? '';
             font-weight: 600;
             position: relative;
             z-index: 1;
-            color: #1d4ed8;
+            color: #1d4ed8
         }
 
         .map-card-body {
@@ -807,27 +761,24 @@ $prefillEmail = $_SESSION['email']      ?? '';
             color: var(--text-muted);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 6px
         }
 
-        /* ══════════════════════════════════════════════
-   FOOTER
-══════════════════════════════════════════════ */
         .site-footer {
             background: var(--dark);
             color: #6b7280;
             text-align: center;
             padding: 24px 32px;
             font-size: 0.82rem;
-            line-height: 1.7;
+            line-height: 1.7
         }
 
         .site-footer a {
-            color: var(--primary);
+            color: var(--primary)
         }
 
         .site-footer a:hover {
-            color: var(--secondary);
+            color: var(--secondary)
         }
     </style>
 </head>
@@ -836,8 +787,8 @@ $prefillEmail = $_SESSION['email']      ?? '';
 
     <?php include '../includes/navbar.php'; ?>
 
-    <!-- Page Header -->
     <div class="page-header">
+        <div class="page-header-bg"></div>
         <div class="page-header-inner">
             <div class="page-header-text">
                 <div class="page-breadcrumb">
@@ -845,26 +796,22 @@ $prefillEmail = $_SESSION['email']      ?? '';
                     <span>/</span>
                     <span>Contact</span>
                 </div>
-                <h1 class="page-title">
-                    Get in <span class="page-title-accent">Touch</span>
-                </h1>
+                <h1 class="page-title">Get in <span class="page-title-accent">Touch</span></h1>
                 <p class="page-sub">Questions, bulk orders, or feedback? We'd love to hear from you.</p>
             </div>
             <div class="page-header-emoji"><i class="fa-solid fa-inbox"></i></div>
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="page-body">
 
-        <!-- ── Contact Form ── -->
+        <!-- Form -->
         <div>
             <div class="form-card">
                 <div class="form-card-header">
                     <div class="form-card-title"><i class="fa-solid fa-envelope"></i> Send Us a Message</div>
                     <div class="form-card-sub">Fill out the form below and we'll respond within 24 hours.</div>
                 </div>
-
                 <div class="contact-form">
 
                     <?php if ($success): ?>
@@ -882,45 +829,20 @@ $prefillEmail = $_SESSION['email']      ?? '';
                     <?php endif; ?>
 
                     <form method="POST" action="contact.php" novalidate id="contactForm">
-
                         <div class="form-row">
                             <div class="form-group" style="margin-bottom:0;">
-                                <label class="form-label" for="name">
-                                    Full Name <span class="req">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    id="name"
-                                    name="name"
-                                    class="form-control"
-                                    placeholder="e.g. Juan Dela Cruz"
-                                    value="<?= htmlspecialchars($prefillName) ?>"
-                                    required
-                                    maxlength="150">
+                                <label class="form-label" for="name">Full Name <span class="req">*</span></label>
+                                <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Juan Dela Cruz" value="<?= htmlspecialchars($prefillName) ?>" required maxlength="150">
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label class="form-label" for="email">Email Address</label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    name="email"
-                                    class="form-control"
-                                    placeholder="you@email.com"
-                                    value="<?= htmlspecialchars($prefillEmail) ?>"
-                                    maxlength="150">
+                                <input type="email" id="email" name="email" class="form-control" placeholder="you@email.com" value="<?= htmlspecialchars($prefillEmail) ?>" maxlength="150">
                             </div>
                         </div>
-
                         <div class="form-row">
                             <div class="form-group" style="margin-bottom:0;">
                                 <label class="form-label" for="phone">Phone Number</label>
-                                <input
-                                    type="tel"
-                                    id="phone"
-                                    name="phone"
-                                    class="form-control"
-                                    placeholder="e.g. 09XX-XXX-XXXX"
-                                    maxlength="30">
+                                <input type="tel" id="phone" name="phone" class="form-control" placeholder="e.g. 09XX-XXX-XXXX" maxlength="30">
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label class="form-label" for="subject">Subject</label>
@@ -937,36 +859,22 @@ $prefillEmail = $_SESSION['email']      ?? '';
                                 </select>
                             </div>
                         </div>
-
                         <div class="form-group">
-                            <label class="form-label" for="message">
-                                Message <span class="req">*</span>
-                            </label>
-                            <textarea
-                                id="message"
-                                name="message"
-                                class="form-control"
-                                placeholder="Write your message here… (e.g. bulk order details, questions about delivery, etc.)"
-                                required
-                                maxlength="2000"
-                                oninput="updateCounter(this)"></textarea>
+                            <label class="form-label" for="message">Message <span class="req">*</span></label>
+                            <textarea id="message" name="message" class="form-control" placeholder="Write your message here…" required maxlength="2000" oninput="updateCounter(this)"></textarea>
                             <div class="char-counter" id="charCounter">0 / 2000</div>
                         </div>
-
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <span id="submitIcon"><i class="fa-solid fa-upload"></i></span>
                             <span id="submitLabel">Send Message</span>
                         </button>
-
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- ── Sidebar ── -->
+        <!-- Sidebar -->
         <div class="contact-sidebar">
-
-            <!-- Contact Info -->
             <div class="info-card">
                 <div class="info-card-top">
                     <div class="info-card-top-inner">
@@ -1006,41 +914,27 @@ $prefillEmail = $_SESSION['email']      ?? '';
                 </div>
             </div>
 
-            <!-- Business Hours -->
             <div class="hours-card">
                 <div class="hours-title">
                     <i class="fa-solid fa-clock"></i> Business Hours
                     <span class="badge-open">Open Now</span>
                 </div>
-                <div class="hours-row">
-                    <span class="hours-day">Monday – Friday</span>
-                    <span class="hours-time">6:00 AM – 6:00 PM</span>
-                </div>
-                <div class="hours-row">
-                    <span class="hours-day">Saturday</span>
-                    <span class="hours-time">6:00 AM – 5:00 PM</span>
-                </div>
-                <div class="hours-row">
-                    <span class="hours-day">Sunday</span>
-                    <span class="hours-time">7:00 AM – 12:00 PM</span>
-                </div>
+                <div class="hours-row"><span class="hours-day">Monday – Friday</span><span class="hours-time">6:00 AM – 6:00 PM</span></div>
+                <div class="hours-row"><span class="hours-day">Saturday</span><span class="hours-time">6:00 AM – 5:00 PM</span></div>
+                <div class="hours-row"><span class="hours-day">Sunday</span><span class="hours-time">7:00 AM – 12:00 PM</span></div>
             </div>
 
-            <!-- Map placeholder -->
             <div class="map-card">
                 <div class="map-placeholder">
                     <div class="map-emoji"><i class="fa-solid fa-map"></i></div>
                     <div class="map-label">Loreto, Cortes, Bohol</div>
                 </div>
-                <div class="map-card-body">
-                    <i class="fa-solid fa-location-dot"></i> We serve customers within Loreto, Cortes, Bohol. Delivery time may vary by barangay.
-                </div>
+                <div class="map-card-body"><i class="fa-solid fa-location-dot"></i> We serve customers within Loreto, Cortes, Bohol. Delivery time may vary by barangay.</div>
             </div>
-
         </div>
+
     </div>
 
-    <!-- Footer -->
     <footer class="site-footer">
         &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
         Loreto Cortes, Bohol &nbsp;·&nbsp;
@@ -1048,7 +942,6 @@ $prefillEmail = $_SESSION['email']      ?? '';
     </footer>
 
     <script>
-        // ── Character counter ─────────────────────────────────────────
         function updateCounter(el) {
             const counter = document.getElementById('charCounter');
             const len = el.value.length;
@@ -1056,18 +949,14 @@ $prefillEmail = $_SESSION['email']      ?? '';
             counter.classList.toggle('warn', len > 1800);
         }
 
-        // ── Form submission feedback ──────────────────────────────────
         document.getElementById('contactForm').addEventListener('submit', function() {
             const btn = document.getElementById('submitBtn');
-            const icon = document.getElementById('submitIcon');
-            const label = document.getElementById('submitLabel');
             btn.disabled = true;
             btn.style.opacity = '0.75';
-            icon.innerHTML = '<i class="fa-solid fa-clock"></i>';
-            label.textContent = 'Sending…';
+            document.getElementById('submitIcon').innerHTML = '<i class="fa-solid fa-clock"></i>';
+            document.getElementById('submitLabel').textContent = 'Sending…';
         });
 
-        // ── Auto-dismiss success alert after 6s ───────────────────────
         const successAlert = document.querySelector('.alert-success');
         if (successAlert) {
             setTimeout(() => {
@@ -1077,29 +966,24 @@ $prefillEmail = $_SESSION['email']      ?? '';
             }, 6000);
         }
 
-        // ── Open badge dynamic hours check ───────────────────────────
         (function() {
             const badge = document.querySelector('.badge-open');
             if (!badge) return;
-
             const now = new Date();
-            const day = now.getDay(); // 0=Sun,6=Sat
+            const day = now.getDay();
             const hour = now.getHours() + now.getMinutes() / 60;
-
             let isOpen = false;
             if (day >= 1 && day <= 5) isOpen = hour >= 6 && hour < 18;
             else if (day === 6) isOpen = hour >= 6 && hour < 17;
             else if (day === 0) isOpen = hour >= 7 && hour < 12;
-
             if (!isOpen) {
                 badge.style.background = '#fee2e2';
                 badge.style.color = '#991b1b';
                 badge.textContent = 'Closed';
-                badge.style.cssText += '; animation: none; padding-left: 10px;';
+                badge.style.animation = 'none';
             }
         })();
     </script>
-
 </body>
 
 </html>

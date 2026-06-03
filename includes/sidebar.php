@@ -8,18 +8,25 @@ if (!isset($activePage)) $activePage = '';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 $base = '../';
+// If included from a subdirectory inside admin (e.g. admin/stocks/), go up one more level
+if (str_contains($_SERVER['PHP_SELF'], '/stocks/')) $base = '../../';
 $adminName    = $_SESSION['full_name'] ?? 'Admin';
 $adminInitial = strtoupper(substr($adminName, 0, 1));
 
 $navItems = [
-    ['key' => 'dashboard',    'icon' => 'fa-gauge-high',       'label' => 'Dashboard',         'href' => 'dashboard.php'],
-    ['key' => 'products',     'icon' => 'fa-box-open',         'label' => 'Products',          'href' => 'products.php'],
-    ['key' => 'inventory',    'icon' => 'fa-warehouse',        'label' => 'Inventory',         'href' => 'inventory.php'],
-    ['key' => 'orders',       'icon' => 'fa-receipt',          'label' => 'Orders',            'href' => 'orders.php'],
-    ['key' => 'customers',    'icon' => 'fa-users',            'label' => 'Customers',         'href' => 'customers.php'],
-    ['key' => 'transactions', 'icon' => 'fa-money-bill-transfer', 'label' => 'Transactions',    'href' => 'transactions.php'],
-    ['key' => 'contacts',     'icon' => 'fa-envelope-open-text', 'label' => 'Messages',         'href' => 'contacts.php'],
-    ['key' => 'gcash_settings', 'icon' => 'fa-credit-card',     'label' => 'Payment Settings',  'href' => 'gcash_settings.php'],
+    ['key' => 'dashboard',      'icon' => 'fa-gauge-high',          'label' => 'Dashboard',        'href' => 'dashboard.php'],
+    ['key' => 'products',       'icon' => 'fa-box-open',            'label' => 'Products',         'href' => 'products.php'],
+    ['key' => 'inventory',      'icon' => 'fa-warehouse',           'label' => 'Inventory',        'href' => 'inventory.php'],
+    ['key' => 'orders',         'icon' => 'fa-receipt',             'label' => 'Orders',           'href' => 'orders.php'],
+    ['key' => 'customers',      'icon' => 'fa-users',               'label' => 'Customers',        'href' => 'customers.php'],
+    ['key' => 'transactions',   'icon' => 'fa-money-bill-transfer', 'label' => 'Transactions',     'href' => 'transactions.php'],
+    ['key' => 'contacts',       'icon' => 'fa-envelope-open-text',  'label' => 'Messages',         'href' => 'contacts.php'],
+    ['key' => 'gcash_settings', 'icon' => 'fa-credit-card',         'label' => 'Payment Settings', 'href' => 'gcash_settings.php'],
+];
+
+$stockItems = [
+    ['key' => 'stocks',     'icon' => 'fa-boxes-stacked', 'label' => 'Stock Batches', 'href' => 'stocks/index.php'],
+    ['key' => 'stocks_add', 'icon' => 'fa-plus-circle',   'label' => 'Add Batch',     'href' => 'stocks/add.php'],
 ];
 
 $reportItems = [
@@ -29,43 +36,127 @@ $reportItems = [
 ];
 
 $isReportPage = in_array($activePage, ['report_sales', 'report_inventory', 'report_orders']);
+$isStockPage  = in_array($activePage, ['stocks', 'stocks_add']);
 ?>
-<!-- Font Awesome 6 CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style id="hineys-icon-colors">
-/* === Hiney's icon colors === */
-/* Icons inside dark/colored or interactive areas keep their inherited color */
-.navbar .fa-solid, .mobile-drawer .fa-solid, .sidebar .fa-solid,
-button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
-.status-badge .fa-solid, .status-tab .fa-solid, .pay-badge .fa-solid,
-.page-banner .fa-solid, .page-header .fa-solid, .hero .fa-solid,
-.cta-card .fa-solid, .about-strip .fa-solid, .nav-cart .fa-solid,
-.user-chip .fa-solid, .info-card-top .fa-solid, .sidebar-logout .fa-solid {
-    color: inherit !important;
-}
-/* Semantic colors for standalone content icons */
-.fa-egg { color: #f4a72c; }
-.fa-drumstick-bite { color: #c2703b; }
-.fa-circle-check, .fa-check, .fa-shield-halved,
-.fa-leaf, .fa-seedling, .fa-phone { color: #10b981; }
-.fa-circle-xmark, .fa-xmark, .fa-trash, .fa-ban,
-.fa-location-dot { color: #ef4444; }
-.fa-cart-shopping, .fa-bag-shopping, .fa-store, .fa-shop { color: #e67e22; }
-.fa-truck { color: #f97316; }
-.fa-triangle-exclamation, .fa-circle-exclamation,
-.fa-clock, .fa-star { color: #f59e0b; }
-.fa-info-circle, .fa-credit-card, .fa-mobile-screen,
-.fa-envelope, .fa-envelope-open, .fa-envelope-open-text,
-.fa-inbox, .fa-comment, .fa-map, .fa-paperclip { color: #3b82f6; }
-.fa-sack-dollar, .fa-money-bill, .fa-money-bill-transfer { color: #16a34a; }
-.fa-users, .fa-user, .fa-user-plus { color: #6366f1; }
-.fa-box, .fa-box-open, .fa-boxes-stacked, .fa-warehouse,
-.fa-receipt, .fa-clipboard-list, .fa-file-lines { color: #8b5cf6; }
-.fa-chart-bar, .fa-chart-line, .fa-chart-pie,
-.fa-gauge-high { color: #0ea5e9; }
-.fa-heart { color: #ef4444; }
-.fa-gear { color: #6b7280; }
-.fa-lightbulb { color: #f59e0b; }
+    .navbar .fa-solid,
+    .mobile-drawer .fa-solid,
+    .sidebar .fa-solid,
+    button .fa-solid,
+    [class*="btn"] .fa-solid,
+    .badge .fa-solid,
+    .status-badge .fa-solid,
+    .status-tab .fa-solid,
+    .pay-badge .fa-solid,
+    .page-banner .fa-solid,
+    .page-header .fa-solid,
+    .hero .fa-solid,
+    .cta-card .fa-solid,
+    .about-strip .fa-solid,
+    .nav-cart .fa-solid,
+    .user-chip .fa-solid,
+    .info-card-top .fa-solid,
+    .sidebar-logout .fa-solid {
+        color: inherit !important;
+    }
+
+    .fa-egg {
+        color: #f4a72c
+    }
+
+    .fa-drumstick-bite {
+        color: #c2703b
+    }
+
+    .fa-circle-check,
+    .fa-check,
+    .fa-shield-halved,
+    .fa-leaf,
+    .fa-seedling,
+    .fa-phone {
+        color: #10b981
+    }
+
+    .fa-circle-xmark,
+    .fa-xmark,
+    .fa-trash,
+    .fa-ban,
+    .fa-location-dot {
+        color: #ef4444
+    }
+
+    .fa-cart-shopping,
+    .fa-bag-shopping,
+    .fa-store,
+    .fa-shop {
+        color: #e67e22
+    }
+
+    .fa-truck {
+        color: #f97316
+    }
+
+    .fa-triangle-exclamation,
+    .fa-circle-exclamation,
+    .fa-clock,
+    .fa-star {
+        color: #f59e0b
+    }
+
+    .fa-info-circle,
+    .fa-credit-card,
+    .fa-mobile-screen,
+    .fa-envelope,
+    .fa-envelope-open,
+    .fa-envelope-open-text,
+    .fa-inbox,
+    .fa-comment,
+    .fa-map,
+    .fa-paperclip {
+        color: #3b82f6
+    }
+
+    .fa-sack-dollar,
+    .fa-money-bill,
+    .fa-money-bill-transfer {
+        color: #16a34a
+    }
+
+    .fa-users,
+    .fa-user,
+    .fa-user-plus {
+        color: #6366f1
+    }
+
+    .fa-box,
+    .fa-box-open,
+    .fa-boxes-stacked,
+    .fa-warehouse,
+    .fa-receipt,
+    .fa-clipboard-list,
+    .fa-file-lines {
+        color: #8b5cf6
+    }
+
+    .fa-chart-bar,
+    .fa-chart-line,
+    .fa-chart-pie,
+    .fa-gauge-high {
+        color: #0ea5e9
+    }
+
+    .fa-heart {
+        color: #ef4444
+    }
+
+    .fa-gear {
+        color: #6b7280
+    }
+
+    .fa-lightbulb {
+        color: #f59e0b
+    }
 </style>
 
 <style>
@@ -95,22 +186,21 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
     *::after {
         box-sizing: border-box;
         margin: 0;
-        padding: 0;
+        padding: 0
     }
 
     body {
         font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         background: var(--page-bg);
         color: var(--text);
-        line-height: 1.5;
+        line-height: 1.5
     }
 
     .admin-layout {
         display: flex;
-        min-height: 100vh;
+        min-height: 100vh
     }
 
-    /* ── Sidebar ── */
     .sidebar {
         width: var(--sidebar-w);
         height: 100vh;
@@ -122,7 +212,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         flex-direction: column;
         z-index: 800;
         border-right: 1px solid var(--sidebar-border);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)
     }
 
     .sidebar-brand {
@@ -132,7 +222,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         padding: 22px 20px 18px;
         border-bottom: 1px solid var(--sidebar-border);
         text-decoration: none;
-        flex-shrink: 0;
+        flex-shrink: 0
     }
 
     .sidebar-brand-logo {
@@ -141,12 +231,12 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         border-radius: 10px;
         object-fit: cover;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)
     }
 
     .sidebar-brand-text {
         display: flex;
-        flex-direction: column;
+        flex-direction: column
     }
 
     .sidebar-brand-name {
@@ -154,14 +244,14 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-weight: 700;
         color: #f9fafb;
         letter-spacing: -0.01em;
-        line-height: 1.2;
+        line-height: 1.2
     }
 
     .sidebar-brand-sub {
         font-size: 0.68rem;
         color: var(--sidebar-text);
         letter-spacing: 0.04em;
-        text-transform: uppercase;
+        text-transform: uppercase
     }
 
     .sidebar-user {
@@ -170,7 +260,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         gap: 10px;
         padding: 14px 20px;
         border-bottom: 1px solid var(--sidebar-border);
-        flex-shrink: 0;
+        flex-shrink: 0
     }
 
     .sidebar-avatar {
@@ -185,12 +275,12 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-weight: 700;
         color: #fff;
         flex-shrink: 0;
-        box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4);
+        box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4)
     }
 
     .sidebar-user-info {
         flex: 1;
-        overflow: hidden;
+        overflow: hidden
     }
 
     .sidebar-user-name {
@@ -199,14 +289,14 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         color: #f3f4f6;
         white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis;
+        text-overflow: ellipsis
     }
 
     .sidebar-user-role {
         font-size: 0.68rem;
         color: var(--sidebar-text);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.05em
     }
 
     .sidebar-nav {
@@ -217,16 +307,16 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         gap: 1px;
         overflow-y: auto;
         scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent
     }
 
     .sidebar-nav::-webkit-scrollbar {
-        width: 4px;
+        width: 4px
     }
 
     .sidebar-nav::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
+        border-radius: 2px
     }
 
     .sidebar-nav-label {
@@ -235,7 +325,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         color: #4b5563;
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        padding: 10px 8px 5px;
+        padding: 10px 8px 5px
     }
 
     .sidebar-link {
@@ -249,18 +339,18 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-size: 0.87rem;
         font-weight: 500;
         transition: background 0.15s, color 0.15s;
-        position: relative;
+        position: relative
     }
 
     .sidebar-link:hover {
         background: var(--sidebar-surface);
-        color: #e5e7eb;
+        color: #e5e7eb
     }
 
     .sidebar-link.active {
         background: var(--primary-glow);
         color: var(--primary-hover);
-        font-weight: 600;
+        font-weight: 600
     }
 
     .sidebar-link.active::before {
@@ -272,7 +362,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         width: 3px;
         height: 20px;
         background: var(--primary);
-        border-radius: 0 3px 3px 0;
+        border-radius: 0 3px 3px 0
     }
 
     .sidebar-link-icon {
@@ -280,15 +370,15 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         text-align: center;
         opacity: 0.7;
         flex-shrink: 0;
-        font-size: 0.85rem;
+        font-size: 0.85rem
     }
 
     .sidebar-link.active .sidebar-link-icon {
-        opacity: 1;
+        opacity: 1
     }
 
-    /* Reports toggle */
-    .reports-toggle {
+    /* Collapsible sections */
+    .section-toggle {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -300,20 +390,20 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-weight: 500;
         transition: background 0.15s, color 0.15s;
         user-select: none;
-        position: relative;
+        position: relative
     }
 
-    .reports-toggle:hover {
+    .section-toggle:hover {
         background: var(--sidebar-surface);
-        color: #e5e7eb;
+        color: #e5e7eb
     }
 
-    .reports-toggle.open,
-    .reports-toggle.has-active {
-        color: var(--primary-hover);
+    .section-toggle.open,
+    .section-toggle.has-active {
+        color: var(--primary-hover)
     }
 
-    .reports-toggle.has-active::before {
+    .section-toggle.has-active::before {
         content: '';
         position: absolute;
         left: 0;
@@ -322,31 +412,31 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         width: 3px;
         height: 20px;
         background: var(--primary);
-        border-radius: 0 3px 3px 0;
+        border-radius: 0 3px 3px 0
     }
 
-    .reports-chevron {
+    .section-chevron {
         margin-left: auto;
         width: 14px;
         height: 14px;
         transition: transform 0.2s;
-        opacity: 0.5;
+        opacity: 0.5
     }
 
-    .reports-toggle.open .reports-chevron {
-        transform: rotate(180deg);
+    .section-toggle.open .section-chevron {
+        transform: rotate(180deg)
     }
 
-    .reports-sub {
+    .section-sub {
         display: none;
         flex-direction: column;
         gap: 1px;
         padding-left: 14px;
-        margin-top: 1px;
+        margin-top: 1px
     }
 
-    .reports-sub.open {
-        display: flex;
+    .section-sub.open {
+        display: flex
     }
 
     .sidebar-sublink {
@@ -360,40 +450,40 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-size: 0.83rem;
         font-weight: 500;
         transition: background 0.15s, color 0.15s;
-        position: relative;
+        position: relative
     }
 
     .sidebar-sublink i {
         font-size: 0.75rem;
         width: 16px;
         text-align: center;
-        opacity: 0.5;
+        opacity: 0.5
     }
 
     .sidebar-sublink:hover {
         background: var(--sidebar-surface);
-        color: #e5e7eb;
+        color: #e5e7eb
     }
 
     .sidebar-sublink:hover i {
-        opacity: 0.8;
+        opacity: 0.8
     }
 
     .sidebar-sublink.active {
         background: var(--primary-glow);
         color: var(--primary-hover);
-        font-weight: 600;
+        font-weight: 600
     }
 
     .sidebar-sublink.active i {
         opacity: 1;
-        color: var(--primary);
+        color: var(--primary)
     }
 
     .sidebar-footer {
         padding: 12px;
         border-top: 1px solid var(--sidebar-border);
-        flex-shrink: 0;
+        flex-shrink: 0
     }
 
     .sidebar-logout {
@@ -406,26 +496,26 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         color: #f87171;
         font-size: 0.87rem;
         font-weight: 500;
-        transition: background 0.15s;
+        transition: background 0.15s
     }
 
     .sidebar-logout:hover {
-        background: rgba(248, 113, 113, 0.1);
+        background: rgba(248, 113, 113, 0.1)
     }
 
     .sidebar-logout i {
         font-size: 0.85rem;
         width: 18px;
-        text-align: center;
+        text-align: center
     }
 
-    /* ── Reusable card styles ── */
+    /* Reusable card styles */
     .card {
         background: var(--card-bg);
         border: 1px solid var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
-        overflow: hidden;
+        overflow: hidden
     }
 
     .card-header {
@@ -433,7 +523,7 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         align-items: center;
         justify-content: space-between;
         padding: 16px 20px;
-        border-bottom: 1px solid var(--card-border);
+        border-bottom: 1px solid var(--card-border)
     }
 
     .card-title {
@@ -442,10 +532,9 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         color: var(--dark);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 8px
     }
 
-    /* Status badges */
     .badge {
         display: inline-flex;
         align-items: center;
@@ -455,70 +544,69 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.02em;
-        white-space: nowrap;
+        white-space: nowrap
     }
 
     .badge-pending {
         background: #fef3c7;
-        color: #92400e;
+        color: #92400e
     }
 
     .badge-confirmed {
         background: #dbeafe;
-        color: #1e40af;
+        color: #1e40af
     }
 
     .badge-processing {
         background: #ede9fe;
-        color: #5b21b6;
+        color: #5b21b6
     }
 
     .badge-delivery {
         background: #ffedd5;
-        color: #9a3412;
+        color: #9a3412
     }
 
     .badge-delivered {
         background: #d1fae5;
-        color: #065f46;
+        color: #065f46
     }
 
     .badge-cancelled {
         background: #fee2e2;
-        color: #991b1b;
+        color: #991b1b
     }
 
     .badge-paid {
         background: #d1fae5;
-        color: #065f46;
+        color: #065f46
     }
 
     .badge-unpaid {
         background: #fee2e2;
-        color: #991b1b;
+        color: #991b1b
     }
 
-    /* Overlay (mobile) */
     .sidebar-overlay {
         display: none;
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.5);
         z-index: 799;
-        backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px)
     }
 
     @media(max-width:768px) {
         .sidebar {
-            transform: translateX(-100%);
+            transform: translateX(-100%)
         }
 
         .sidebar.open {
-            transform: translateX(0);
+            transform: translateX(0)
         }
 
         .sidebar-overlay.show {
-            display: block;
+            display: block
         }
     }
 </style>
@@ -527,7 +615,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
 
 <aside class="sidebar" id="sidebar">
 
-    <!-- Brand with logo -->
     <a href="<?= $base ?>admin/dashboard.php" class="sidebar-brand">
         <img src="<?= $base ?>assets/images/hineys_logo.png" alt="Hiney's" class="sidebar-brand-logo">
         <div class="sidebar-brand-text">
@@ -536,7 +623,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         </div>
     </a>
 
-    <!-- User -->
     <div class="sidebar-user">
         <div class="sidebar-avatar"><?= htmlspecialchars($adminInitial) ?></div>
         <div class="sidebar-user-info">
@@ -545,11 +631,9 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         </div>
     </div>
 
-    <!-- Nav -->
     <nav class="sidebar-nav">
 
         <div class="sidebar-nav-label">Main Menu</div>
-
         <?php foreach ($navItems as $item): ?>
             <a href="<?= $base ?>admin/<?= $item['href'] ?>"
                 class="sidebar-link <?= $activePage === $item['key'] ? 'active' : '' ?>">
@@ -558,19 +642,37 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
             </a>
         <?php endforeach; ?>
 
-        <!-- Reports (collapsible) -->
-        <div class="sidebar-nav-label" style="margin-top:6px;">Reports</div>
-
-        <div class="reports-toggle <?= $isReportPage ? 'has-active open' : '' ?>"
-            id="reportsToggle" onclick="toggleReports()">
-            <i class="fa-solid fa-chart-pie sidebar-link-icon"></i>
-            Analytics
-            <svg class="reports-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Stocks (collapsible) -->
+        <div class="sidebar-nav-label" style="margin-top:6px;">Stock Management</div>
+        <div class="section-toggle <?= $isStockPage ? 'has-active open' : '' ?>"
+            id="stocksToggle" onclick="toggleSection('stocks')">
+            <i class="fa-solid fa-layer-group sidebar-link-icon"></i>
+            Stocks
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9" />
             </svg>
         </div>
+        <div class="section-sub <?= $isStockPage ? 'open' : '' ?>" id="stocksSub">
+            <?php foreach ($stockItems as $si): ?>
+                <a href="<?= $base ?>admin/<?= $si['href'] ?>"
+                    class="sidebar-sublink <?= $activePage === $si['key'] ? 'active' : '' ?>">
+                    <i class="fa-solid <?= $si['icon'] ?>"></i>
+                    <?= htmlspecialchars($si['label']) ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
 
-        <div class="reports-sub <?= $isReportPage ? 'open' : '' ?>" id="reportsSub">
+        <!-- Reports (collapsible) -->
+        <div class="sidebar-nav-label" style="margin-top:6px;">Reports</div>
+        <div class="section-toggle <?= $isReportPage ? 'has-active open' : '' ?>"
+            id="reportsToggle" onclick="toggleSection('reports')">
+            <i class="fa-solid fa-chart-pie sidebar-link-icon"></i>
+            Analytics
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+            </svg>
+        </div>
+        <div class="section-sub <?= $isReportPage ? 'open' : '' ?>" id="reportsSub">
             <?php foreach ($reportItems as $ri): ?>
                 <a href="<?= $base ?>admin/<?= $ri['href'] ?>"
                     class="sidebar-sublink <?= $activePage === $ri['key'] ? 'active' : '' ?>">
@@ -582,7 +684,6 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
 
     </nav>
 
-    <!-- Footer -->
     <div class="sidebar-footer">
         <a href="<?= $base ?>logout.php" class="sidebar-logout">
             <i class="fa-solid fa-right-from-bracket"></i>
@@ -603,9 +704,9 @@ button .fa-solid, [class*="btn"] .fa-solid, .badge .fa-solid,
         document.getElementById('sidebarOverlay').classList.remove('show');
     }
 
-    function toggleReports() {
-        const toggle = document.getElementById('reportsToggle');
-        const sub = document.getElementById('reportsSub');
+    function toggleSection(name) {
+        const toggle = document.getElementById(name + 'Toggle');
+        const sub = document.getElementById(name + 'Sub');
         toggle.classList.toggle('open');
         sub.classList.toggle('open');
     }
