@@ -982,10 +982,10 @@ if (!empty($_SESSION['user_id'])) {
                 <div class="story-grid">
                     <div class="story-image-wrap">
                         <div class="story-image-placeholder">
-                            <img src="" alt="Hiney's Farm" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:20px;opacity:0.9;">
+                            <img src="../assets/images/farm.png" alt="Hiney's Farm" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:20px;opacity:0.9;">
                             <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(26,37,47,0.25),rgba(44,62,80,0.15));border-radius:20px;z-index:1;"></div>
                         </div>
-                        <div class="story-badge"><i class="fa-solid fa-egg"></i> Est. 2010 · Loreto, Cortes</div>
+                        <div class="story-badge"><i class="fa-solid fa-egg"></i> Est. 2022 · Loreto, Cortes</div>
                     </div>
                     <div class="story-content">
                         <div class="story-eyebrow">Our Story</div>
@@ -1098,11 +1098,26 @@ if (!empty($_SESSION['user_id'])) {
                     <h2 class="section-title">Meet the Owner</h2>
                 </div>
                 <div class="owner-card">
-                    <div class="owner-avatar">H</div>
+                    <!-- Blended background -->
+                    <div style="position:absolute;inset:0;border-radius:20px;overflow:hidden;z-index:0;">
+                        <img src="../assets/images/owner.png" alt="" style="
+                    width:100%;height:100%;object-fit:cover;
+                    opacity:0.09;mix-blend-mode:luminosity;
+                    -webkit-mask-image:linear-gradient(to right,transparent 0%,black 25%,black 75%,transparent 100%),linear-gradient(to bottom,transparent 0%,black 10%,black 90%,transparent 100%);
+                    -webkit-mask-composite:destination-in;
+                    mask-image:linear-gradient(to right,transparent 0%,black 25%,black 75%,transparent 100%),linear-gradient(to bottom,transparent 0%,black 10%,black 90%,transparent 100%);
+                    mask-composite:intersect;">
+                    </div>
+                    <!-- Circular portrait -->
+                    <div style="position:relative;z-index:1;flex-shrink:0;">
+                        <div style="width:100px;height:100px;border-radius:50%;overflow:hidden;border:4px solid rgba(255,255,255,0.2);box-shadow:0 8px 28px rgba(230,126,34,0.5);">
+                            <img src="../assets/images/owner.png" alt="Hiney" style="width:100%;height:100%;object-fit:cover;object-position:center center;">
+                        </div>
+                    </div>
                     <div class="owner-info">
                         <div class="owner-tag">Founder &amp; Owner</div>
-                        <div class="owner-name">Hiney</div>
-                        <div class="owner-role">Loreto, Cortes · Founded 2010</div>
+                        <div class="owner-name">Georgia Hiney Dupit</div>
+                        <div class="owner-role">Loreto, Cortes · Founded 2022</div>
                         <div class="owner-quote">
                             "I started this farm because I wanted my neighbors to have access to eggs and
                             chicken they could trust. Fourteen years later, that same spirit still drives

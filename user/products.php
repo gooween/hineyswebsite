@@ -49,7 +49,10 @@ $sql = "
     SELECT p.id, p.name, p.description, p.price, p.unit,
            p.image_url,
            c.id AS cat_id, c.name AS category,
-           COALESCE(i.quantity, 0) AS stock
+           COALESCE((
+               SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
+               FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active'
+           ), 0) AS stock
     FROM products p
     JOIN categories c ON c.id = p.category_id
     LEFT JOIN inventory i ON i.product_id = p.id
@@ -1223,7 +1226,7 @@ $totalFound = $products ? $products->num_rows : 0;
                                         <div class="product-actions">
                                             <button class="btn-view-detail" onclick="location.href='product_detail.php?id=<?= $p['id'] ?>'">Details</button>
                                             <button class="btn-add-cart <?= $stock <= 0 ? 'disabled' : '' ?>" <?= $stock <= 0 ? 'disabled' : '' ?>
-                                                onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
+                                                onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>', '<?= htmlspecialchars(addslashes($p['unit'])) ?>', <?= $stock ?>)">
                                                 <i class="fa-solid fa-cart-shopping"></i> Add to Cart
                                             </button>
                                         </div>
@@ -1336,7 +1339,7 @@ $totalFound = $products ? $products->num_rows : 0;
             if (saved === 'list') setView('list');
         })();
 
-        function addToCart(productId, productName) {
+        function addToCart(productId, productName, unit, stock) {
             if (!IS_LOGGED_IN) {
                 showLoginPrompt();
                 return;

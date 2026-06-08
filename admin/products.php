@@ -90,23 +90,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uid    = (int)$_SESSION['user_id'];
         if ($id) {
             $conn->query("UPDATE products SET is_active = 0 WHERE id = {$id}");
-            // Log to archive table if it exists, fallback to inventory_logs style
+            // Ensure table exists first
+            $conn->query("CREATE TABLE IF NOT EXISTS product_archive_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                product_id INT NOT NULL,
+                reason TEXT,
+                archived_by INT,
+                archived_at DATETIME,
+                INDEX (product_id)
+            )");
             $conn->query("INSERT INTO product_archive_log (product_id, reason, archived_by, archived_at)
-                          VALUES ({$id}, '{$reason}', {$uid}, NOW())
-                          ON DUPLICATE KEY UPDATE reason=VALUES(reason), archived_at=NOW()");
-            if ($conn->error) {
-                // Table may not exist yet — create it on the fly
-                $conn->query("CREATE TABLE IF NOT EXISTS product_archive_log (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    product_id INT NOT NULL,
-                    reason TEXT,
-                    archived_by INT,
-                    archived_at DATETIME,
-                    INDEX (product_id)
-                )");
-                $conn->query("INSERT INTO product_archive_log (product_id, reason, archived_by, archived_at)
-                              VALUES ({$id}, '{$reason}', {$uid}, NOW())");
-            }
+                          VALUES ({$id}, '{$reason}', {$uid}, NOW())");
             redirect('products.php', 'success', 'Product archived successfully.');
         } else {
             redirect('products.php', 'error', 'Invalid product.');
@@ -2022,23 +2016,20 @@ $activePage = 'products';
             });
         }
 
-        // ── Auto-dismiss flash messages ──────────────────────────────
-        document.querySelectorAll('.flash-msg, [class*="alert-"], [class*="flash-"]').forEach(el => {
+        // ── Auto-dismiss flash messages (1.5s) ───────────────────────
+        function autoDismiss(el) {
+            if (!el) return;
             setTimeout(() => {
-                el.style.transition = 'opacity 0.5s ease';
+                el.style.transition = 'opacity 0.4s ease';
                 el.style.opacity = '0';
-                setTimeout(() => el.remove(), 520);
-            }, 4000);
-        });
-        // Also target the flash output from flash() helper
+                setTimeout(() => el.remove(), 420);
+            }, 1500);
+        }
         document.addEventListener('DOMContentLoaded', () => {
-            // Generic: any div with success/error background rendered by flash()
-            document.querySelectorAll('[style*="background:#d1fae5"],[style*="background:#fee2e2"],[style*="background: #d1fae5"],[style*="background: #fee2e2"]').forEach(el => {
-                setTimeout(() => {
-                    el.style.transition = 'opacity 0.5s ease';
-                    el.style.opacity = '0';
-                    setTimeout(() => el.remove(), 520);
-                }, 4000);
+            document.querySelectorAll('.flash-msg, .flash-success, .flash-error, .alert, .alert-success, .alert-error').forEach(autoDismiss);
+            document.querySelectorAll('div[style]').forEach(el => {
+                const s = el.getAttribute('style') || '';
+                if (s.includes('#d1fae5') || s.includes('#fee2e2') || s.includes('#fef3c7')) autoDismiss(el);
             });
         });
 
