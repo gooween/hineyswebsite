@@ -1,8 +1,18 @@
 <?php
 session_start();
 require_once '../config/db.php';
-$isLoggedIn = !empty($_SESSION['user_id']);
 
+// ── PHPMailer ─────────────────────────────────────────────────
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+require_once '../lib/phpmailer/PHPMailer.php';
+require_once '../lib/phpmailer/SMTP.php';
+require_once '../lib/phpmailer/Exception.php';
+require_once '../config/mail.php';
+
+$isLoggedIn = !empty($_SESSION['user_id']);
 $activePage = 'contact';
 $cartItems  = $isLoggedIn ? cartCount($conn) : 0;
 
@@ -19,14 +29,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$name || !$message) {
         $_SESSION['contact_error'] = 'Name and message are required.';
     } else {
+        // 1. Save to DB
         $stmt = $conn->prepare("INSERT INTO contacts (name, email, phone, subject, message, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())");
         $stmt->bind_param('sssss', $name, $email, $phone, $subject, $message);
-        if ($stmt->execute()) {
+        $dbOk = $stmt->execute();
+        $stmt->close();
+
+        // 2. Send email via PHPMailer
+        $mailSent = false;
+        $mailError = '';
+        if ($dbOk) {
+            try {
+                $mail = new PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host       = MAIL_HOST;
+                $mail->SMTPAuth   = true;
+                $mail->Username   = MAIL_USERNAME;
+                $mail->Password   = MAIL_PASSWORD;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = MAIL_PORT;
+
+                $mail->setFrom(MAIL_USERNAME, MAIL_FROM_NAME);
+                $mail->addAddress(MAIL_TO_ADDRESS, MAIL_TO_NAME);
+                if ($email) $mail->addReplyTo($email, $name);
+
+                $mail->isHTML(true);
+                $mail->Subject = $subject ? "[Contact] {$subject}" : "[Contact] New message from {$name}";
+                $mail->Body    = "
+                    <div style='font-family:Segoe UI,sans-serif;max-width:560px;margin:0 auto;'>
+                        <div style='background:linear-gradient(135deg,#1a252f,#2c3e50);padding:24px 28px;border-radius:10px 10px 0 0;'>
+                            <h2 style='color:#fff;margin:0;font-size:1.2rem;'>New Contact Message</h2>
+                            <p style='color:#8fa3b3;margin:4px 0 0;font-size:0.85rem;'>Hiney's Eggs &amp; Live Chicken — Website Contact Form</p>
+                        </div>
+                        <div style='background:#fff;padding:24px 28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;'>
+                            <table style='width:100%;border-collapse:collapse;font-size:0.9rem;'>
+                                <tr><td style='padding:8px 0;color:#6b7280;width:110px;font-weight:600;'>Name</td><td style='padding:8px 0;color:#111827;font-weight:700;'>" . htmlspecialchars($name) . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Email</td><td style='padding:8px 0;color:#111827;'>" . ($email ? htmlspecialchars($email) : '—') . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Phone</td><td style='padding:8px 0;color:#111827;'>" . ($phone ? htmlspecialchars($phone) : '—') . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Subject</td><td style='padding:8px 0;color:#111827;'>" . ($subject ? htmlspecialchars($subject) : '—') . "</td></tr>
+                            </table>
+                            <hr style='border:none;border-top:1px solid #e5e7eb;margin:16px 0;'>
+                            <p style='color:#6b7280;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;'>Message</p>
+                            <p style='color:#374151;line-height:1.7;white-space:pre-wrap;'>" . htmlspecialchars($message) . "</p>
+                        </div>
+                        <p style='text-align:center;color:#9ca3af;font-size:0.75rem;margin-top:12px;'>Sent from hineyseggs.com contact form</p>
+                    </div>
+                ";
+                $mail->AltBody = "Name: {$name}\nEmail: {$email}\nPhone: {$phone}\nSubject: {$subject}\n\nMessage:\n{$message}";
+                $mail->send();
+                $mailSent = true;
+            } catch (Exception $e) {
+                $mailError = $mail->ErrorInfo;
+            }
+        }
+
+        if ($dbOk) {
             $_SESSION['contact_success'] = 'Your message has been sent! We\'ll get back to you soon. 😊';
         } else {
             $_SESSION['contact_error'] = 'Something went wrong. Please try again.';
         }
-        $stmt->close();
     }
     header('Location: contact.php');
     exit;
@@ -200,7 +261,7 @@ $prefillEmail = $_SESSION['email']     ?? '';
             --shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
             --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10), 0 24px 48px rgba(0, 0, 0, 0.08);
             --navbar-h: 64px;
-            --transition: 0.2s ease;
+            --transition: 0.2s ease
         }
 
         html {
@@ -219,12 +280,11 @@ $prefillEmail = $_SESSION['email']     ?? '';
             color: inherit
         }
 
-        /* Page header */
         .page-header {
             background: linear-gradient(135deg, #1a1a2e 0%, #2c3e50 100%);
             padding: 52px 0 56px;
             position: relative;
-            overflow: hidden;
+            overflow: hidden
         }
 
         .page-header::before {
@@ -232,25 +292,20 @@ $prefillEmail = $_SESSION['email']     ?? '';
             position: absolute;
             inset: 0;
             background: radial-gradient(ellipse 600px 400px at 80% 50%, rgba(230, 126, 34, 0.15) 0%, transparent 70%);
-            z-index: 0;
+            z-index: 0
         }
 
-        /* chicken_meat.png background */
         .page-header-bg {
             position: absolute;
             inset: 0;
-            background: url('../assets/images/chicken_meat.png') center center / cover no-repeat;
+            background: url('../assets/images/chicken_meat.png') center center/cover no-repeat;
             opacity: 0.15;
             mix-blend-mode: luminosity;
-            -webkit-mask-image:
-                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
-                linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
             -webkit-mask-composite: destination-in;
-            mask-image:
-                linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
-                linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
             mask-composite: intersect;
-            z-index: 0;
+            z-index: 0
         }
 
         .page-header-inner {
@@ -262,7 +317,7 @@ $prefillEmail = $_SESSION['email']     ?? '';
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 24px;
+            gap: 24px
         }
 
         .page-breadcrumb {
@@ -324,7 +379,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
             }
         }
 
-        /* Layout */
         .page-body {
             max-width: 1100px;
             margin: 0 auto;
@@ -355,7 +409,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
             }
         }
 
-        /* Form card */
         .form-card {
             background: var(--card-bg);
             border-radius: var(--radius);
@@ -526,7 +579,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
             box-shadow: 0 8px 24px rgba(230, 126, 34, 0.4)
         }
 
-        /* Sidebar */
         .contact-sidebar {
             display: flex;
             flex-direction: column;
@@ -791,11 +843,7 @@ $prefillEmail = $_SESSION['email']     ?? '';
         <div class="page-header-bg"></div>
         <div class="page-header-inner">
             <div class="page-header-text">
-                <div class="page-breadcrumb">
-                    <a href="home.php">Home</a>
-                    <span>/</span>
-                    <span>Contact</span>
-                </div>
+                <div class="page-breadcrumb"><a href="home.php">Home</a><span>/</span><span>Contact</span></div>
                 <h1 class="page-title">Get in <span class="page-title-accent">Touch</span></h1>
                 <p class="page-sub">Questions, bulk orders, or feedback? We'd love to hear from you.</p>
             </div>
@@ -804,8 +852,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
     </div>
 
     <div class="page-body">
-
-        <!-- Form -->
         <div>
             <div class="form-card">
                 <div class="form-card-header">
@@ -813,19 +859,11 @@ $prefillEmail = $_SESSION['email']     ?? '';
                     <div class="form-card-sub">Fill out the form below and we'll respond within 24 hours.</div>
                 </div>
                 <div class="contact-form">
-
                     <?php if ($success): ?>
-                        <div class="alert alert-success">
-                            <span class="alert-icon"><i class="fa-solid fa-circle-check"></i></span>
-                            <span><?= htmlspecialchars($success) ?></span>
-                        </div>
+                        <div class="alert alert-success"><span class="alert-icon"><i class="fa-solid fa-circle-check"></i></span><span><?= htmlspecialchars($success) ?></span></div>
                     <?php endif; ?>
-
                     <?php if ($error): ?>
-                        <div class="alert alert-error">
-                            <span class="alert-icon"><i class="fa-solid fa-circle-xmark"></i></span>
-                            <span><?= htmlspecialchars($error) ?></span>
-                        </div>
+                        <div class="alert alert-error"><span class="alert-icon"><i class="fa-solid fa-circle-xmark"></i></span><span><?= htmlspecialchars($error) ?></span></div>
                     <?php endif; ?>
 
                     <form method="POST" action="contact.php" novalidate id="contactForm">
@@ -873,7 +911,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
             </div>
         </div>
 
-        <!-- Sidebar -->
         <div class="contact-sidebar">
             <div class="info-card">
                 <div class="info-card-top">
@@ -885,45 +922,40 @@ $prefillEmail = $_SESSION['email']     ?? '';
                 <div class="info-card-body">
                     <div class="contact-info-item">
                         <div class="ci-icon ci-orange"><i class="fa-solid fa-location-dot"></i></div>
-                        <div class="ci-content">
+                        <div>
                             <div class="ci-label">Address</div>
                             <div class="ci-value">Loreto Cortes, Bohol 6341</div>
                         </div>
                     </div>
                     <div class="contact-info-item">
                         <div class="ci-icon ci-green"><i class="fa-solid fa-phone"></i></div>
-                        <div class="ci-content">
+                        <div>
                             <div class="ci-label">Phone / SMS</div>
                             <div class="ci-value">0912-345-6789</div>
                         </div>
                     </div>
                     <div class="contact-info-item">
                         <div class="ci-icon ci-blue"><i class="fa-solid fa-envelope"></i></div>
-                        <div class="ci-content">
+                        <div>
                             <div class="ci-label">Email</div>
                             <div class="ci-value">hineys.eggs@gmail.com</div>
                         </div>
                     </div>
                     <div class="contact-info-item">
                         <div class="ci-icon ci-purple"><i class="fa-solid fa-comment"></i></div>
-                        <div class="ci-content">
+                        <div>
                             <div class="ci-label">Facebook</div>
                             <div class="ci-value">fb.com/HineysEggs</div>
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="hours-card">
-                <div class="hours-title">
-                    <i class="fa-solid fa-clock"></i> Business Hours
-                    <span class="badge-open">Open Now</span>
-                </div>
+                <div class="hours-title"><i class="fa-solid fa-clock"></i> Business Hours <span class="badge-open">Open Now</span></div>
                 <div class="hours-row"><span class="hours-day">Monday – Friday</span><span class="hours-time">6:00 AM – 6:00 PM</span></div>
                 <div class="hours-row"><span class="hours-day">Saturday</span><span class="hours-time">6:00 AM – 5:00 PM</span></div>
                 <div class="hours-row"><span class="hours-day">Sunday</span><span class="hours-time">7:00 AM – 12:00 PM</span></div>
             </div>
-
             <div class="map-card">
                 <div class="map-placeholder">
                     <div class="map-emoji"><i class="fa-solid fa-map"></i></div>
@@ -932,7 +964,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
                 <div class="map-card-body"><i class="fa-solid fa-location-dot"></i> We serve customers within Loreto, Cortes, Bohol. Delivery time may vary by barangay.</div>
             </div>
         </div>
-
     </div>
 
     <footer class="site-footer">
@@ -948,7 +979,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
             counter.textContent = len + ' / 2000';
             counter.classList.toggle('warn', len > 1800);
         }
-
         document.getElementById('contactForm').addEventListener('submit', function() {
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
@@ -956,7 +986,6 @@ $prefillEmail = $_SESSION['email']     ?? '';
             document.getElementById('submitIcon').innerHTML = '<i class="fa-solid fa-clock"></i>';
             document.getElementById('submitLabel').textContent = 'Sending…';
         });
-
         const successAlert = document.querySelector('.alert-success');
         if (successAlert) {
             setTimeout(() => {
@@ -965,13 +994,12 @@ $prefillEmail = $_SESSION['email']     ?? '';
                 setTimeout(() => successAlert.remove(), 520);
             }, 6000);
         }
-
         (function() {
             const badge = document.querySelector('.badge-open');
             if (!badge) return;
-            const now = new Date();
-            const day = now.getDay();
-            const hour = now.getHours() + now.getMinutes() / 60;
+            const now = new Date(),
+                day = now.getDay(),
+                hour = now.getHours() + now.getMinutes() / 60;
             let isOpen = false;
             if (day >= 1 && day <= 5) isOpen = hour >= 6 && hour < 18;
             else if (day === 6) isOpen = hour >= 6 && hour < 17;

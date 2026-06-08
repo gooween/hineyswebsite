@@ -1,14 +1,7 @@
 <?php
-// ============================================================
-// Hiney's Eggs and Live Chicken Business
-// File: user/product_detail.php
-// Purpose: Single product detail page — PUBLIC (login only for cart)
-// ============================================================
-
 session_start();
 require_once '../config/db.php';
 $isLoggedIn = !empty($_SESSION['user_id']);
-
 $activePage = 'products';
 $cartItems  = $isLoggedIn ? cartCount($conn) : 0;
 
@@ -22,11 +15,13 @@ $stmt = $conn->prepare("
     SELECT p.id, p.name, p.description, p.price, p.unit, p.image_url,
            p.is_active, p.created_at,
            c.id AS cat_id, c.name AS category,
-           COALESCE(i.quantity, 0) AS stock,
-           i.reorder_level
+           COALESCE((
+               SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
+               FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active'
+           ), 0) AS stock,
+           10 AS reorder_level
     FROM products p
     JOIN categories c ON c.id = p.category_id
-    LEFT JOIN inventory i ON i.product_id = p.id
     WHERE p.id = ? AND p.is_active = 1
     LIMIT 1
 ");
@@ -43,10 +38,12 @@ if (!$p) {
 $related = $conn->query("
     SELECT p.id, p.name, p.price, p.unit, p.image_url,
            c.name AS category,
-           COALESCE(i.quantity, 0) AS stock
+           COALESCE((
+               SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
+               FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active'
+           ), 0) AS stock
     FROM products p
     JOIN categories c ON c.id = p.category_id
-    LEFT JOIN inventory i ON i.product_id = p.id
     WHERE p.category_id = {$p['cat_id']}
       AND p.id != {$p['id']}
       AND p.is_active = 1
@@ -226,7 +223,7 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             --shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
             --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10), 0 24px 48px rgba(0, 0, 0, 0.08);
             --navbar-h: 68px;
-            --transition: 0.2s ease;
+            --transition: 0.2s ease
         }
 
         html {
@@ -307,7 +304,6 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             }
         }
 
-        /* Image panel */
         .product-image-panel {
             position: sticky;
             top: calc(var(--navbar-h) + 20px)
@@ -324,8 +320,7 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             position: relative;
             overflow: hidden;
             box-shadow: var(--shadow-lg);
-            margin-bottom: 0;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border)
         }
 
         .thumb-egg {
@@ -390,7 +385,7 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             font-weight: 700;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
             white-space: nowrap;
-            z-index: 2;
+            z-index: 2
         }
 
         .stock-dot {
@@ -400,7 +395,6 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             background: <?= $stockColor ?>
         }
 
-        /* Info panel */
         .product-category-tag {
             display: inline-flex;
             align-items: center;
@@ -715,6 +709,16 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             letter-spacing: -0.02em
         }
 
+        .out-of-stock-notice {
+            text-align: center;
+            padding: 20px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            color: #ef4444;
+            font-weight: 700
+        }
+
         .trust-badges {
             display: flex;
             gap: 10px;
@@ -735,7 +739,6 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             border-radius: 20px
         }
 
-        /* Related */
         .related-section {
             padding: 48px 0 60px;
             background: #f3f4f6;
@@ -1033,12 +1036,9 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
         <div class="breadcrumb-strip">
             <div class="container">
                 <div class="breadcrumb">
-                    <a href="home.php">Home</a>
-                    <span class="breadcrumb-sep">›</span>
-                    <a href="products.php">Products</a>
-                    <span class="breadcrumb-sep">›</span>
-                    <a href="products.php?category=<?= $p['cat_id'] ?>"><?= htmlspecialchars($p['category']) ?></a>
-                    <span class="breadcrumb-sep">›</span>
+                    <a href="home.php">Home</a><span class="breadcrumb-sep">›</span>
+                    <a href="products.php">Products</a><span class="breadcrumb-sep">›</span>
+                    <a href="products.php?category=<?= $p['cat_id'] ?>"><?= htmlspecialchars($p['category']) ?></a><span class="breadcrumb-sep">›</span>
                     <span class="breadcrumb-current"><?= htmlspecialchars($p['name']) ?></span>
                 </div>
             </div>
@@ -1063,7 +1063,7 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
                                 <span class="stock-dot"></span>
                                 <span><?= $stockLbl ?></span>
                                 <?php if ($stock > 0): ?>
-                                    &nbsp;·&nbsp; <span style="color:var(--text-muted)"><?= number_format($stock) ?> available</span>
+                                    &nbsp;·&nbsp;<span style="color:var(--text-muted)"><?= number_format($stock) ?> available</span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -1071,7 +1071,6 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
 
                     <!-- RIGHT: Info -->
                     <div class="product-info-panel">
-
                         <div class="product-category-tag"><?= $emoji ?> <?= htmlspecialchars($p['category']) ?></div>
                         <h1 class="product-title"><?= htmlspecialchars($p['name']) ?></h1>
 
@@ -1129,8 +1128,8 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
                                     <span class="subtotal-value" id="subtotalDisplay">₱<?= number_format((float)$p['price'], 2) ?></span>
                                 </div>
                             <?php else: ?>
-                                <div style="text-align:center;padding:20px;color:#ef4444;font-weight:700;">
-                                    <i class="fa-solid fa-triangle-exclamation"></i> This product is currently out of stock.
+                                <div class="out-of-stock-notice">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> This product is currently out of stock. Check back soon!
                                 </div>
                             <?php endif; ?>
                             <div class="trust-badges">
@@ -1140,7 +1139,6 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
                                 <span class="trust-badge"><i class="fa-solid fa-lock"></i> Secure Order</span>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -1187,11 +1185,9 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             Loreto Cortes, Bohol &nbsp;·&nbsp;
             <a href="contact.php">Contact Us</a>
         </footer>
-
     </div>
 
     <div class="toast-wrap" id="toastWrap"></div>
-
     <div class="login-prompt-overlay" id="loginPrompt" onclick="if(event.target===this)closeLoginPrompt()">
         <div class="login-prompt-box">
             <button class="btn-close-prompt" onclick="closeLoginPrompt()">✕</button>
@@ -1225,24 +1221,21 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
 
         function adjustQty(delta) {
             const input = document.getElementById('qtyInput');
-            let val = parseInt(input.value) || 1;
-            val = Math.max(1, Math.min(MAX_STOCK, val + delta));
+            let val = Math.max(1, Math.min(MAX_STOCK, (parseInt(input.value) || 1) + delta));
             input.value = val;
             updateSubtotal();
         }
 
         function updateSubtotal() {
             const input = document.getElementById('qtyInput');
-            let val = parseInt(input.value) || 1;
-            val = Math.max(1, Math.min(MAX_STOCK, val));
+            let val = Math.max(1, Math.min(MAX_STOCK, parseInt(input.value) || 1));
             input.value = val;
-            document.getElementById('subtotalDisplay').textContent =
-                '₱' + (PRICE * val).toLocaleString('en-PH', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-            const btnM = document.getElementById('btnMinus');
-            const btnP = document.getElementById('btnPlus');
+            document.getElementById('subtotalDisplay').textContent = '₱' + (PRICE * val).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            const btnM = document.getElementById('btnMinus'),
+                btnP = document.getElementById('btnPlus');
             if (btnM) btnM.disabled = val <= 1;
             if (btnP) btnP.disabled = val >= MAX_STOCK;
         }
@@ -1257,7 +1250,7 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
             const btn = document.getElementById('btnAddCart');
             if (btn) {
                 btn.disabled = true;
-                btn.textContent = 'Adding…';
+                btn.innerHTML = '<i class="fa-solid fa-clock"></i> Adding…';
             }
             fetch('cart_action.php', {
                     method: 'POST',
