@@ -55,7 +55,6 @@ if (count($cartData) === 0) {
     redirect('cart.php', 'warning', 'Your cart is empty. Add some products first!');
 }
 
-// ── Handle POST ───────────────────────────────────────────────
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -67,34 +66,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actualDeliveryFee = $deliveryType === 'pickup' ? 0.00 : $deliveryFee;
     $grandTotal        = $cartTotal + $actualDeliveryFee;
 
-    if ($deliveryType === 'delivery' && !$deliveryAddress) {
+    if ($deliveryType === 'delivery' && !$deliveryAddress)
         $errors[] = 'Delivery address is required.';
-    }
-    if (!in_array($paymentMethod, ['cod', 'gcash'])) {
+    if (!in_array($paymentMethod, ['cod', 'gcash']))
         $errors[] = 'Please select a payment method.';
-    }
 
-    // Stock check
     foreach ($cartData as $item) {
-        if ((int)$item['quantity'] > (int)$item['stock']) {
+        if ((int)$item['quantity'] > (int)$item['stock'])
             $errors[] = htmlspecialchars($item['name']) . ' only has ' . $item['stock'] . ' units available.';
-        }
     }
-
-    // Per piece minimum check
     foreach ($cartData as $item) {
-        if (strtolower($item['unit']) === 'per piece' && (int)$item['quantity'] < 12) {
+        if (strtolower($item['unit']) === 'per piece' && (int)$item['quantity'] < 12)
             $errors[] = htmlspecialchars($item['name']) . ' requires a minimum of 12 pieces (1 dozen). Currently: ' . $item['quantity'] . '.';
-        }
     }
 
     if (empty($errors)) {
         $conn->begin_transaction();
         try {
-            $finalAddress = $deliveryType === 'pickup'
-                ? 'PICKUP — ' . $pickupAddress
-                : $deliveryAddress;
-
+            $finalAddress = $deliveryType === 'pickup' ? 'PICKUP — ' . $pickupAddress : $deliveryAddress;
             $pmFull = $paymentMethod === 'gcash' ? 'gcash' : 'cod';
 
             $stmt = $conn->prepare("
@@ -112,13 +101,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $price    = (float)$item['price'];
                 $subtotal = $price * $qty;
 
+                // Insert order item
                 $stmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)");
                 $stmt->bind_param('iiidd', $orderId, $pid, $qty, $price, $subtotal);
                 $stmt->execute();
                 $stmt->close();
 
+                // ── FIFO deduction from stock_batches ──────────────────
+                $remaining = $qty;
+                $batches = $conn->query("
+                    SELECT id, remaining FROM stock_batches
+                    WHERE product_id = {$pid} AND status = 'active' AND remaining > 0
+                    ORDER BY created_at ASC
+                ");
+                while ($remaining > 0 && $batch = $batches->fetch_assoc()) {
+                    $bid       = (int)$batch['id'];
+                    $avail     = (int)$batch['remaining'];
+                    $deduct    = min($remaining, $avail);
+                    $newLeft   = $avail - $deduct;
+                    $newStatus = $newLeft <= 0 ? 'depleted' : 'active';
+                    $conn->query("UPDATE stock_batches SET remaining = {$newLeft}, status = '{$newStatus}' WHERE id = {$bid}");
+                    $conn->query("INSERT INTO batch_consumption (batch_id, order_id, quantity) VALUES ({$bid}, {$orderId}, {$deduct})");
+                    $remaining -= $deduct;
+                }
+
+                // Keep inventory table in sync
                 $conn->query("UPDATE inventory SET quantity = quantity - {$qty} WHERE product_id = {$pid} AND quantity >= {$qty}");
 
+                // Log the deduction
                 $reason = "Order #{$orderId} — {$item['name']} x{$qty}";
                 $stmt = $conn->prepare("INSERT INTO inventory_logs (product_id, type, quantity, reason, created_by, created_at) VALUES (?, 'out', ?, ?, ?, NOW())");
                 $stmt->bind_param('iisi', $pid, $qty, $reason, $uid);
@@ -1038,16 +1048,10 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
 
 <body>
     <div class="page-body">
-
         <?php include '../includes/navbar.php'; ?>
-
         <div class="page-banner">
             <div class="page-banner-inner">
-                <div class="breadcrumb">
-                    <a href="home.php">Home</a><span class="breadcrumb-sep">›</span>
-                    <a href="cart.php">Cart</a><span class="breadcrumb-sep">›</span>
-                    <span>Checkout</span>
-                </div>
+                <div class="breadcrumb"><a href="home.php">Home</a><span class="breadcrumb-sep">›</span><a href="cart.php">Cart</a><span class="breadcrumb-sep">›</span><span>Checkout</span></div>
                 <div class="page-banner-title">Checkout</div>
                 <div class="page-banner-sub">Complete your order below</div>
                 <div class="checkout-steps">
@@ -1065,23 +1069,16 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                 </div>
             </div>
         </div>
-
         <?= flash() ?>
-
         <div class="container">
             <div class="checkout-layout">
-
-                <!-- LEFT -->
                 <div>
                     <?php if (!empty($errors)): ?>
-                        <div class="alert-error">
-                            <strong>Please fix the following errors:</strong>
+                        <div class="alert-error"><strong>Please fix the following errors:</strong>
                             <ul><?php foreach ($errors as $e): ?><li><?= $e ?></li><?php endforeach; ?></ul>
                         </div>
                     <?php endif; ?>
-
                     <form method="POST" action="checkout.php" id="checkoutForm">
-
                         <!-- 1. Contact Info -->
                         <div class="form-card">
                             <div class="form-card-header">
@@ -1090,25 +1087,15 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                             </div>
                             <div class="form-card-body">
                                 <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label">Full Name</label>
-                                        <input type="text" class="form-input" readonly value="<?= htmlspecialchars($user['full_name'] ?? '') ?>">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Email</label>
-                                        <input type="email" class="form-input" readonly value="<?= htmlspecialchars($user['email'] ?? '') ?>">
-                                    </div>
+                                    <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" readonly value="<?= htmlspecialchars($user['full_name'] ?? '') ?>"></div>
+                                    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" readonly value="<?= htmlspecialchars($user['email'] ?? '') ?>"></div>
                                 </div>
                                 <div class="form-row single">
-                                    <div class="form-group">
-                                        <label class="form-label">Phone Number</label>
-                                        <input type="text" class="form-input" readonly value="<?= htmlspecialchars($user['phone'] ?? 'Not set') ?>">
-                                    </div>
+                                    <div class="form-group"><label class="form-label">Phone Number</label><input type="text" class="form-input" readonly value="<?= htmlspecialchars($user['phone'] ?? 'Not set') ?>"></div>
                                 </div>
                                 <div class="form-hint">To update contact info, go to <a href="profile.php" style="color:var(--primary);font-weight:600;">My Profile</a>.</div>
                             </div>
                         </div>
-
                         <!-- 2. Delivery -->
                         <div class="form-card">
                             <div class="form-card-header">
@@ -1152,7 +1139,6 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                                 </div>
                             </div>
                         </div>
-
                         <!-- 3. Payment -->
                         <div class="form-card">
                             <div class="form-card-header">
@@ -1196,17 +1182,15 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                                             <div class="gcash-step-num">3</div><span>Send payment to <strong><?= htmlspecialchars($gcashNumber) ?></strong> (<?= htmlspecialchars($gcashName) ?>) and upload screenshot in My Orders.</span>
                                         </div>
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">4</div><span>Admin verifies and marks as paid. <i class="fa-solid fa-champagne-glasses"></i></span>
+                                            <div class="gcash-step-num">4</div><span>Admin verifies and marks as paid.</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                         <button type="submit" id="hiddenSubmit" style="display:none;"></button>
                     </form>
                 </div>
-
                 <!-- RIGHT — Summary -->
                 <div class="summary-card">
                     <div class="summary-header"><i class="fa-solid fa-cart-shopping"></i> Order Summary</div>
@@ -1218,43 +1202,22 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                         ?>
                             <div class="summary-item">
                                 <div class="summary-item-thumb <?= $siCls ?>">
-                                    <?php if (!empty($item['image_url'])): ?>
-                                        <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
-                                    <?php else: ?>
-                                        <?= $emoji ?>
-                                    <?php endif; ?>
+                                    <?php if (!empty($item['image_url'])): ?><img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['name']) ?>"><?php else: ?><?= $emoji ?><?php endif; ?>
                                 </div>
-                                <div class="summary-item-name">
-                                    <?= htmlspecialchars($item['name']) ?>
-                                    <div class="summary-item-qty">x<?= $item['quantity'] ?> · <?= htmlspecialchars($item['unit']) ?></div>
+                                <div class="summary-item-name"><?= htmlspecialchars($item['name']) ?><div class="summary-item-qty">x<?= $item['quantity'] ?> · <?= htmlspecialchars($item['unit']) ?></div>
                                 </div>
                                 <div class="summary-item-price">₱<?= number_format($item['subtotal'], 2) ?></div>
                             </div>
                         <?php endforeach; ?>
                     </div>
-
                     <div class="summary-totals">
-                        <div class="total-row">
-                            <span class="total-row-label">Subtotal</span>
-                            <span class="total-row-value">₱<?= number_format($cartTotal, 2) ?></span>
-                        </div>
-                        <div class="total-row">
-                            <span class="total-row-label">Delivery Fee</span>
-                            <span class="total-row-value" id="summaryDeliveryFee">
-                                <?= $selectedDeliveryType === 'pickup' ? '<span class="free-badge">✓ FREE</span>' : '₱' . number_format($deliveryFee, 2) ?>
-                            </span>
-                        </div>
+                        <div class="total-row"><span class="total-row-label">Subtotal</span><span class="total-row-value">₱<?= number_format($cartTotal, 2) ?></span></div>
+                        <div class="total-row"><span class="total-row-label">Delivery Fee</span><span class="total-row-value" id="summaryDeliveryFee"><?= $selectedDeliveryType === 'pickup' ? '<span class="free-badge">✓ FREE</span>' : '₱' . number_format($deliveryFee, 2) ?></span></div>
                         <div class="total-divider"></div>
-                        <div class="grand-total-row">
-                            <span class="grand-total-label">Total</span>
-                            <span class="grand-total-value" id="summaryGrandTotal">₱<?= number_format($grandTotal, 2) ?></span>
-                        </div>
+                        <div class="grand-total-row"><span class="grand-total-label">Total</span><span class="grand-total-value" id="summaryGrandTotal">₱<?= number_format($grandTotal, 2) ?></span></div>
                     </div>
-
                     <div class="summary-footer">
-                        <button class="btn-place-order" id="btnPlaceOrder" onclick="submitOrder()">
-                            ✓ Place Order — <span id="btnTotal">₱<?= number_format($grandTotal, 2) ?></span>
-                        </button>
+                        <button class="btn-place-order" id="btnPlaceOrder" onclick="submitOrder()">✓ Place Order — <span id="btnTotal">₱<?= number_format($grandTotal, 2) ?></span></button>
                         <button class="btn-back-cart" onclick="location.href='cart.php'">← Back to Cart</button>
                         <div class="trust-row">
                             <div class="trust-item"><i class="fa-solid fa-lock"></i> Secure</div>
@@ -1263,17 +1226,10 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
-
-        <footer class="site-footer">
-            &copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp;
-            Loreto Cortes, Bohol &nbsp;·&nbsp;
-            <a href="contact.php">Contact Us</a>
-        </footer>
+        <footer class="site-footer">&copy; <?= date('Y') ?> Hiney's Eggs &amp; Live Chicken Business &nbsp;·&nbsp; Loreto Cortes, Bohol &nbsp;·&nbsp; <a href="contact.php">Contact Us</a></footer>
     </div>
-
     <script>
         const CART_TOTAL = <?= $cartTotal ?>;
         const DELIVERY_FEE = <?= $deliveryFee ?>;
@@ -1327,7 +1283,6 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
             btn.textContent = 'Placing order…';
             document.getElementById('checkoutForm').submit();
         }
-
         document.addEventListener('DOMContentLoaded', function() {
             selectDelivery(document.querySelector('input[name="delivery_type"]:checked')?.value || 'delivery');
             selectPayment(document.querySelector('input[name="payment_method"]:checked')?.value || 'cod');

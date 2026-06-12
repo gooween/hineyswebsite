@@ -931,14 +931,14 @@ $prefillEmail = $_SESSION['email']     ?? '';
                         <div class="ci-icon ci-green"><i class="fa-solid fa-phone"></i></div>
                         <div>
                             <div class="ci-label">Phone / SMS</div>
-                            <div class="ci-value">0912-345-6789</div>
+                            <div class="ci-value">+63 963 692 3722</div>
                         </div>
                     </div>
                     <div class="contact-info-item">
                         <div class="ci-icon ci-blue"><i class="fa-solid fa-envelope"></i></div>
                         <div>
                             <div class="ci-label">Email</div>
-                            <div class="ci-value">hineys.eggs@gmail.com</div>
+                            <div class="ci-value">hineyseggschicken@gmail.com</div>
                         </div>
                     </div>
                     <div class="contact-info-item">

@@ -18,10 +18,12 @@ if ($isLoggedIn && isset($conn) && function_exists('cartCount')) {
 
 $base = '../';
 ?>
+<link rel="icon" type="image/png" href="<?= $base ?>assets/images/hineys_logo.png">
+<link rel="apple-touch-icon" href="<?= $base ?>assets/images/hineys_logo.png">
+<link rel="icon" type="image/png" href="/assets/images/hineys_logo.png?v=2">
 <!-- Font Awesome 6 CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style id="hineys-icon-colors">
-    /* === Hiney's icon colors === */
     .navbar .fa-solid,
     .mobile-drawer .fa-solid,
     .sidebar .fa-solid,
@@ -40,15 +42,15 @@ $base = '../';
     .user-chip .fa-solid,
     .info-card-top .fa-solid,
     .sidebar-logout .fa-solid {
-        color: inherit !important;
+        color: inherit !important
     }
 
     .fa-egg {
-        color: #f4a72c;
+        color: #f4a72c
     }
 
     .fa-drumstick-bite {
-        color: #c2703b;
+        color: #c2703b
     }
 
     .fa-circle-check,
@@ -57,7 +59,7 @@ $base = '../';
     .fa-leaf,
     .fa-seedling,
     .fa-phone {
-        color: #10b981;
+        color: #10b981
     }
 
     .fa-circle-xmark,
@@ -65,25 +67,25 @@ $base = '../';
     .fa-trash,
     .fa-ban,
     .fa-location-dot {
-        color: #ef4444;
+        color: #ef4444
     }
 
     .fa-cart-shopping,
     .fa-bag-shopping,
     .fa-store,
     .fa-shop {
-        color: #e67e22;
+        color: #e67e22
     }
 
     .fa-truck {
-        color: #f97316;
+        color: #f97316
     }
 
     .fa-triangle-exclamation,
     .fa-circle-exclamation,
     .fa-clock,
     .fa-star {
-        color: #f59e0b;
+        color: #f59e0b
     }
 
     .fa-info-circle,
@@ -96,19 +98,19 @@ $base = '../';
     .fa-comment,
     .fa-map,
     .fa-paperclip {
-        color: #3b82f6;
+        color: #3b82f6
     }
 
     .fa-sack-dollar,
     .fa-money-bill,
     .fa-money-bill-transfer {
-        color: #16a34a;
+        color: #16a34a
     }
 
     .fa-users,
     .fa-user,
     .fa-user-plus {
-        color: #6366f1;
+        color: #6366f1
     }
 
     .fa-box,
@@ -118,26 +120,26 @@ $base = '../';
     .fa-receipt,
     .fa-clipboard-list,
     .fa-file-lines {
-        color: #8b5cf6;
+        color: #8b5cf6
     }
 
     .fa-chart-bar,
     .fa-chart-line,
     .fa-chart-pie,
     .fa-gauge-high {
-        color: #0ea5e9;
+        color: #0ea5e9
     }
 
     .fa-heart {
-        color: #ef4444;
+        color: #ef4444
     }
 
     .fa-gear {
-        color: #6b7280;
+        color: #6b7280
     }
 
     .fa-lightbulb {
-        color: #f59e0b;
+        color: #f59e0b
     }
 </style>
 
@@ -162,16 +164,15 @@ $base = '../';
     *::after {
         box-sizing: border-box;
         margin: 0;
-        padding: 0;
+        padding: 0
     }
 
     body {
         font-family: 'Segoe UI', system-ui, sans-serif;
         background: var(--bg);
-        color: var(--text);
+        color: var(--text)
     }
 
-    /* ── Navbar ── */
     .navbar {
         position: sticky;
         top: 0;
@@ -182,7 +183,7 @@ $base = '../';
         padding: 0 28px;
         gap: 8px;
         box-shadow: var(--shadow-nav);
-        z-index: 1000;
+        z-index: 1000
     }
 
     .nav-brand {
@@ -191,7 +192,7 @@ $base = '../';
         gap: 10px;
         text-decoration: none;
         margin-right: 16px;
-        flex-shrink: 0;
+        flex-shrink: 0
     }
 
     .nav-brand-logo {
@@ -199,24 +200,24 @@ $base = '../';
         height: 40px;
         border-radius: 10px;
         object-fit: cover;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)
     }
 
     .nav-brand-text {
-        line-height: 1.2;
+        line-height: 1.2
     }
 
     .nav-brand-name {
         font-size: 1rem;
         font-weight: 800;
-        color: var(--dark);
+        color: var(--dark)
     }
 
     .nav-brand-sub {
         font-size: 0.65rem;
         color: var(--muted);
         letter-spacing: 0.04em;
-        text-transform: uppercase;
+        text-transform: uppercase
     }
 
     .nav-links {
@@ -225,7 +226,7 @@ $base = '../';
         align-items: center;
         justify-content: center;
         list-style: none;
-        gap: 2px;
+        gap: 2px
     }
 
     .nav-links a {
@@ -239,29 +240,29 @@ $base = '../';
         font-size: 0.88rem;
         font-weight: 500;
         transition: background 0.15s, color 0.15s;
-        white-space: nowrap;
+        white-space: nowrap
     }
 
     .nav-links a i {
-        font-size: 0.85rem;
+        font-size: 0.85rem
     }
 
     .nav-links a:hover {
         background: var(--primary-bg);
-        color: var(--primary);
+        color: var(--primary)
     }
 
     .nav-links a.active {
         background: var(--primary-bg);
         color: var(--primary);
-        font-weight: 600;
+        font-weight: 600
     }
 
     .nav-actions {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-left: 16px;
+        margin-left: 16px
     }
 
     .nav-cart {
@@ -276,11 +277,11 @@ $base = '../';
         color: var(--primary);
         font-size: 0.88rem;
         font-weight: 600;
-        transition: background 0.15s;
+        transition: background 0.15s
     }
 
     .nav-cart:hover {
-        background: #fde9d0;
+        background: #fde9d0
     }
 
     .cart-badge {
@@ -298,11 +299,11 @@ $base = '../';
         border: 2px solid #fff;
         position: absolute;
         top: -5px;
-        right: -5px;
+        right: -5px
     }
 
     .cart-badge.hidden {
-        display: none;
+        display: none
     }
 
     .user-chip {
@@ -316,13 +317,13 @@ $base = '../';
         font-size: 0.85rem;
         color: var(--text);
         font-weight: 500;
-        transition: border-color 0.15s, background 0.15s;
+        transition: border-color 0.15s, background 0.15s
     }
 
     .user-chip:hover {
         border-color: var(--primary);
         background: var(--primary-bg);
-        color: var(--primary);
+        color: var(--primary)
     }
 
     .user-avatar {
@@ -336,7 +337,7 @@ $base = '../';
         border-radius: 50%;
         font-size: 0.75rem;
         font-weight: 700;
-        flex-shrink: 0;
+        flex-shrink: 0
     }
 
     .btn-login {
@@ -350,11 +351,11 @@ $base = '../';
         transition: background 0.15s;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 6px
     }
 
     .btn-login:hover {
-        background: var(--primary-dark);
+        background: var(--primary-dark)
     }
 
     .hamburger {
@@ -369,11 +370,11 @@ $base = '../';
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        margin-left: auto;
+        margin-left: auto
     }
 
     .hamburger:hover {
-        background: var(--bg);
+        background: var(--bg)
     }
 
     .hamburger span {
@@ -382,7 +383,7 @@ $base = '../';
         height: 2px;
         background: var(--dark);
         border-radius: 2px;
-        transition: transform 0.2s;
+        transition: transform 0.2s
     }
 
     .mobile-drawer {
@@ -395,11 +396,11 @@ $base = '../';
         border-bottom: 1px solid var(--border);
         padding: 8px 16px 16px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-        z-index: 999;
+        z-index: 999
     }
 
     .mobile-drawer.open {
-        display: block;
+        display: block
     }
 
     .mobile-drawer a {
@@ -412,44 +413,44 @@ $base = '../';
         font-size: 0.9rem;
         font-weight: 500;
         border-radius: 8px;
-        transition: background 0.15s;
+        transition: background 0.15s
     }
 
     .mobile-drawer a i {
         width: 18px;
         text-align: center;
-        color: var(--muted);
+        color: var(--muted)
     }
 
     .mobile-drawer a:hover,
     .mobile-drawer a.active {
         background: var(--primary-bg);
-        color: var(--primary);
+        color: var(--primary)
     }
 
     .mobile-drawer a.active i {
-        color: var(--primary);
+        color: var(--primary)
     }
 
     .mobile-drawer-divider {
         height: 1px;
         background: var(--border);
-        margin: 8px 0;
+        margin: 8px 0
     }
 
     @media(max-width:860px) {
 
         .nav-links,
         .nav-actions {
-            display: none;
+            display: none
         }
 
         .hamburger {
-            display: flex;
+            display: flex
         }
 
         .navbar {
-            padding: 0 16px;
+            padding: 0 16px
         }
     }
 </style>
@@ -464,10 +465,10 @@ $base = '../';
     </a>
 
     <ul class="nav-links">
-        <li><a class="<?= $activePage == 'home'     ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a></li>
+        <li><a class="<?= $activePage == 'home' ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a></li>
         <li><a class="<?= $activePage == 'products' ? 'active' : '' ?>" href="<?= $base ?>user/products.php"><i class="fa-solid fa-store"></i> Products</a></li>
-        <li><a class="<?= $activePage == 'about'    ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a></li>
-        <li><a class="<?= $activePage == 'contact'  ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a></li>
+        <li><a class="<?= $activePage == 'about' ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a></li>
+        <li><a class="<?= $activePage == 'contact' ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a></li>
     </ul>
 
     <div class="nav-actions">
@@ -475,7 +476,7 @@ $base = '../';
             <a class="nav-cart" href="<?= $base ?>user/cart.php">
                 <i class="fa-solid fa-cart-shopping"></i>
                 Cart
-                <span class="cart-badge <?= $cartItems == 0 ? 'hidden' : '' ?>"><?= $cartItems ?></span>
+                <span class="cart-badge <?= $cartItems == 0 ? 'hidden' : '' ?>" id="cartBadge"><?= $cartItems ?></span>
             </a>
             <a class="user-chip" href="<?= $base ?>user/profile.php">
                 <div class="user-avatar"><?= htmlspecialchars($userInitial) ?></div>
@@ -494,10 +495,10 @@ $base = '../';
 </nav>
 
 <div class="mobile-drawer" id="mobileDrawer">
-    <a class="<?= $activePage == 'home'     ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a>
+    <a class="<?= $activePage == 'home' ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a>
     <a class="<?= $activePage == 'products' ? 'active' : '' ?>" href="<?= $base ?>user/products.php"><i class="fa-solid fa-store"></i> Products</a>
-    <a class="<?= $activePage == 'about'    ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a>
-    <a class="<?= $activePage == 'contact'  ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a>
+    <a class="<?= $activePage == 'about' ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a>
+    <a class="<?= $activePage == 'contact' ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a>
     <?php if ($isLoggedIn): ?>
         <div class="mobile-drawer-divider"></div>
         <a href="<?= $base ?>user/cart.php"><i class="fa-solid fa-cart-shopping"></i> Cart <?= $cartItems > 0 ? "($cartItems)" : '' ?></a>
@@ -512,8 +513,7 @@ $base = '../';
 
 <script>
     function toggleDrawer(btn) {
-        const drawer = document.getElementById('mobileDrawer');
-        drawer.classList.toggle('open');
+        document.getElementById('mobileDrawer').classList.toggle('open');
     }
     document.addEventListener('click', function(e) {
         const drawer = document.getElementById('mobileDrawer');
@@ -538,8 +538,7 @@ $base = '../';
                             if (!badge) return;
                             badge.textContent = data.cart_count;
                             badge.classList.toggle('hidden', data.cart_count === 0);
-                        })
-                        .catch(() => {});
+                        }).catch(() => {});
                 }
                 syncBadge();
                 setInterval(syncBadge, 10000);
