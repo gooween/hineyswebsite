@@ -11,7 +11,6 @@ requireAdmin();
 
 $activePage = 'stocks';
 
-// Ensure tables exist
 $conn->query("CREATE TABLE IF NOT EXISTS stock_batches (
     id INT AUTO_INCREMENT PRIMARY KEY,
     batch_code VARCHAR(60) UNIQUE NOT NULL,
@@ -27,11 +26,9 @@ $conn->query("CREATE TABLE IF NOT EXISTS stock_batches (
     INDEX(product_id), INDEX(status), INDEX(created_at)
 )");
 
-// Auto-expire batches past their expiry date
 $conn->query("UPDATE stock_batches SET status='expired'
     WHERE status='active' AND expires_at IS NOT NULL AND expires_at < CURDATE()");
 
-// Filters
 $filterStatus  = trim($_GET['status']  ?? '');
 $filterProduct = (int)($_GET['product'] ?? 0);
 $filterDate    = trim($_GET['date']    ?? '');
@@ -60,10 +57,8 @@ $batches = $conn->query("
     LIMIT {$perPage} OFFSET {$offset}
 ");
 
-// Products for filter
 $products = $conn->query("SELECT p.id, p.name, p.unit, c.name AS category FROM products p JOIN categories c ON c.id = p.category_id WHERE p.is_active=1 ORDER BY c.name, p.name");
 
-// Summary stats
 $stats = $conn->query("
     SELECT
         COUNT(*) AS total,
@@ -157,7 +152,6 @@ $stats = $conn->query("
             box-shadow: 0 4px 14px rgba(230, 126, 34, 0.35);
         }
 
-        /* Stats */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -225,7 +219,6 @@ $stats = $conn->query("
             letter-spacing: 0.06em;
         }
 
-        /* Toolbar */
         .toolbar {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -299,7 +292,6 @@ $stats = $conn->query("
             white-space: nowrap;
         }
 
-        /* Table */
         .table-wrapper {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -356,7 +348,6 @@ $stats = $conn->query("
             white-space: nowrap;
         }
 
-        /* Status badges */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -396,7 +387,6 @@ $stats = $conn->query("
             color: #92400e;
         }
 
-        /* Progress bar */
         .qty-bar-wrap {
             display: flex;
             flex-direction: column;
@@ -423,7 +413,6 @@ $stats = $conn->query("
             transition: width 0.3s;
         }
 
-        /* Expiry */
         .expiry-cell {
             font-size: 0.82rem;
         }
@@ -442,7 +431,6 @@ $stats = $conn->query("
             font-weight: 700;
         }
 
-        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
@@ -493,7 +481,6 @@ $stats = $conn->query("
             pointer-events: none;
         }
 
-        /* Empty */
         .empty-state {
             padding: 56px 20px;
             text-align: center;
@@ -505,7 +492,6 @@ $stats = $conn->query("
             margin-bottom: 12px;
         }
 
-        /* FIFO note */
         .fifo-note {
             background: #eff6ff;
             border: 1px solid #bfdbfe;
@@ -561,7 +547,6 @@ $stats = $conn->query("
                 </a>
             </div>
 
-            <!-- Stats -->
             <div class="stats-row">
                 <div class="stat-card">
                     <div class="stat-icon si-green"><i class="fa-solid fa-boxes-stacked" style="color:#10b981;"></i></div>
@@ -593,13 +578,11 @@ $stats = $conn->query("
                 </div>
             </div>
 
-            <!-- FIFO note -->
             <div class="fifo-note">
                 <i class="fa-solid fa-info-circle"></i>
-                <span>Batches are listed oldest first. When an order is fulfilled, the system automatically picks from the top of this list (FIFO).</span>
+                <span>Batches are listed oldest first. When an order is fulfilled, the system automatically picks from the top of this list (FIFO). Each batch's "Qty Remaining" reflects how many trays/pieces/units are left.</span>
             </div>
 
-            <!-- Toolbar / Filters -->
             <div class="toolbar">
                 <form method="GET" style="display:contents;">
                     <select name="status" class="filter-select" onchange="this.form.submit()">
@@ -624,7 +607,6 @@ $stats = $conn->query("
                 <span style="margin-left:auto;font-size:0.82rem;color:var(--text-muted);"><?= number_format($totalCount) ?> batch<?= $totalCount !== 1 ? 'es' : '' ?></span>
             </div>
 
-            <!-- Table -->
             <div class="table-wrapper">
                 <?php if ($batches && $batches->num_rows > 0): ?>
                     <table class="data-table">
@@ -644,8 +626,8 @@ $stats = $conn->query("
                             <?php while ($b = $batches->fetch_assoc()):
                                 $pct      = $b['quantity'] > 0 ? round(($b['remaining'] / $b['quantity']) * 100) : 0;
                                 $barColor = $pct > 50 ? '#10b981' : ($pct > 20 ? '#f59e0b' : '#ef4444');
+                                $isTrayUnit = stripos($b['unit'], 'tray') !== false;
 
-                                // Expiry display
                                 $today   = new DateTime();
                                 $expDate = $b['expires_at'] ? new DateTime($b['expires_at']) : null;
                                 $daysLeft = $expDate ? (int)$today->diff($expDate)->format('%r%a') : null;
@@ -661,7 +643,6 @@ $stats = $conn->query("
                                     $expText = $expDate ? date('M j, Y', strtotime($b['expires_at'])) : '—';
                                 }
 
-                                // Status badge
                                 if ($b['status'] === 'active' && $daysLeft !== null && $daysLeft <= 3 && $daysLeft >= 0) {
                                     $badgeClass = 'sb-expiring';
                                     $badgeLabel = 'Expiring';
@@ -669,6 +650,8 @@ $stats = $conn->query("
                                     $badgeClass = 'sb-' . $b['status'];
                                     $badgeLabel = ucfirst($b['status']);
                                 }
+
+                                $unitLabel = $isTrayUnit ? ('tray' . ($b['remaining'] != 1 ? 's' : '')) : '';
                             ?>
                                 <tr>
                                     <td><span class="batch-code"><?= htmlspecialchars($b['batch_code']) ?></span></td>
@@ -679,7 +662,7 @@ $stats = $conn->query("
                                     <td style="font-size:0.82rem;color:var(--text-muted);"><?= htmlspecialchars($b['unit']) ?></td>
                                     <td>
                                         <div class="qty-bar-wrap">
-                                            <div class="qty-nums"><?= number_format($b['remaining']) ?> / <?= number_format($b['quantity']) ?></div>
+                                            <div class="qty-nums"><?= number_format($b['remaining']) ?> / <?= number_format($b['quantity']) ?><?= $unitLabel ? ' ' . $unitLabel : '' ?></div>
                                             <div class="qty-bar">
                                                 <div class="qty-bar-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>;"></div>
                                             </div>

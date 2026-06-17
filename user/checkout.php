@@ -107,33 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $stmt->close();
 
-                // ── FIFO deduction from stock_batches ──────────────────
-                $remaining = $qty;
-                $batches = $conn->query("
-                    SELECT id, remaining FROM stock_batches
-                    WHERE product_id = {$pid} AND status = 'active' AND remaining > 0
-                    ORDER BY created_at ASC
-                ");
-                while ($remaining > 0 && $batch = $batches->fetch_assoc()) {
-                    $bid       = (int)$batch['id'];
-                    $avail     = (int)$batch['remaining'];
-                    $deduct    = min($remaining, $avail);
-                    $newLeft   = $avail - $deduct;
-                    $newStatus = $newLeft <= 0 ? 'depleted' : 'active';
-                    $conn->query("UPDATE stock_batches SET remaining = {$newLeft}, status = '{$newStatus}' WHERE id = {$bid}");
-                    $conn->query("INSERT INTO batch_consumption (batch_id, order_id, quantity) VALUES ({$bid}, {$orderId}, {$deduct})");
-                    $remaining -= $deduct;
-                }
-
-                // Keep inventory table in sync
-                $conn->query("UPDATE inventory SET quantity = quantity - {$qty} WHERE product_id = {$pid} AND quantity >= {$qty}");
-
-                // Log the deduction
-                $reason = "Order #{$orderId} — {$item['name']} x{$qty}";
-                $stmt = $conn->prepare("INSERT INTO inventory_logs (product_id, type, quantity, reason, created_by, created_at) VALUES (?, 'out', ?, ?, ?, NOW())");
-                $stmt->bind_param('iisi', $pid, $qty, $reason, $uid);
-                $stmt->execute();
-                $stmt->close();
+                // Stock deduction happens on admin APPROVAL, not at checkout
             }
 
             $conn->query("DELETE FROM cart WHERE user_id = {$uid}");

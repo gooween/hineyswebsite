@@ -20,8 +20,6 @@ $base = '../';
 ?>
 <link rel="icon" type="image/png" href="<?= $base ?>assets/images/hineys_logo.png">
 <link rel="apple-touch-icon" href="<?= $base ?>assets/images/hineys_logo.png">
-<link rel="icon" type="image/png" href="/assets/images/hineys_logo.png?v=2">
-<!-- Font Awesome 6 CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style id="hineys-icon-colors">
     .navbar .fa-solid,
@@ -467,6 +465,9 @@ $base = '../';
     <ul class="nav-links">
         <li><a class="<?= $activePage == 'home' ? 'active' : '' ?>" href="<?= $base ?>user/home.php"><i class="fa-solid fa-house"></i> Home</a></li>
         <li><a class="<?= $activePage == 'products' ? 'active' : '' ?>" href="<?= $base ?>user/products.php"><i class="fa-solid fa-store"></i> Products</a></li>
+        <?php if ($isLoggedIn): ?>
+            <li><a class="<?= $activePage == 'orders' ? 'active' : '' ?>" href="<?= $base ?>user/orders.php"><i class="fa-solid fa-box"></i> My Orders</a></li>
+        <?php endif; ?>
         <li><a class="<?= $activePage == 'about' ? 'active' : '' ?>" href="<?= $base ?>user/about.php"><i class="fa-solid fa-info-circle"></i> About</a></li>
         <li><a class="<?= $activePage == 'contact' ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a></li>
     </ul>
@@ -501,8 +502,8 @@ $base = '../';
     <a class="<?= $activePage == 'contact' ? 'active' : '' ?>" href="<?= $base ?>user/contact.php"><i class="fa-solid fa-envelope"></i> Contact</a>
     <?php if ($isLoggedIn): ?>
         <div class="mobile-drawer-divider"></div>
+        <a class="<?= $activePage == 'orders' ? 'active' : '' ?>" href="<?= $base ?>user/orders.php"><i class="fa-solid fa-box"></i> My Orders</a>
         <a href="<?= $base ?>user/cart.php"><i class="fa-solid fa-cart-shopping"></i> Cart <?= $cartItems > 0 ? "($cartItems)" : '' ?></a>
-        <a href="<?= $base ?>user/orders.php"><i class="fa-solid fa-box"></i> My Orders</a>
         <a href="<?= $base ?>user/profile.php"><i class="fa-solid fa-user"></i> My Profile</a>
     <?php else: ?>
         <div class="mobile-drawer-divider"></div>

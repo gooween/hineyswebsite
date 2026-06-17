@@ -3,6 +3,59 @@ session_start();
 require_once '../config/db.php';
 requireAdmin();
 
+// ── Stock helpers ─────────────────────────────────────────────
+function deductStock(mysqli $conn, int $orderId, int $adminId): void
+{
+    $items = $conn->query("SELECT oi.product_id, oi.quantity, p.name
+                           FROM order_items oi
+                           JOIN products p ON p.id = oi.product_id
+                           WHERE oi.order_id = {$orderId}");
+    if (!$items) return;
+    while ($item = $items->fetch_assoc()) {
+        $pid = (int)$item['product_id'];
+        $qty = (int)$item['quantity'];
+        $remaining = $qty;
+        $batches = $conn->query("SELECT id, remaining FROM stock_batches WHERE product_id={$pid} AND status='active' AND remaining>0 ORDER BY created_at ASC");
+        while ($remaining > 0 && $batch = $batches->fetch_assoc()) {
+            $bid = $batch['id'];
+            $avail = (int)$batch['remaining'];
+            $deduct = min($remaining, $avail);
+            $newLeft = $avail - $deduct;
+            $conn->query("UPDATE stock_batches SET remaining={$newLeft}, status='" . ($newLeft <= 0 ? 'depleted' : 'active') . "' WHERE id={$bid}");
+            $conn->query("INSERT INTO batch_consumption (batch_id,order_id,quantity) VALUES ({$bid},{$orderId},{$deduct})");
+            $remaining -= $deduct;
+        }
+        $conn->query("UPDATE inventory SET quantity=quantity-{$qty} WHERE product_id={$pid} AND quantity>={$qty}");
+        $reason = $conn->real_escape_string("Order #" . str_pad($orderId, 4, '0', STR_PAD_LEFT) . " approved — {$item['name']} x{$qty}");
+        $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$pid},'out',{$qty},'{$reason}',{$adminId},NOW())");
+    }
+}
+
+function restoreStock(mysqli $conn, int $orderId, int $adminId, string $label): void
+{
+    $check = $conn->query("SELECT COUNT(*) AS cnt FROM batch_consumption WHERE order_id={$orderId}");
+    if (!$check || (int)$check->fetch_assoc()['cnt'] === 0) return; // never approved, nothing to restore
+    $items = $conn->query("SELECT product_id, quantity FROM order_items WHERE order_id={$orderId}");
+    if (!$items) return;
+    while ($item = $items->fetch_assoc()) {
+        $pid = (int)$item['product_id'];
+        $qty = (int)$item['quantity'];
+        $toRestore = $qty;
+        $consumed = $conn->query("SELECT bc.id AS cid, bc.batch_id, bc.quantity, sb.remaining FROM batch_consumption bc JOIN stock_batches sb ON sb.id=bc.batch_id WHERE bc.order_id={$orderId} AND sb.product_id={$pid} ORDER BY bc.id DESC");
+        while ($toRestore > 0 && $con = $consumed->fetch_assoc()) {
+            $restore = min($toRestore, (int)$con['quantity']);
+            $newRemain = (int)$con['remaining'] + $restore;
+            $conn->query("UPDATE stock_batches SET remaining={$newRemain}, status='active' WHERE id={$con['batch_id']}");
+            $conn->query("DELETE FROM batch_consumption WHERE id={$con['cid']}");
+            $toRestore -= $restore;
+        }
+        $r = $conn->real_escape_string("{$label} order #" . str_pad($orderId, 4, '0', STR_PAD_LEFT));
+        $conn->query("UPDATE inventory SET quantity=quantity+{$qty}, last_updated=NOW() WHERE product_id={$pid}");
+        $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$pid},'in',{$qty},'{$r}',{$adminId},NOW())");
+    }
+}
+// ─────────────────────────────────────────────────────────────
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = trim($_POST['action'] ?? '');
 
@@ -21,7 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $note = $conn->real_escape_string('[Admin] Order approved.');
             }
             $conn->query("UPDATE orders SET notes=CONCAT(IFNULL(notes,''),IF(notes IS NULL OR notes='','','\n'),'{$note}') WHERE id={$id}");
-            redirect('orders.php', 'success', 'Order approved successfully.');
+            // ── Deduct stock on approval ──
+            deductStock($conn, $id, (int)$_SESSION['user_id']);
+            redirect('orders.php', 'success', 'Order approved and stock deducted.');
         }
     }
 
@@ -32,37 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->query("UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id={$id}");
             $note = $conn->real_escape_string('[Admin] Order rejected' . ($reason ? ': ' . $reason : '.'));
             $conn->query("UPDATE orders SET notes=CONCAT(IFNULL(notes,''),IF(notes IS NULL OR notes='','','\n'),'{$note}') WHERE id={$id}");
-            $uid   = (int)$_SESSION['user_id'];
-            $items = $conn->query("SELECT product_id, quantity FROM order_items WHERE order_id={$id}");
-            if ($items) {
-                while ($item = $items->fetch_assoc()) {
-                    $pid = (int)$item['product_id'];
-                    $qty = (int)$item['quantity'];
-
-                    // Restore stock_batches from batch_consumption (reverse FIFO)
-                    $toRestore = $qty;
-                    $consumed  = $conn->query("
-                        SELECT bc.id AS consumption_id, bc.batch_id, bc.quantity, sb.remaining
-                        FROM batch_consumption bc
-                        JOIN stock_batches sb ON sb.id = bc.batch_id
-                        WHERE bc.order_id = {$id} AND sb.product_id = {$pid}
-                        ORDER BY bc.id DESC
-                    ");
-                    while ($toRestore > 0 && $con = $consumed->fetch_assoc()) {
-                        $restore   = min($toRestore, (int)$con['quantity']);
-                        $newRemain = (int)$con['remaining'] + $restore;
-                        $conn->query("UPDATE stock_batches SET remaining = {$newRemain}, status = 'active' WHERE id = {$con['batch_id']}");
-                        $conn->query("DELETE FROM batch_consumption WHERE id = {$con['consumption_id']}");
-                        $toRestore -= $restore;
-                    }
-
-                    // Keep inventory table in sync
-                    $r2 = $conn->real_escape_string('Restored from rejected order #' . str_pad($id, 4, '0', STR_PAD_LEFT));
-                    $conn->query("UPDATE inventory SET quantity=quantity+{$qty}, last_updated=NOW() WHERE product_id={$pid}");
-                    $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$pid},'in',{$qty},'{$r2}',{$uid},NOW())");
-                }
-            }
-            redirect('orders.php', 'success', 'Order rejected and stock restored.');
+            // ── Restore stock only if it was previously approved ──
+            restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Restored from rejected');
+            redirect('orders.php', 'success', 'Order rejected.');
         }
     }
 
@@ -95,6 +122,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             }
+            // ── If status changed to cancelled, restore stock ──
+            if ($status === 'cancelled') {
+                restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Returned from cancelled');
+            }
             redirect('orders.php', 'success', 'Order updated successfully.');
         } else {
             redirect('orders.php', 'error', 'Invalid status values provided.');
@@ -105,36 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($_POST['id'] ?? 0);
         if ($id) {
             $conn->query("UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id={$id}");
-            $uid   = (int)$_SESSION['user_id'];
-            $items = $conn->query("SELECT product_id, quantity FROM order_items WHERE order_id={$id}");
-            if ($items) {
-                while ($item = $items->fetch_assoc()) {
-                    $pid = (int)$item['product_id'];
-                    $qty = (int)$item['quantity'];
-
-                    // Restore stock_batches from batch_consumption (reverse FIFO)
-                    $toRestore = $qty;
-                    $consumed  = $conn->query("
-                        SELECT bc.id AS consumption_id, bc.batch_id, bc.quantity, sb.remaining
-                        FROM batch_consumption bc
-                        JOIN stock_batches sb ON sb.id = bc.batch_id
-                        WHERE bc.order_id = {$id} AND sb.product_id = {$pid}
-                        ORDER BY bc.id DESC
-                    ");
-                    while ($toRestore > 0 && $con = $consumed->fetch_assoc()) {
-                        $restore   = min($toRestore, (int)$con['quantity']);
-                        $newRemain = (int)$con['remaining'] + $restore;
-                        $conn->query("UPDATE stock_batches SET remaining = {$newRemain}, status = 'active' WHERE id = {$con['batch_id']}");
-                        $conn->query("DELETE FROM batch_consumption WHERE id = {$con['consumption_id']}");
-                        $toRestore -= $restore;
-                    }
-
-                    // Keep inventory table in sync
-                    $reason = $conn->real_escape_string('Returned from cancelled order #' . str_pad($id, 4, '0', STR_PAD_LEFT));
-                    $conn->query("UPDATE inventory SET quantity=quantity+{$qty}, last_updated=NOW() WHERE product_id={$pid}");
-                    $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$pid},'in',{$qty},'{$reason}',{$uid},NOW())");
-                }
-            }
+            // ── Restore stock only if it was previously approved ──
+            restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Returned from cancelled');
             redirect('orders.php', 'success', 'Order cancelled and stock restored.');
         }
     }
@@ -764,11 +767,6 @@ $activePage = 'orders';
         }
 
         .s-approved {
-            background: #dbeafe;
-            color: #1e40af
-        }
-
-        .s-confirmed {
             background: #dbeafe;
             color: #1e40af
         }
@@ -1481,31 +1479,25 @@ $activePage = 'orders';
                 </div>
             </div>
 
-            <?php if ($pendingCount > 0): ?>
-                <div class="alert-banner alert-warn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <?php if ($pendingCount > 0): ?><div class="alert-banner alert-warn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg><span><strong><?= $pendingCount ?> order<?= $pendingCount !== 1 ? 's' : '' ?></strong> waiting for your approval.</span></div>
-            <?php endif; ?>
-            <?php if ($proofPendingCount > 0): ?>
-                <div class="alert-banner alert-blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    </svg><span><strong><?= $pendingCount ?> order<?= $pendingCount !== 1 ? 's' : '' ?></strong> waiting for your approval.</span></div><?php endif; ?>
+            <?php if ($proofPendingCount > 0): ?><div class="alert-banner alert-blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg><span><strong><?= $proofPendingCount ?> GCash order<?= $proofPendingCount !== 1 ? 's' : '' ?></strong> approved but awaiting customer payment proof upload.</span></div>
-            <?php endif; ?>
+                    </svg><span><strong><?= $proofPendingCount ?> GCash order<?= $proofPendingCount !== 1 ? 's' : '' ?></strong> approved but awaiting customer payment proof upload.</span></div><?php endif; ?>
 
             <div class="filter-tabs">
                 <?php
                 $tabDefs = ['' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'processing' => 'Processing', 'out_for_delivery' => 'Out for Delivery', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled/Rejected'];
                 foreach ($tabDefs as $val => $label):
-                    $qs  = http_build_query(array_merge($_GET, ['status' => $val, 'page' => 1]));
+                    $qs = http_build_query(array_merge($_GET, ['status' => $val, 'page' => 1]));
                     $cnt = ($val === '') ? $totalOrders : ($statusCounts[$val] ?? 0);
                     $active = ($filterStatus === $val) ? 'active' : '';
-                ?>
-                    <a href="?<?= $qs ?>" class="filter-tab <?= $active ?>"><?= $label ?> <span class="tab-count"><?= $cnt ?></span></a>
-                <?php endforeach; ?>
+                ?><a href="?<?= $qs ?>" class="filter-tab <?= $active ?>"><?= $label ?> <span class="tab-count"><?= $cnt ?></span></a><?php endforeach; ?>
             </div>
 
             <div class="toolbar">
@@ -1553,17 +1545,17 @@ $activePage = 'orders';
                         <tbody>
                             <?php $rowNum = $offset + 1;
                             while ($o = $orders->fetch_assoc()):
-                                $statusClass   = 's-' . $o['status'];
-                                $statusLabel   = ucwords(str_replace('_', ' ', $o['status']));
-                                $initial       = strtoupper(substr($o['full_name'], 0, 1));
-                                $isPending     = ($o['status'] === 'pending');
-                                $isCancelled   = ($o['status'] === 'cancelled');
-                                $isDelivered   = ($o['status'] === 'delivered');
-                                $isFinalised   = ($isCancelled || $isDelivered);
-                                $methodIcon    = $o['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
-                                $feeIsSet      = $o['delivery_fee'] !== null;
+                                $statusClass = 's-' . $o['status'];
+                                $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
+                                $initial = strtoupper(substr($o['full_name'], 0, 1));
+                                $isPending = ($o['status'] === 'pending');
+                                $isCancelled = ($o['status'] === 'cancelled');
+                                $isDelivered = ($o['status'] === 'delivered');
+                                $isFinalised = ($isCancelled || $isDelivered);
+                                $methodIcon = $o['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
+                                $feeIsSet = $o['delivery_fee'] !== null;
                                 $itemsSubtotal = (float)$o['items_subtotal'];
-                                $hasProof      = !empty($o['gcash_proof']);
+                                $hasProof = !empty($o['gcash_proof']);
                             ?>
                                 <tr>
                                     <td style="color:var(--text-muted);font-size:0.78rem;font-weight:600;"><?= $rowNum++ ?></td>
@@ -1696,7 +1688,7 @@ $activePage = 'orders';
                             <div class="fee-preview" id="approve_fee_preview"></div>
                         </div>
                     </div>
-                    <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:12px 14px;font-size:0.85rem;color:#065f46;line-height:1.6;"><i class="fa-solid fa-circle-check"></i> <strong>Approving</strong> this order will notify the customer. GCash customers will be prompted to upload payment proof.</div>
+                    <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:12px 14px;font-size:0.85rem;color:#065f46;line-height:1.6;"><i class="fa-solid fa-circle-check"></i> <strong>Approving</strong> will deduct stock and notify the customer.</div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('approveModal')">Cancel</button><button type="submit" class="btn btn-success"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12" />
@@ -1721,7 +1713,7 @@ $activePage = 'orders';
                         <div style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:4px;">Reject Order <span id="reject_order_label">#0000</span>?</div>
                         <div style="font-size:0.85rem;color:var(--text-muted);">from <strong id="reject_customer_label"></strong></div>
                     </div>
-                    <div class="form-group"><label class="form-label">Reason for Rejection</label><textarea name="reject_reason" class="form-textarea" placeholder="e.g. Out of stock, outside delivery area…" rows="3"></textarea><span class="form-hint">Saved in order notes. Stock will be automatically restored.</span></div>
+                    <div class="form-group"><label class="form-label">Reason for Rejection</label><textarea name="reject_reason" class="form-textarea" placeholder="e.g. Out of stock, outside delivery area…" rows="3"></textarea><span class="form-hint">Saved in order notes.</span></div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('rejectModal')">Keep Order</button><button type="submit" class="btn btn-danger">✕ Reject Order</button></div>
             </form>
@@ -1794,7 +1786,7 @@ $activePage = 'orders';
                 <div class="modal-body modal-body-pad" style="text-align:center;padding:28px 24px;">
                     <div style="font-size:3rem;margin-bottom:14px;"><i class="fa-solid fa-ban"></i></div>
                     <div style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:8px;">Cancel this order?</div>
-                    <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Order <strong id="cancel_order_label">#0000</strong> from <strong id="cancel_customer_label"></strong> will be cancelled.<br><br><span style="color:#10b981;font-weight:600;"><i class="fa-solid fa-check"></i> Stock will be automatically restored</span></div>
+                    <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Order <strong id="cancel_order_label">#0000</strong> from <strong id="cancel_customer_label"></strong> will be cancelled.<br><br><span style="color:#10b981;font-weight:600;"><i class="fa-solid fa-check"></i> Stock restored only if previously approved</span></div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('cancelModal')">Keep Order</button><button type="submit" class="btn btn-danger">Yes, Cancel</button></div>
             </form>

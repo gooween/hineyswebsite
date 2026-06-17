@@ -12,8 +12,8 @@ $cartRows = $conn->query("
            p.id AS product_id, p.name, p.price, p.unit, p.description, p.image_url,
            cat.name AS category,
            COALESCE((
-               SELECT CASE WHEN p2.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
-               FROM stock_batches sb JOIN products p2 ON p2.id=sb.product_id
+               SELECT SUM(sb.remaining)
+               FROM stock_batches sb
                WHERE sb.product_id=p.id AND sb.status='active'
            ), 0) AS stock
     FROM cart c
@@ -287,7 +287,6 @@ $grandTotal  = $cartTotal + $deliveryFee;
             }
         }
 
-        /* Minimum warning banner */
         .min-warning-banner {
             background: #fef3c7;
             border: 1px solid #f59e0b;
@@ -387,7 +386,6 @@ $grandTotal  = $cartTotal + $deliveryFee;
             transform: translateX(20px)
         }
 
-        /* Thumb with image support */
         .cart-item-thumb {
             width: 72px;
             height: 72px;
@@ -455,7 +453,6 @@ $grandTotal  = $cartTotal + $deliveryFee;
             gap: 4px
         }
 
-        /* Per piece minimum warning inline */
         .piece-min-warning {
             font-size: 0.72rem;
             color: #92400e;
@@ -691,7 +688,6 @@ $grandTotal  = $cartTotal + $deliveryFee;
             font-weight: 700
         }
 
-        /* Checkout blocked warning in summary */
         .checkout-blocked {
             background: #fef3c7;
             border: 1px solid #f59e0b;
@@ -1093,7 +1089,6 @@ $grandTotal  = $cartTotal + $deliveryFee;
                             maximumFractionDigits: 2
                         });
                         updateBadge(data.cart_count);
-                        // Check all per-piece items for minimum
                         checkAllMinimums();
                     } else {
                         const prevQty = parseInt(ctrl.dataset.qty);
@@ -1202,7 +1197,6 @@ $grandTotal  = $cartTotal + $deliveryFee;
             setTimeout(() => t.remove(), 3200);
         }
 
-        // Add IDs to per-piece warning elements for dynamic show/hide
         document.querySelectorAll('.piece-min-warning').forEach(el => {
             const item = el.closest('.cart-item');
             if (item) {
