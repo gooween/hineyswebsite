@@ -325,7 +325,21 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse 500px 300px at 80% 50%, rgba(230, 126, 34, 0.14), transparent 70%)
+            background: radial-gradient(ellipse 500px 300px at 80% 50%, rgba(230, 126, 34, 0.14), transparent 70%);
+            z-index: 0
+        }
+
+        .page-banner-bg {
+            position: absolute;
+            inset: 0;
+            background: url('../assets/images/egg_tray.png') center center/cover no-repeat;
+            opacity: 0.15;
+            mix-blend-mode: luminosity;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            -webkit-mask-composite: destination-in;
+            mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            mask-composite: intersect;
+            z-index: 0
         }
 
         .page-banner-inner {
@@ -1268,6 +1282,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         <?php include '../includes/navbar.php'; ?>
 
         <div class="page-banner">
+            <div class="page-banner-bg"></div>
             <div class="page-banner-inner">
                 <div class="breadcrumb"><a href="home.php">Home</a><span class="breadcrumb-sep">›</span><span>My Orders</span></div>
                 <div class="page-banner-title"><i class="fa-solid fa-box"></i> My Orders</div>
