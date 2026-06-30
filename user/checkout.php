@@ -19,9 +19,9 @@ $gcashNumber   = getSetting($conn, 'gcash_number',   '0917-XXX-XXXX');
 $gcashName     = getSetting($conn, 'gcash_name',     "Hiney's Eggs & Live Chicken");
 $gcashQrPath   = getSetting($conn, 'gcash_qr_path',  '');
 $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto Cortes, Bohol");
-$deliveryFee   = (float)getSetting($conn, 'delivery_fee', '50.00');
+$deliveryFee   = (float)getSetting($conn, 'delivery_fee', '50.00'); // fallback flat fee
 
-$stmt = $conn->prepare("SELECT full_name, email, phone, address FROM users WHERE id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT full_name, email, phone, address, municipality, barangay, street_address FROM users WHERE id = ? LIMIT 1");
 $stmt->bind_param('i', $uid);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -58,16 +58,41 @@ if (count($cartData) === 0) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $deliveryType    = trim($_POST['delivery_type']    ?? 'delivery');
-    $deliveryAddress = trim($_POST['delivery_address'] ?? '');
-    $paymentMethod   = trim($_POST['payment_method']   ?? '');
-    $notes           = trim($_POST['notes']            ?? '');
+    $deliveryType    = trim($_POST['delivery_type']        ?? 'delivery');
+    $deliveryMuni    = trim($_POST['delivery_municipality'] ?? '');
+    $deliveryBrgy    = trim($_POST['delivery_barangay']     ?? '');
+    $deliveryStreet  = trim($_POST['delivery_street']       ?? '');
+    $paymentMethod   = trim($_POST['payment_method']        ?? '');
+    $notes           = trim($_POST['notes']                 ?? '');
 
-    $actualDeliveryFee = $deliveryType === 'pickup' ? 0.00 : $deliveryFee;
-    $grandTotal        = $cartTotal + $actualDeliveryFee;
+    // Resolve the real fee from the zones table (server-side — never trust the browser)
+    $actualDeliveryFee = 0.00;
+    if ($deliveryType === 'delivery') {
+        if ($deliveryMuni === '' || $deliveryBrgy === '') {
+            $errors[] = 'Please select your delivery municipality and barangay.';
+        } else {
+            $zstmt = $conn->prepare("SELECT fee FROM delivery_zones WHERE municipality=? AND barangay=? AND active=1 LIMIT 1");
+            $zstmt->bind_param('ss', $deliveryMuni, $deliveryBrgy);
+            $zstmt->execute();
+            $zres = $zstmt->get_result();
+            if ($zrow = $zres->fetch_assoc()) {
+                $actualDeliveryFee = (float)$zrow['fee'];
+            } else {
+                $actualDeliveryFee = $deliveryFee; // fallback flat fee
+            }
+            $zstmt->close();
+        }
+        if ($deliveryStreet === '')
+            $errors[] = 'Please enter your street / house number / purok.';
+    }
 
-    if ($deliveryType === 'delivery' && !$deliveryAddress)
-        $errors[] = 'Delivery address is required.';
+    // Build the saved address text
+    $deliveryAddress = $deliveryType === 'pickup'
+        ? ''
+        : implode(', ', array_filter([$deliveryStreet, $deliveryBrgy, $deliveryMuni, 'Bohol'], fn($p) => $p !== ''));
+
+    $grandTotal = $cartTotal + $actualDeliveryFee;
+
     if (!in_array($paymentMethod, ['cod', 'gcash']))
         $errors[] = 'Please select a payment method.';
 
@@ -85,12 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $finalAddress = $deliveryType === 'pickup' ? 'PICKUP — ' . $pickupAddress : $deliveryAddress;
             $pmFull = $paymentMethod === 'gcash' ? 'gcash' : 'cod';
+            $oMuni  = $deliveryType === 'pickup' ? null : $deliveryMuni;
+            $oBrgy  = $deliveryType === 'pickup' ? null : $deliveryBrgy;
 
             $stmt = $conn->prepare("
-                INSERT INTO orders (user_id, status, total_amount, delivery_fee, payment_method, payment_status, delivery_address, notes, created_at, updated_at)
-                VALUES (?, 'pending', ?, ?, ?, 'unpaid', ?, ?, NOW(), NOW())
+                INSERT INTO orders (user_id, status, total_amount, delivery_fee, payment_method, payment_status, delivery_address, delivery_municipality, delivery_barangay, notes, created_at, updated_at)
+                VALUES (?, 'pending', ?, ?, ?, 'unpaid', ?, ?, ?, ?, NOW(), NOW())
             ");
-            $stmt->bind_param('iddsss', $uid, $grandTotal, $actualDeliveryFee, $pmFull, $finalAddress, $notes);
+            $stmt->bind_param('iddssssss', $uid, $grandTotal, $actualDeliveryFee, $pmFull, $finalAddress, $oMuni, $oBrgy, $notes);
             $stmt->execute();
             $orderId = (int)$conn->insert_id;
             $stmt->close();
@@ -127,8 +154,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $selectedDeliveryType = $_POST['delivery_type'] ?? 'delivery';
-$displayDeliveryFee   = $selectedDeliveryType === 'pickup' ? 0.00 : $deliveryFee;
-$grandTotal           = $cartTotal + $displayDeliveryFee;
+$savedMuni   = $user['municipality'] ?? '';
+$savedBrgy   = $user['barangay'] ?? '';
+$savedStreet = $user['street_address'] ?? '';
+// On first load the fee is unknown until a zone is chosen; JS fills it in.
+$displayDeliveryFee = 0.00;
+$grandTotal         = $cartTotal + $displayDeliveryFee;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -531,7 +562,8 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
         }
 
         .form-input,
-        .form-textarea {
+        .form-textarea,
+        select.form-input {
             width: 100%;
             padding: 10px 13px;
             border: 1.5px solid var(--border);
@@ -545,7 +577,8 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
         }
 
         .form-input:focus,
-        .form-textarea:focus {
+        .form-textarea:focus,
+        select.form-input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
             background: #fff
@@ -1083,7 +1116,7 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                                         <div class="delivery-option-icon"><i class="fa-solid fa-truck"></i></div>
                                         <div>
                                             <div class="delivery-option-name">Delivery</div>
-                                            <div class="delivery-option-desc">We deliver to your door<br>+₱<?= number_format($deliveryFee, 2) ?> fee</div>
+                                            <div class="delivery-option-desc">We deliver to your door<br>fee depends on barangay</div>
                                         </div>
                                     </label>
                                     <label class="delivery-option <?= $selectedDeliveryType === 'pickup' ? 'selected' : '' ?>" onclick="selectDelivery('pickup')">
@@ -1096,10 +1129,26 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                                     </label>
                                 </div>
                                 <div id="deliveryAddressWrap">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Municipality / City <span class="req">*</span></label>
+                                            <select name="delivery_municipality" id="coMuni" class="form-input" onchange="coLoadBrgy(this.value)">
+                                                <option value="">Select municipality…</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Barangay <span class="req">*</span></label>
+                                            <select name="delivery_barangay" id="coBrgy" class="form-input" onchange="coUpdateFee()">
+                                                <option value="">Select barangay…</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div class="form-group">
-                                        <label class="form-label">Delivery Address <span class="req">*</span></label>
-                                        <textarea name="delivery_address" id="deliveryAddress" class="form-textarea" placeholder="House/Unit No., Street, Barangay, Loreto Cortes, Bohol"><?= htmlspecialchars($_POST['delivery_address'] ?? $user['address'] ?? '') ?></textarea>
-                                        <span class="form-hint">Enter your full delivery address within Loreto Cortes, Bohol.</span>
+                                        <label class="form-label">Street / House No. / Purok <span class="req">*</span></label>
+                                        <input type="text" name="delivery_street" id="coStreet" class="form-input"
+                                            value="<?= htmlspecialchars($_POST['delivery_street'] ?? $savedStreet) ?>"
+                                            placeholder="e.g. Purok 3, House No. 12">
+                                        <span class="form-hint" id="coFeeHint">Select your barangay to see the delivery fee.</span>
                                     </div>
                                 </div>
                                 <div class="pickup-info <?= $selectedDeliveryType === 'pickup' ? 'show' : '' ?>" id="pickupInfo">
@@ -1186,7 +1235,7 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
                     </div>
                     <div class="summary-totals">
                         <div class="total-row"><span class="total-row-label">Subtotal</span><span class="total-row-value">₱<?= number_format($cartTotal, 2) ?></span></div>
-                        <div class="total-row"><span class="total-row-label">Delivery Fee</span><span class="total-row-value" id="summaryDeliveryFee"><?= $selectedDeliveryType === 'pickup' ? '<span class="free-badge">✓ FREE</span>' : '₱' . number_format($deliveryFee, 2) ?></span></div>
+                        <div class="total-row"><span class="total-row-label">Delivery Fee</span><span class="total-row-value" id="summaryDeliveryFee"><?= $selectedDeliveryType === 'pickup' ? '<span class="free-badge">✓ FREE</span>' : '—' ?></span></div>
                         <div class="total-divider"></div>
                         <div class="grand-total-row"><span class="grand-total-label">Total</span><span class="grand-total-value" id="summaryGrandTotal">₱<?= number_format($grandTotal, 2) ?></span></div>
                     </div>
@@ -1206,7 +1255,14 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
     </div>
     <script>
         const CART_TOTAL = <?= $cartTotal ?>;
-        const DELIVERY_FEE = <?= $deliveryFee ?>;
+        const FALLBACK_FEE = <?= $deliveryFee ?>;
+        const SAVED_MUNI = <?= json_encode($savedMuni) ?>;
+        const SAVED_BRGY = <?= json_encode($savedBrgy) ?>;
+        let CURRENT_FEE = 0; // resolved once a zone is chosen
+
+        const fmtPeso = v => '₱' + v.toLocaleString('en-PH', {
+            minimumFractionDigits: 2
+        });
 
         function selectDelivery(type) {
             document.querySelectorAll('.delivery-option').forEach(el => el.classList.remove('selected'));
@@ -1217,28 +1273,99 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
             }
             const addrWrap = document.getElementById('deliveryAddressWrap');
             const pickupDiv = document.getElementById('pickupInfo');
-            const addrTA = document.getElementById('deliveryAddress');
+            const muniSel = document.getElementById('coMuni');
+            const brgySel = document.getElementById('coBrgy');
+            const streetIn = document.getElementById('coStreet');
             if (type === 'pickup') {
                 addrWrap.style.display = 'none';
                 pickupDiv.classList.add('show');
-                addrTA.removeAttribute('required');
+                muniSel.removeAttribute('required');
+                brgySel.removeAttribute('required');
+                streetIn.removeAttribute('required');
             } else {
                 addrWrap.style.display = 'block';
                 pickupDiv.classList.remove('show');
-                addrTA.setAttribute('required', 'required');
+                muniSel.setAttribute('required', 'required');
+                brgySel.setAttribute('required', 'required');
+                streetIn.setAttribute('required', 'required');
             }
             updateTotals(type);
         }
 
         function updateTotals(type) {
-            const fee = type === 'pickup' ? 0 : DELIVERY_FEE;
+            const fee = type === 'pickup' ? 0 : CURRENT_FEE;
             const grand = CART_TOTAL + fee;
-            const fmt = v => '₱' + v.toLocaleString('en-PH', {
-                minimumFractionDigits: 2
-            });
-            document.getElementById('summaryDeliveryFee').innerHTML = type === 'pickup' ? '<span class="free-badge">✓ FREE</span>' : fmt(DELIVERY_FEE);
-            document.getElementById('summaryGrandTotal').textContent = fmt(grand);
-            document.getElementById('btnTotal').textContent = fmt(grand);
+            const feeEl = document.getElementById('summaryDeliveryFee');
+            if (type === 'pickup') {
+                feeEl.innerHTML = '<span class="free-badge">✓ FREE</span>';
+            } else if (fee === 0 && !document.getElementById('coBrgy').value) {
+                feeEl.textContent = '—';
+            } else if (fee === 0) {
+                feeEl.innerHTML = '<span class="free-badge">✓ FREE</span>';
+            } else {
+                feeEl.textContent = fmtPeso(fee);
+            }
+            document.getElementById('summaryGrandTotal').textContent = fmtPeso(grand);
+            document.getElementById('btnTotal').textContent = fmtPeso(grand);
+        }
+
+        // ── Delivery-zone dropdowns ────────────────────────────
+        function coLoadMunis() {
+            fetch('get_delivery_zones.php?action=municipalities')
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.ok) return;
+                    const sel = document.getElementById('coMuni');
+                    d.municipalities.forEach(m => {
+                        const o = document.createElement('option');
+                        o.value = m;
+                        o.textContent = m;
+                        if (m === SAVED_MUNI) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                    if (SAVED_MUNI) coLoadBrgy(SAVED_MUNI, SAVED_BRGY);
+                })
+                .catch(() => {});
+        }
+
+        function coLoadBrgy(muni, preselect) {
+            const sel = document.getElementById('coBrgy');
+            sel.innerHTML = '<option value="">Select barangay…</option>';
+            CURRENT_FEE = 0;
+            document.getElementById('coFeeHint').textContent = 'Select your barangay to see the delivery fee.';
+            updateTotals('delivery');
+            if (!muni) return;
+            fetch('get_delivery_zones.php?action=barangays&m=' + encodeURIComponent(muni))
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.ok) return;
+                    d.barangays.forEach(b => {
+                        const o = document.createElement('option');
+                        o.value = b.barangay;
+                        o.textContent = b.barangay + (b.fee === 0 ? ' — FREE' : ' — ₱' + b.fee.toFixed(2));
+                        o.dataset.fee = b.fee;
+                        if (b.barangay === preselect) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                    coUpdateFee();
+                })
+                .catch(() => {});
+        }
+
+        function coUpdateFee() {
+            const sel = document.getElementById('coBrgy');
+            const opt = sel.options[sel.selectedIndex];
+            const hint = document.getElementById('coFeeHint');
+            if (opt && opt.dataset.fee !== undefined) {
+                CURRENT_FEE = parseFloat(opt.dataset.fee);
+                hint.textContent = CURRENT_FEE === 0 ?
+                    'Delivery to this barangay is FREE.' :
+                    'Delivery fee for this barangay: ' + fmtPeso(CURRENT_FEE);
+            } else {
+                CURRENT_FEE = 0;
+                hint.textContent = 'Select your barangay to see the delivery fee.';
+            }
+            updateTotals(document.querySelector('input[name="delivery_type"]:checked')?.value || 'delivery');
         }
 
         function selectPayment(method) {
@@ -1252,12 +1379,26 @@ $grandTotal           = $cartTotal + $displayDeliveryFee;
         }
 
         function submitOrder() {
+            const type = document.querySelector('input[name="delivery_type"]:checked')?.value || 'delivery';
+            // Client-side guard for delivery zone selection
+            if (type === 'delivery') {
+                if (!document.getElementById('coMuni').value || !document.getElementById('coBrgy').value) {
+                    alert('Please select your delivery municipality and barangay.');
+                    return;
+                }
+                if (!document.getElementById('coStreet').value.trim()) {
+                    alert('Please enter your street / house number / purok.');
+                    return;
+                }
+            }
             const btn = document.getElementById('btnPlaceOrder');
             btn.disabled = true;
             btn.textContent = 'Placing order…';
             document.getElementById('checkoutForm').submit();
         }
+
         document.addEventListener('DOMContentLoaded', function() {
+            coLoadMunis();
             selectDelivery(document.querySelector('input[name="delivery_type"]:checked')?.value || 'delivery');
             selectPayment(document.querySelector('input[name="payment_method"]:checked')?.value || 'cod');
             document.querySelectorAll('.delivery-option').forEach(label => {
