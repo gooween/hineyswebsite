@@ -22,6 +22,7 @@ $navItems = [
     ['key' => 'transactions',   'icon' => 'fa-money-bill-transfer', 'label' => 'Transactions',     'href' => 'transactions.php'],
     ['key' => 'contacts',       'icon' => 'fa-envelope-open-text',  'label' => 'Messages',         'href' => 'contacts.php'],
     ['key' => 'gcash_settings', 'icon' => 'fa-credit-card',         'label' => 'Payment Settings', 'href' => 'gcash_settings.php'],
+    ['key' => 'delivery_zones', 'icon' => 'fa-truck',               'label' => 'Delivery Zones',   'href' => 'delivery_zones.php'],
 ];
 
 $stockItems = [
@@ -720,7 +721,7 @@ $isStockPage  = in_array($activePage, ['stocks', 'stocks_add']);
                 background:transparent;font-size:0.88rem;font-weight:600;color:#6b7280;
                 cursor:pointer;font-family:inherit;transition:all 0.15s;">
                 Cancel
-            </button>       
+            </button>
             <a href="<?= $base ?>logout.php" id="logoutConfirmBtn" style="
                 flex:1;padding:10px;border:none;border-radius:9px;
                 background:#ef4444;font-size:0.88rem;font-weight:700;color:#fff;
