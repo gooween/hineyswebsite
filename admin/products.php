@@ -24,6 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->query("INSERT INTO inventory (product_id, quantity, reorder_level, last_updated, notes)
                               VALUES ({$new_pid}, 0, {$reorder_lvl}, NOW(), 'Initial stock on product creation')
                               ON DUPLICATE KEY UPDATE quantity=quantity");
+
+                // ── Price Maintenance: seed the price history with the starting price ──
+                $uid = (int)($_SESSION['user_id'] ?? 0);
+                $seedStmt = $conn->prepare("INSERT INTO price_history (product_id, old_price, new_price, changed_by, reason) VALUES (?, ?, ?, ?, 'Initial price on product creation')");
+                $seedStmt->bind_param('iddi', $new_pid, $price, $price, $uid);
+                $seedStmt->execute();
+                $seedStmt->close();
             }
             redirect('products.php', 'success', 'Product added successfully.');
         } else {
@@ -41,8 +48,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $image_url = clean($_POST['image_url'] ?? '', $conn);
         $is_active = (int)($_POST['is_active'] ?? 1);
         $reorder   = (int)($_POST['reorder_level'] ?? 10);
+        $priceReason = trim($_POST['price_reason'] ?? '');
 
         if ($id && $name && $cat_id && $price > 0) {
+
+            // ── Price Maintenance: capture the price BEFORE it changes ──
+            $oldPrice = null;
+            $oldRes = $conn->query("SELECT price FROM products WHERE id = {$id} LIMIT 1");
+            if ($oldRes && $oldRow = $oldRes->fetch_assoc()) {
+                $oldPrice = (float)$oldRow['price'];
+            }
+
             $conn->query("UPDATE products SET
                 category_id = {$cat_id},
                 name        = '{$name}',
@@ -54,6 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = {$id}");
             $conn->query("UPDATE inventory SET reorder_level = {$reorder}, last_updated = NOW() WHERE product_id = {$id}");
             // Stock is managed via Stock Batches — not editable here
+
+            // ── Price Maintenance: log the change if the price actually moved ──
+            if ($oldPrice !== null && abs($oldPrice - $price) > 0.0001) {
+                $uid = (int)($_SESSION['user_id'] ?? 0);
+                $reasonToStore = $priceReason !== '' ? $priceReason : null;
+                $logStmt = $conn->prepare("INSERT INTO price_history (product_id, old_price, new_price, changed_by, reason) VALUES (?, ?, ?, ?, ?)");
+                $logStmt->bind_param('iddis', $id, $oldPrice, $price, $uid, $reasonToStore);
+                $logStmt->execute();
+                $logStmt->close();
+            }
+
             redirect('products.php', 'success', 'Product updated successfully.');
         } else {
             redirect('products.php', 'error', 'Please fill in all required fields.');
@@ -98,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->query("DELETE FROM product_archive_log WHERE product_id = {$id}");
             $conn->query("DELETE FROM inventory_logs WHERE product_id = {$id}");
             $conn->query("DELETE FROM inventory WHERE product_id = {$id}");
+            // price_history rows cascade-delete automatically (FK ON DELETE CASCADE)
             $conn->query("DELETE FROM products WHERE id = {$id}");
             redirect('products.php', 'success', 'Product permanently deleted.');
         } else {
@@ -144,7 +172,24 @@ $products = $conn->query("
                FROM stock_batches sb
                WHERE sb.product_id = p.id AND sb.status = 'active'
            ), 0) AS stock,
-           COALESCE(i.reorder_level, 10) AS reorder_level
+           COALESCE(i.reorder_level, 10) AS reorder_level,
+           (
+               SELECT ph.old_price
+               FROM price_history ph
+               WHERE ph.product_id = p.id
+               ORDER BY ph.changed_at DESC, ph.id DESC
+               LIMIT 1
+           ) AS last_old_price,
+           (
+               SELECT ph.changed_at
+               FROM price_history ph
+               WHERE ph.product_id = p.id
+               ORDER BY ph.changed_at DESC, ph.id DESC
+               LIMIT 1
+           ) AS last_price_change_at,
+           (
+               SELECT COUNT(*) FROM price_history ph WHERE ph.product_id = p.id
+           ) AS price_change_count
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN inventory i ON i.product_id = p.id
@@ -541,6 +586,16 @@ $activePage = 'products';
             color: #fff
         }
 
+        .btn-history {
+            color: #8b5cf6;
+            border-color: #8b5cf6
+        }
+
+        .btn-history:hover {
+            background: #8b5cf6;
+            color: #fff
+        }
+
         .btn-delete {
             color: #ef4444;
             border-color: #ef4444
@@ -644,6 +699,36 @@ $activePage = 'products';
             font-size: 0.72rem;
             color: var(--text-muted);
             font-weight: 400
+        }
+
+        .price-change-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+            vertical-align: middle;
+            cursor: default
+        }
+
+        .price-change-badge.up {
+            background: #fee2e2;
+            color: #991b1b
+        }
+
+        .price-change-badge.down {
+            background: #d1fae5;
+            color: #065f46
+        }
+
+        .price-history-count {
+            display: block;
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 2px
         }
 
         .stock-cell {
@@ -763,6 +848,10 @@ $activePage = 'products';
 
         .modal-card.sm {
             max-width: 460px
+        }
+
+        .modal-card.md {
+            max-width: 560px
         }
 
         @keyframes modalSlide {
@@ -909,6 +998,28 @@ $activePage = 'products';
             font-size: 0.72rem;
             color: var(--text-muted);
             margin-top: 2px
+        }
+
+        .price-reason-wrap {
+            display: none;
+            background: #fef3e8;
+            border: 1px solid #fde9d0;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-top: 4px
+        }
+
+        .price-reason-wrap.show {
+            display: block
+        }
+
+        .price-reason-note {
+            font-size: 0.76rem;
+            color: #9a5b0f;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px
         }
 
         .stock-info-box {
@@ -1360,6 +1471,129 @@ $activePage = 'products';
             flex-shrink: 0
         }
 
+        /* ── Price History modal ── */
+        .ph-loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted)
+        }
+
+        .ph-spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #e5e7eb;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 10px
+        }
+
+        .ph-current {
+            background: var(--primary-light, #fef3e8);
+            border: 1px solid #fde9d0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px
+        }
+
+        .ph-current-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #9a5b0f
+        }
+
+        .ph-current-value {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: var(--primary)
+        }
+
+        .ph-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.83rem
+        }
+
+        .ph-table th {
+            text-align: left;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            padding: 8px 10px;
+            border-bottom: 1.5px solid var(--card-border)
+        }
+
+        .ph-table td {
+            padding: 10px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top
+        }
+
+        .ph-table tr:last-child td {
+            border-bottom: none
+        }
+
+        .ph-price-move {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+            white-space: nowrap
+        }
+
+        .ph-arrow-up {
+            color: #ef4444
+        }
+
+        .ph-arrow-down {
+            color: #10b981
+        }
+
+        .ph-diff {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 10px
+        }
+
+        .ph-diff.up {
+            background: #fee2e2;
+            color: #991b1b
+        }
+
+        .ph-diff.down {
+            background: #d1fae5;
+            color: #065f46
+        }
+
+        .ph-date {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            white-space: nowrap
+        }
+
+        .ph-reason {
+            color: var(--text);
+            font-size: 0.8rem
+        }
+
+        .ph-reason.empty {
+            color: #b0b7c0;
+            font-style: italic
+        }
+
+        .ph-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted)
+        }
+
         @media(max-width:768px) {
             .main-content {
                 margin-left: 0;
@@ -1386,6 +1620,10 @@ $activePage = 'products';
 
             .toolbar-right {
                 justify-content: flex-end
+            }
+
+            .ph-table {
+                font-size: 0.78rem
             }
         }
     </style>
@@ -1470,7 +1708,7 @@ $activePage = 'products';
                                 <th>Price</th>
                                 <th>Stock</th>
                                 <th>Status</th>
-                                <th style="text-align:center;width:<?= $showArchive ? '160px' : '130px' ?>;">Actions</th>
+                                <th style="text-align:center;width:<?= $showArchive ? '160px' : '190px' ?>;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1480,6 +1718,21 @@ $activePage = 'products';
                                 $emoji = $isChicken ? '<i class="fa-solid fa-drumstick-bite"></i>' : '<i class="fa-solid fa-egg"></i>';
                                 $stockPct = $p['reorder_level'] > 0 ? min(100, round(($p['stock'] / max($p['reorder_level'] * 2, 1)) * 100)) : 100;
                                 $stockColor = $p['stock'] <= 0 ? '#ef4444' : ($p['stock'] <= $p['reorder_level'] ? '#f59e0b' : '#10b981');
+
+                                // ── Price Maintenance: recent-change badge (within last 7 days) ──
+                                $priceBadge = '';
+                                if (!empty($p['last_price_change_at']) && $p['last_old_price'] !== null) {
+                                    $changedAt = strtotime($p['last_price_change_at']);
+                                    $isRecent  = $changedAt && (time() - $changedAt) <= (7 * 86400);
+                                    $curPrice  = (float)$p['price'];
+                                    $oldP      = (float)$p['last_old_price'];
+                                    if ($isRecent && abs($curPrice - $oldP) > 0.0001) {
+                                        $went = $curPrice > $oldP ? 'up' : 'down';
+                                        $arrow = $went === 'up' ? '▲' : '▼';
+                                        $priceBadge = "<span class=\"price-change-badge {$went}\">{$arrow} " . date('M j', $changedAt) . "</span>";
+                                    }
+                                }
+                                $historyCount = (int)($p['price_change_count'] ?? 0);
                             ?>
                                 <tr <?= $showArchive ? 'class="archived-row"' : '' ?>>
                                     <td style="color:var(--text-muted);font-size:0.78rem;font-weight:600;"><?= $rowNum++ ?></td>
@@ -1492,7 +1745,7 @@ $activePage = 'products';
                                         </div>
                                     </td>
                                     <td><span style="background:#f3f4f6;color:var(--text-muted);padding:2px 8px;border-radius:6px;font-size:0.78rem;font-weight:500;"><?= htmlspecialchars($p['category_name'] ?? '—') ?></span></td>
-                                    <td class="price-cell"><?= peso((float)$p['price']) ?><br><span class="unit-label"><?= htmlspecialchars($p['unit']) ?></span></td>
+                                    <td class="price-cell"><?= peso((float)$p['price']) ?><?= $priceBadge ?><br><span class="unit-label"><?= htmlspecialchars($p['unit']) ?></span><?php if ($historyCount > 0): ?><span class="price-history-count"><?= $historyCount ?> price change<?= $historyCount !== 1 ? 's' : '' ?> on record</span><?php endif; ?></td>
                                     <td>
                                         <div class="stock-cell"><span class="stock-num" style="color:<?= $stockColor ?>;"><?= number_format((int)$p['stock']) ?></span>
                                             <div class="stock-bar">
@@ -1502,7 +1755,7 @@ $activePage = 'products';
                                     </td>
                                     <td><span class="status-dot <?= $showArchive ? 'archived' : ($p['is_active'] ? 'active' : 'inactive') ?>"><?= $showArchive ? 'Archived' : ($p['is_active'] ? 'Active' : 'Inactive') ?></span></td>
                                     <td style="text-align:center;">
-                                        <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+                                        <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;">
                                             <?php if ($showArchive): ?>
                                                 <form method="POST" style="display:inline;"><input type="hidden" name="action" value="restore"><input type="hidden" name="id" value="<?= $p['id'] ?>"><button type="submit" class="btn-action btn-restore"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                             <polyline points="1 4 1 10 7 10" />
@@ -1517,6 +1770,10 @@ $activePage = 'products';
                                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                     </svg> Edit</button>
+                                                <button class="btn-action btn-history" onclick="openHistory(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name']), ENT_QUOTES) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                    </svg> History</button>
                                                 <button class="btn-action btn-delete" onclick="openArchive(<?= $p['id'] ?>,'<?= htmlspecialchars(addslashes($p['name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                         <polyline points="21 8 21 21 3 21 3 8" />
                                                         <rect x="1" y="3" width="22" height="5" />
@@ -1656,11 +1913,18 @@ $activePage = 'products';
                     </div>
                     <div class="form-section-label">Pricing & Status</div>
                     <div class="form-grid">
-                        <div class="form-group"><label class="form-label">Price (₱) <span class="req">*</span></label><input type="number" name="price" id="edit_price" class="form-input" step="0.01" min="0.01" required></div>
+                        <div class="form-group"><label class="form-label">Price (₱) <span class="req">*</span></label><input type="number" name="price" id="edit_price" class="form-input" step="0.01" min="0.01" required oninput="checkPriceChanged()"><span class="form-hint" id="edit_price_current_hint"></span></div>
                         <div class="form-group"><label class="form-label">Status</label><select name="is_active" id="edit_is_active" class="form-select">
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
                             </select></div>
+                        <div class="form-group span-2">
+                            <div class="price-reason-wrap" id="price_reason_wrap">
+                                <div class="price-reason-note"><i class="fa-solid fa-circle-info"></i> You're changing the price — this will be logged to Price History.</div>
+                                <label class="form-label">Reason for change (optional)</label>
+                                <input type="text" name="price_reason" id="edit_price_reason" class="form-input" placeholder="e.g. Market markup, supplier price increase…">
+                            </div>
+                        </div>
                     </div>
                     <div class="form-section-label">Product Image</div>
                     <div class="form-group span-2">
@@ -1736,13 +2000,29 @@ $activePage = 'products';
                 <div class="modal-body">
                     <div class="delete-icon-wrap"><i class="fa-solid fa-trash"></i></div>
                     <div class="delete-title">Permanently Delete?</div>
-                    <div class="delete-text"><span class="delete-name" id="hard_delete_name"></span> will be permanently removed along with all its inventory and log records.<br><br><strong style="color:#ef4444;">This cannot be undone.</strong></div>
+                    <div class="delete-text"><span class="delete-name" id="hard_delete_name"></span> will be permanently removed along with all its inventory, price history, and log records.<br><br><strong style="color:#ef4444;">This cannot be undone.</strong></div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('hardDeleteModal')">Cancel</button><button type="submit" class="btn btn-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                         </svg> Delete Forever</button></div>
             </form>
+        </div>
+    </div>
+
+    <!-- PRICE HISTORY MODAL -->
+    <div class="modal-backdrop" id="historyModal" onclick="backdropClose(event,'historyModal')">
+        <div class="modal-card md">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-clock-rotate-left" style="color:#8b5cf6;"></i> Price History — <span id="history_product_name" style="color:#8b5cf6;">—</span></div>
+                <button class="modal-close" onclick="closeModal('historyModal')">✕</button>
+            </div>
+            <div class="modal-body" id="history_body">
+                <div class="ph-loading">
+                    <div class="ph-spinner"></div>Loading price history…
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('historyModal')">Close</button></div>
         </div>
     </div>
 
@@ -1838,6 +2118,23 @@ $activePage = 'products';
             openModal('hardDeleteModal');
         }
 
+        // ── Price Maintenance: track the price the product had when Edit opened ──
+        let _editOriginalPrice = null;
+
+        function checkPriceChanged() {
+            const wrap = document.getElementById('price_reason_wrap');
+            const cur = parseFloat(document.getElementById('edit_price').value);
+            if (_editOriginalPrice === null || isNaN(cur)) {
+                wrap.classList.remove('show');
+                return;
+            }
+            if (Math.abs(cur - _editOriginalPrice) > 0.001) {
+                wrap.classList.add('show');
+            } else {
+                wrap.classList.remove('show');
+            }
+        }
+
         function openEdit(data) {
             document.getElementById('edit_id').value = data.id;
             document.getElementById('edit_name').value = data.name;
@@ -1847,6 +2144,13 @@ $activePage = 'products';
             document.getElementById('edit_stock_display').textContent = data.stock + ' ' + data.unit;
             document.getElementById('edit_image_url').value = data.image_url || '';
             document.getElementById('edit_is_active').value = data.is_active;
+
+            // Price Maintenance: remember starting price + reset the reason field
+            _editOriginalPrice = parseFloat(data.price);
+            document.getElementById('edit_price_current_hint').textContent = 'Current price: ₱' + parseFloat(data.price).toFixed(2);
+            document.getElementById('edit_price_reason').value = '';
+            document.getElementById('price_reason_wrap').classList.remove('show');
+
             const catSel = document.getElementById('edit_category_id');
             catSel.value = data.category_id;
             updateUnits('edit', data.category_id);
@@ -1870,6 +2174,71 @@ $activePage = 'products';
             }
             document.getElementById('edit_upload_status').textContent = '';
             openModal('editModal');
+        }
+
+        // ── Price Maintenance: History modal ──────────────────────
+        function openHistory(productId, productName) {
+            document.getElementById('history_product_name').textContent = productName;
+            const body = document.getElementById('history_body');
+            body.innerHTML = '<div class="ph-loading"><div class="ph-spinner"></div>Loading price history…</div>';
+            openModal('historyModal');
+
+            fetch('price_history_get.php?product_id=' + encodeURIComponent(productId))
+                .then(r => r.json())
+                .then(data => renderHistory(data))
+                .catch(() => {
+                    body.innerHTML = '<div class="ph-empty"><i class="fa-solid fa-triangle-exclamation" style="font-size:1.8rem;color:#f59e0b;"></i><div style="margin-top:8px;">Could not load price history.</div></div>';
+                });
+        }
+
+        function fmtPeso(v) {
+            return '₱' + parseFloat(v).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function renderHistory(data) {
+            const body = document.getElementById('history_body');
+            if (!data || !data.ok) {
+                body.innerHTML = '<div class="ph-empty">Could not load price history.</div>';
+                return;
+            }
+
+            let html = '';
+            html += '<div class="ph-current"><span class="ph-current-label">Current Price</span><span class="ph-current-value">' + fmtPeso(data.current_price) + '</span></div>';
+
+            if (!data.history || data.history.length === 0) {
+                html += '<div class="ph-empty"><i class="fa-solid fa-clock-rotate-left" style="font-size:1.8rem;color:#c4b5fd;"></i><div style="margin-top:8px;">No price changes recorded yet.</div></div>';
+                body.innerHTML = html;
+                return;
+            }
+
+            html += '<table class="ph-table"><thead><tr><th>Change</th><th>Difference</th><th>Date</th><th>Changed By</th><th>Reason</th></tr></thead><tbody>';
+            data.history.forEach(row => {
+                const up = row.new_price > row.old_price;
+                const diff = Math.abs(row.new_price - row.old_price);
+                const pct = row.old_price > 0 ? (diff / row.old_price * 100).toFixed(1) : '0.0';
+                const arrowCls = up ? 'ph-arrow-up' : 'ph-arrow-down';
+                const arrow = up ? '▲' : '▼';
+                const diffCls = up ? 'up' : 'down';
+                const reasonHtml = row.reason ? escapeHtml(row.reason) : '<span class="ph-reason empty">No reason given</span>';
+                html += '<tr>' +
+                    '<td><div class="ph-price-move"><span style="color:#9ca3af;">' + fmtPeso(row.old_price) + '</span> → <span class="' + arrowCls + '">' + arrow + ' ' + fmtPeso(row.new_price) + '</span></div></td>' +
+                    '<td><span class="ph-diff ' + diffCls + '">' + (up ? '+' : '-') + fmtPeso(diff) + ' (' + pct + '%)</span></td>' +
+                    '<td class="ph-date">' + row.changed_at_display + '</td>' +
+                    '<td>' + (row.changed_by_name ? escapeHtml(row.changed_by_name) : '<span style="color:#b0b7c0;">—</span>') + '</td>' +
+                    '<td class="ph-reason' + (row.reason ? '' : ' empty') + '">' + reasonHtml + '</td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table>';
+            body.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
         }
 
         async function uploadToCloudinary(input, prefix) {
