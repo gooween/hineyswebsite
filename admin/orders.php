@@ -1327,7 +1327,7 @@ $activePage = 'orders';
                     </svg><span id="view_modal_title">Order Details</span></div><button class="modal-close" onclick="closeModal('viewModal')">✕</button>
             </div>
             <div class="modal-body">
-                <div id="view_content" style="text-align:center;padding:48px 20px;color:var(--text-muted);">Loading…</div>
+                <div id="view_content">Loading…</div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button></div>
         </div>

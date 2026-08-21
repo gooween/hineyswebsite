@@ -62,77 +62,79 @@ $statusMap = [
         color: #4b4740;
     }
 
-    /* Dark header banner */
-    .od-banner {
-        background: linear-gradient(135deg, #2b2823, #3d3833);
-        padding: 20px 24px;
+    /* Status strip */
+    .od-statusbar {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: 16px;
         flex-wrap: wrap;
+        padding: 2px 0 16px;
+        border-bottom: 1px solid #ebe8e3;
+        margin-bottom: 16px;
     }
 
-    .od-banner-left {}
-
-    .od-banner-order {
-        font-size: 1.25rem;
-        font-weight: 900;
-        color: #fff;
-        letter-spacing: -0.02em;
-        margin-bottom: 3px;
+    .od-placed {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
     }
 
-    .od-banner-date {
-        font-size: 0.75rem;
-        color: #b0a99e;
+    .od-placed-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #9c968c;
     }
 
-    .od-banner-right {
+    .od-placed-date {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #23201c;
+    }
+
+    .od-statusbar-pills {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
     }
 
-    .od-status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 14px;
-        border-radius: 20px;
-        font-size: 0.72rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        border: 1.5px solid;
-    }
-
-    .od-pay-pill {
+    .od-st-pill {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 4px 11px;
-        border-radius: 20px;
-        font-size: 0.7rem;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 0.74rem;
         font-weight: 700;
+        white-space: nowrap;
     }
 
-    .od-pay-paid {
-        background: #e6f4ec;
-        color: #1f7a48;
+    .od-st-pill::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
     }
 
-    .od-pay-unpaid {
-        background: #fbeae9;
-        color: #b23c34;
-    }
+    .od-st-pill.st-pending          { background: #fbf1de; color: #8a5a0c; }
+    .od-st-pill.st-approved         { background: #e8f0fb; color: #2b62ad; }
+    .od-st-pill.st-processing       { background: #f0ecfa; color: #6a4bc0; }
+    .od-st-pill.st-out_for_delivery { background: #fde8d4; color: #a4680c; }
+    .od-st-pill.st-delivered        { background: #e6f4ec; color: #1f7a48; }
+    .od-st-pill.st-cancelled        { background: #fbeae9; color: #b23c34; }
+    .od-st-pill.pay-paid            { background: #e6f4ec; color: #1f7a48; }
+    .od-st-pill.pay-unpaid          { background: #fbeae9; color: #b23c34; }
 
     /* Quick chips */
     .od-chips {
         display: flex;
         gap: 8px;
-        padding: 16px 24px 0;
+        padding: 0;
+        margin-bottom: 4px;
         flex-wrap: wrap;
     }
 
@@ -167,7 +169,7 @@ $statusMap = [
 
     /* Section */
     .od-section {
-        padding: 16px 24px 0;
+        padding: 18px 0 0;
     }
 
     .od-section-head {
@@ -386,7 +388,7 @@ $statusMap = [
         width: 100%;
         border-radius: 10px;
         border: 1px solid #ebe8e3;
-        box-shadow: 0 2px 12px rgba(35, 32, 28, 0.08);
+        box-shadow: 0 2px 12px rgba(35,32,28,0.08);
         cursor: pointer;
         transition: transform 0.15s;
     }
@@ -466,19 +468,15 @@ $statusMap = [
 
 <div class="od-wrap">
 
-    <!-- Dark header -->
-    <div class="od-banner">
-        <div class="od-banner-left">
-            <div class="od-banner-order">Order #<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?></div>
-            <div class="od-banner-date">Placed <?= date('F j, Y \a\t g:i A', strtotime($o['created_at'])) ?></div>
+    <!-- Status strip (order # is already shown in the modal header) -->
+    <div class="od-statusbar">
+        <div class="od-placed">
+            <span class="od-placed-label">Placed</span>
+            <span class="od-placed-date"><?= date('F j, Y \a\t g:i A', strtotime($o['created_at'])) ?></span>
         </div>
-        <div class="od-banner-right">
-            <span class="od-status-pill" style="background:<?= $sBg ?>22;color:<?= $sColor ?>;border-color:<?= $sColor ?>44;">
-                <?= $sIcon ?> <?= $sLabel ?>
-            </span>
-            <span class="od-pay-pill <?= $o['payment_status'] === 'paid' ? 'od-pay-paid' : 'od-pay-unpaid' ?>">
-                <?= $o['payment_status'] === 'paid' ? '✓ Paid' : '⏳ Unpaid' ?>
-            </span>
+        <div class="od-statusbar-pills">
+            <span class="od-st-pill st-<?= $o['status'] ?>"><?= $sLabel ?></span>
+            <span class="od-st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span>
         </div>
     </div>
 
@@ -500,7 +498,7 @@ $statusMap = [
         <?php else: ?>
             <div class="od-chip">
                 <div class="od-chip-label">Delivery Fee</div>
-                <div class="od-chip-value" style="color:#a4680c;">Not set yet</div>
+                <div class="od-chip-value" style="color:#a4680c;">Not set</div>
             </div>
         <?php endif; ?>
         <div class="od-chip">
