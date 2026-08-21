@@ -206,581 +206,338 @@ $activePage = 'products';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style id="hineys-icon-colors">
-        .navbar .fa-solid,
-        .mobile-drawer .fa-solid,
-        .sidebar .fa-solid,
-        button .fa-solid,
-        [class*="btn"] .fa-solid,
-        .badge .fa-solid,
-        .status-badge .fa-solid,
-        .status-tab .fa-solid,
-        .pay-badge .fa-solid,
-        .page-banner .fa-solid,
-        .page-header .fa-solid,
-        .hero .fa-solid,
-        .cta-card .fa-solid,
-        .about-strip .fa-solid,
-        .nav-cart .fa-solid,
-        .user-chip .fa-solid,
-        .info-card-top .fa-solid,
-        .sidebar-logout .fa-solid {
-            color: inherit !important
-        }
-
-        .fa-egg {
-            color: #f4a72c
-        }
-
-        .fa-drumstick-bite {
-            color: #c2703b
-        }
-
-        .fa-circle-check,
-        .fa-check,
-        .fa-shield-halved,
-        .fa-leaf,
-        .fa-seedling,
-        .fa-phone {
-            color: #10b981
-        }
-
-        .fa-circle-xmark,
-        .fa-xmark,
-        .fa-trash,
-        .fa-ban,
-        .fa-location-dot {
-            color: #ef4444
-        }
-
-        .fa-cart-shopping,
-        .fa-bag-shopping,
-        .fa-store,
-        .fa-shop {
-            color: #e67e22
-        }
-
-        .fa-truck {
-            color: #f97316
-        }
-
-        .fa-triangle-exclamation,
-        .fa-circle-exclamation,
-        .fa-clock,
-        .fa-star {
-            color: #f59e0b
-        }
-
-        .fa-info-circle,
-        .fa-credit-card,
-        .fa-mobile-screen,
-        .fa-envelope,
-        .fa-envelope-open,
-        .fa-envelope-open-text,
-        .fa-inbox,
-        .fa-comment,
-        .fa-map,
-        .fa-paperclip {
-            color: #3b82f6
-        }
-
-        .fa-sack-dollar,
-        .fa-money-bill,
-        .fa-money-bill-transfer {
-            color: #16a34a
-        }
-
-        .fa-users,
-        .fa-user,
-        .fa-user-plus {
-            color: #6366f1
-        }
-
-        .fa-box,
-        .fa-box-open,
-        .fa-boxes-stacked,
-        .fa-warehouse,
-        .fa-receipt,
-        .fa-clipboard-list,
-        .fa-file-lines {
-            color: #8b5cf6
-        }
-
-        .fa-chart-bar,
-        .fa-chart-line,
-        .fa-chart-pie,
-        .fa-gauge-high {
-            color: #0ea5e9
-        }
-
-        .fa-heart {
-            color: #ef4444
-        }
-
-        .fa-gear {
-            color: #6b7280
-        }
-
-        .fa-lightbulb {
-            color: #f59e0b
-        }
-    </style>
     <title>Products — Hiney's Admin</title>
     <style>
-        :root {
-            --card-border: #e5e7eb
-        }
+        /* Page-specific styles only — shared system comes from admin.css */
 
-        .main-content {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            padding: 32px 32px 48px;
-            min-height: 100vh;
-            background: var(--page-bg);
-            transition: margin-left 0.3s ease;
-            box-sizing: border-box;
-            width: calc(100% - var(--sidebar-w))
-        }
-
-        .page-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 12px
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.02em
-        }
-
-        .page-title-sub {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            margin-top: 2px
-        }
-
+        /* Toolbar */
         .toolbar {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius) var(--radius) 0 0;
-            padding: 14px 18px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--s3);
             flex-wrap: wrap;
-            border-bottom: none;
-            width: 100%;
-            box-sizing: border-box
+            margin-bottom: var(--s4);
         }
 
-        .toolbar-left {
-            display: flex;
+        .toolbar-count {
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            flex: 1;
-            flex-wrap: wrap
-        }
-
-        .toolbar-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0
-        }
-
-        .toolbar-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--dark)
+            gap: var(--s2);
+            font-size: var(--fs-h3);
+            font-weight: var(--fw-semi);
+            color: var(--ink);
         }
 
         .count-pill {
-            background: var(--primary);
-            color: #fff;
-            font-size: 0.72rem;
-            font-weight: 700;
+            background: var(--brand-tint-2);
+            color: var(--brand-strong);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-bold);
             padding: 2px 10px;
-            border-radius: 20px;
-            letter-spacing: 0.03em
+            border-radius: var(--r-pill);
         }
 
         .count-pill.archive {
-            background: #6b7280
+            background: #f0eee9;
+            color: var(--ink-2);
+        }
+
+        .toolbar-spacer {
+            flex: 1;
         }
 
         .search-wrap {
             position: relative;
             display: flex;
-            align-items: center
+            align-items: center;
         }
 
         .search-wrap svg {
             position: absolute;
-            left: 10px;
-            color: var(--text-muted);
-            pointer-events: none
+            left: 11px;
+            color: var(--ink-3);
+            pointer-events: none;
         }
 
         .search-input {
-            padding: 7px 12px 7px 34px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            width: 200px;
-            background: var(--page-bg);
-            color: var(--text);
+            padding: 8px 12px 8px 34px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            width: 210px;
+            background: var(--surface);
+            color: var(--ink);
             outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s
+            font-family: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
 
         .search-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
-        .filter-select {
-            padding: 7px 30px 7px 10px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            background: var(--page-bg);
-            color: var(--text);
+        .select-field {
+            padding: 8px 30px 8px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            background: var(--surface);
+            color: var(--ink);
             outline: none;
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            font-family: inherit;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239c968c' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 9px center
+            background-position: right 10px center;
         }
 
-        .filter-select:focus {
-            border-color: var(--primary);
-            outline: none
+        .select-field:focus {
+            border-color: var(--brand);
         }
 
-        .btn-add {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s, transform 0.1s;
+        .clear-link {
+            font-size: var(--fs-sm);
+            color: var(--brand);
+            font-weight: var(--fw-med);
             white-space: nowrap;
-            text-decoration: none
         }
 
-        .btn-add:hover {
-            background: #cf6d17;
-            transform: translateY(-1px)
+        .clear-link:hover {
+            text-decoration: underline;
         }
 
-        .btn-archive-view {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: transparent;
-            color: var(--text-muted);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.15s
-        }
-
-        .btn-archive-view:hover,
-        .btn-archive-view.active {
-            background: #f3f4f6;
-            color: var(--dark);
-            border-color: #d1d5db
-        }
-
-        .table-wrapper {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 0 0 var(--radius) var(--radius);
-            overflow-x: auto;
-            box-shadow: var(--shadow);
-            width: 100%;
-            box-sizing: border-box
-        }
-
-        table.data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.87rem
-        }
-
-        table.data-table thead th {
-            background: var(--dark);
-            color: #e5e7eb;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            padding: 12px 14px;
-            white-space: nowrap;
-            text-align: left
-        }
-
-        table.data-table tbody tr:nth-child(even) {
-            background: #fef9f0
-        }
-
-        table.data-table tbody tr:hover {
-            background: #fdebd0;
-            transition: background 0.15s
-        }
-
-        table.data-table tbody td {
-            padding: 11px 14px;
-            color: var(--text);
-            border-bottom: 1px solid #f3f4f6;
-            vertical-align: middle
-        }
-
-        table.data-table tbody tr:last-child td {
-            border-bottom: none
-        }
-
-        table.data-table tbody tr.archived-row {
-            opacity: 0.7
-        }
-
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid;
-            background: transparent;
-            transition: background 0.15s, color 0.15s;
-            white-space: nowrap
-        }
-
-        .btn-edit {
-            color: var(--primary);
-            border-color: var(--primary)
-        }
-
-        .btn-edit:hover {
-            background: var(--primary);
-            color: #fff
-        }
-
-        .btn-history {
-            color: #8b5cf6;
-            border-color: #8b5cf6
-        }
-
-        .btn-history:hover {
-            background: #8b5cf6;
-            color: #fff
-        }
-
-        .btn-delete {
-            color: #ef4444;
-            border-color: #ef4444
-        }
-
-        .btn-delete:hover {
-            background: #ef4444;
-            color: #fff
-        }
-
-        .btn-restore {
-            color: #10b981;
-            border-color: #10b981
-        }
-
-        .btn-restore:hover {
-            background: #10b981;
-            color: #fff
-        }
-
-        .product-cell {
-            display: flex;
-            align-items: center;
-            gap: 10px
-        }
-
-        .product-thumb {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
+        /* Product cell */
+        .prod-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--r-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 17px;
             flex-shrink: 0;
-            border: 1px solid #fddcb5;
             overflow: hidden;
-            background: linear-gradient(135deg, #fef3e8, #fde9d0)
+            border: 1px solid var(--brand-tint-2);
+            background: linear-gradient(135deg, var(--brand-tint), var(--brand-tint-2));
         }
 
-        .product-thumb img {
+        .prod-thumb img {
             width: 100%;
             height: 100%;
-            object-fit: cover
+            object-fit: cover;
         }
 
-        .product-name {
-            font-weight: 600;
-            color: var(--dark)
-        }
-
-        .product-desc {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+        .prod-desc {
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
             margin-top: 1px;
-            max-width: 200px;
+            max-width: 220px;
             white-space: nowrap;
             overflow: hidden;
-            text-overflow: ellipsis
+            text-overflow: ellipsis;
         }
 
-        .status-dot {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 20px
+        .cat-tag {
+            background: #f0eee9;
+            color: var(--ink-2);
+            padding: 2px 9px;
+            border-radius: var(--r-sm);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-med);
         }
 
-        .status-dot.active {
-            background: #d1fae5;
-            color: #065f46
-        }
-
-        .status-dot.inactive {
-            background: #fee2e2;
-            color: #991b1b
-        }
-
-        .status-dot.archived {
-            background: #f3f4f6;
-            color: #6b7280
-        }
-
-        .status-dot::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor
-        }
-
-        .price-cell {
-            font-weight: 700;
-            color: var(--dark)
+        .price-strong {
+            font-weight: var(--fw-bold);
+            color: var(--ink);
         }
 
         .unit-label {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            font-weight: 400
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
+            font-weight: var(--fw-normal);
         }
 
-        .price-change-badge {
+        .price-move {
             display: inline-flex;
             align-items: center;
             gap: 2px;
-            font-size: 0.68rem;
-            font-weight: 700;
+            font-size: 0.66rem;
+            font-weight: var(--fw-bold);
             padding: 1px 6px;
-            border-radius: 10px;
-            margin-left: 4px;
+            border-radius: var(--r-pill);
+            margin-left: 5px;
             vertical-align: middle;
-            cursor: default
         }
 
-        .price-change-badge.up {
-            background: #fee2e2;
-            color: #991b1b
+        .price-move.up {
+            background: var(--danger-tint);
+            color: #b23c34;
         }
 
-        .price-change-badge.down {
-            background: #d1fae5;
-            color: #065f46
+        .price-move.down {
+            background: var(--ok-tint);
+            color: #1f7a48;
         }
 
-        .price-history-count {
+        .price-count {
             display: block;
-            font-size: 0.68rem;
-            color: var(--text-muted);
-            margin-top: 2px
+            font-size: 0.66rem;
+            color: var(--ink-3);
+            margin-top: 2px;
         }
 
+        /* Stock cell */
         .stock-cell {
             display: flex;
             flex-direction: column;
-            gap: 3px
+            gap: 3px;
         }
 
         .stock-num {
-            font-weight: 700
+            font-weight: var(--fw-bold);
+            font-variant-numeric: tabular-nums;
         }
 
         .stock-bar {
-            width: 60px;
+            width: 62px;
             height: 4px;
-            background: #e5e7eb;
+            background: var(--line);
             border-radius: 2px;
-            overflow: hidden
+            overflow: hidden;
         }
 
         .stock-bar-fill {
             height: 100%;
-            border-radius: 2px
+            border-radius: 2px;
         }
 
-        .empty-state {
-            padding: 56px 20px;
-            text-align: center;
-            color: var(--text-muted)
+        /* Row action buttons — icon by default, expand to show label on hover */
+        .row-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
-        .empty-icon {
-            font-size: 3rem;
-            margin-bottom: 12px
+        .act {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+            width: 32px;
+            padding: 0;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            border: 1px solid;
+            background: transparent;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            font-family: inherit;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), background 0.14s, color 0.14s, border-color 0.14s, padding 0.22s;
         }
 
+        .act svg {
+            flex-shrink: 0;
+        }
+
+        /* Label sits next to the icon but is collapsed (zero width) until hover */
+        .act .act-label {
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            transition: max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s, margin-left 0.22s;
+        }
+
+        .act:hover {
+            width: auto;
+            padding: 0 11px;
+        }
+
+        .act:hover .act-label {
+            max-width: 90px;
+            opacity: 1;
+            margin-left: 5px;
+        }
+
+        .act-edit {
+            color: var(--brand);
+            border-color: var(--brand);
+        }
+
+        .act-edit:hover {
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .act-history {
+            color: #7c5cd0;
+            border-color: #c9bbee;
+        }
+
+        .act-history:hover {
+            background: #7c5cd0;
+            color: #fff;
+            border-color: #7c5cd0;
+        }
+
+        .act-archive {
+            color: var(--ink-2);
+            border-color: var(--line-strong);
+        }
+
+        .act-archive:hover {
+            background: var(--ink-2);
+            color: #fff;
+            border-color: var(--ink-2);
+        }
+
+        .act-restore {
+            color: var(--ok);
+            border-color: #a7dcbc;
+        }
+
+        .act-restore:hover {
+            background: var(--ok);
+            color: #fff;
+            border-color: var(--ok);
+        }
+
+        .act-delete {
+            color: var(--danger);
+            border-color: #f0c4c0;
+        }
+
+        .act-delete:hover {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
+        }
+
+        .archived-row {
+            opacity: 0.72;
+        }
+
+        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 18px;
-            border-top: 1px solid var(--card-border);
-            font-size: 0.82rem;
-            color: var(--text-muted);
+            padding: var(--s4) var(--s5);
+            border-top: 1px solid var(--line);
+            font-size: var(--fs-sm);
+            color: var(--ink-2);
             flex-wrap: wrap;
-            gap: 8px
+            gap: var(--s2);
         }
 
-        .pagination-pages {
+        .pg-pages {
             display: flex;
             align-items: center;
-            gap: 4px
+            gap: 4px;
         }
 
         .pg-btn {
@@ -790,462 +547,413 @@ $activePage = 'products';
             min-width: 32px;
             height: 32px;
             padding: 0 8px;
-            border-radius: 6px;
-            border: 1px solid var(--card-border);
-            background: var(--card-bg);
-            color: var(--text);
-            font-size: 0.82rem;
-            font-weight: 500;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--line-strong);
+            background: var(--surface);
+            color: var(--ink);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-med);
             cursor: pointer;
             text-decoration: none;
-            transition: background 0.15s, border-color 0.15s
+            transition: background 0.14s, border-color 0.14s;
         }
 
         .pg-btn:hover {
-            background: var(--page-bg);
-            border-color: #d1d5db
+            background: var(--surface-2);
+            border-color: var(--ink-3);
         }
 
         .pg-btn.active {
-            background: var(--primary);
+            background: var(--brand);
             color: #fff;
-            border-color: var(--primary);
-            font-weight: 700
+            border-color: var(--brand);
+            font-weight: var(--fw-bold);
         }
 
-        .pg-btn:disabled,
         .pg-btn.disabled {
             opacity: 0.4;
-            pointer-events: none
+            pointer-events: none;
         }
 
+        /* Modals (shared shell, page-tuned) */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(35, 32, 28, 0.45);
             backdrop-filter: blur(3px);
             z-index: 1000;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 20px
+            padding: 20px;
         }
 
         .modal-backdrop.open {
-            display: flex
+            display: flex;
         }
 
         .modal-card {
-            background: var(--card-bg);
-            border-radius: 14px;
+            background: var(--surface);
+            border-radius: var(--r-lg);
             width: 100%;
             max-width: 640px;
             max-height: 92vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            animation: modalSlide 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both
+            box-shadow: var(--shadow-md);
+            animation: modalIn 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) both;
         }
 
         .modal-card.sm {
-            max-width: 460px
+            max-width: 440px;
         }
 
         .modal-card.md {
-            max-width: 560px
+            max-width: 560px;
         }
 
-        @keyframes modalSlide {
+        @keyframes modalIn {
             from {
                 opacity: 0;
-                transform: translateY(20px) scale(0.97)
+                transform: translateY(16px) scale(0.98);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1)
+                transform: none;
             }
         }
 
-        .modal-header {
+        .modal-head {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 24px 16px;
-            border-bottom: 1px solid var(--card-border);
+            padding: var(--s5) var(--s6) var(--s4);
+            border-bottom: 1px solid var(--line);
             position: sticky;
             top: 0;
-            background: var(--card-bg);
+            background: var(--surface);
             z-index: 1;
-            border-radius: 14px 14px 0 0
+            border-radius: var(--r-lg) var(--r-lg) 0 0;
         }
 
-        .modal-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--dark);
+        .modal-heading {
+            font-size: var(--fs-h3);
+            font-weight: var(--fw-bold);
+            color: var(--ink);
             display: flex;
             align-items: center;
-            gap: 8px
+            gap: var(--s2);
         }
 
-        .modal-close {
+        .modal-x {
             width: 30px;
             height: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: none;
-            background: var(--page-bg);
-            border-radius: 7px;
+            background: var(--surface-2);
+            border-radius: var(--r-sm);
             cursor: pointer;
-            color: var(--text-muted);
+            color: var(--ink-3);
             font-size: 1rem;
-            transition: background 0.15s, color 0.15s
+            transition: background 0.14s, color 0.14s;
         }
 
-        .modal-close:hover {
-            background: #fee2e2;
-            color: #ef4444
+        .modal-x:hover {
+            background: var(--danger-tint);
+            color: var(--danger);
         }
 
         .modal-body {
-            padding: 20px 24px
+            padding: var(--s5) var(--s6);
         }
 
-        .modal-footer {
+        .modal-foot {
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 10px;
-            padding: 16px 24px;
-            border-top: 1px solid var(--card-border);
-            background: var(--page-bg);
-            border-radius: 0 0 14px 14px;
+            gap: var(--s3);
+            padding: var(--s4) var(--s6);
+            border-top: 1px solid var(--line);
+            background: var(--surface-2);
+            border-radius: 0 0 var(--r-lg) var(--r-lg);
             position: sticky;
-            bottom: 0
+            bottom: 0;
         }
 
-        .form-section-label {
-            font-size: 0.68rem;
-            font-weight: 800;
+        .form-section {
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-bold);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--primary);
-            margin: 18px 0 10px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #fde9d0
+            letter-spacing: 0.09em;
+            color: var(--brand);
+            margin: var(--s5) 0 var(--s3);
+            padding-bottom: var(--s2);
+            border-bottom: 1px solid var(--brand-tint-2);
         }
 
-        .form-section-label:first-child {
-            margin-top: 0
+        .form-section:first-child {
+            margin-top: 0;
         }
 
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px
+            gap: var(--s3);
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 5px
+            gap: 5px;
         }
 
         .form-group.span-2 {
-            grid-column: span 2
+            grid-column: span 2;
         }
 
         .form-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--dark)
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
+            color: var(--ink);
         }
 
         .form-label .req {
-            color: #ef4444;
-            margin-left: 2px
+            color: var(--danger);
+            margin-left: 2px;
         }
 
         .form-input,
         .form-select,
         .form-textarea {
-            padding: 8px 12px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.87rem;
-            color: var(--text);
+            padding: 9px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            color: var(--ink);
             background: #fff;
             outline: none;
             font-family: inherit;
             width: 100%;
-            transition: border-color 0.15s, box-shadow 0.15s
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
 
         .form-input:focus,
         .form-select:focus,
         .form-textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
         .form-textarea {
             resize: vertical;
-            min-height: 80px
+            min-height: 80px;
         }
 
         .form-hint {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-top: 2px
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
+            margin-top: 2px;
         }
 
-        .price-reason-wrap {
+        .price-reason-box {
             display: none;
-            background: #fef3e8;
-            border: 1px solid #fde9d0;
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-top: 4px
+            background: var(--brand-tint);
+            border: 1px solid var(--brand-tint-2);
+            border-radius: var(--r-sm);
+            padding: var(--s3) var(--s4);
+            margin-top: 4px;
         }
 
-        .price-reason-wrap.show {
-            display: block
+        .price-reason-box.show {
+            display: block;
         }
 
         .price-reason-note {
-            font-size: 0.76rem;
-            color: #9a5b0f;
-            margin-bottom: 8px;
+            font-size: var(--fs-sm);
+            color: var(--brand-strong);
+            margin-bottom: var(--s2);
             display: flex;
             align-items: center;
-            gap: 6px
+            gap: 6px;
         }
 
-        .stock-info-box {
-            background: #f0fdf4;
-            border: 1px solid #86efac;
-            border-radius: 8px;
+        .stock-info {
+            background: var(--ok-tint);
+            border: 1px solid #a7dcbc;
+            border-radius: var(--r-sm);
             padding: 10px 14px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.85rem;
-            color: #065f46
+            gap: var(--s2);
+            font-size: var(--fs-sm);
+            color: #1f7a48;
         }
 
-        .stock-info-box a {
-            color: #16a34a;
-            font-weight: 700;
-            text-decoration: none
+        .stock-info a {
+            color: var(--ok);
+            font-weight: var(--fw-bold);
         }
 
-        .stock-info-box a:hover {
-            text-decoration: underline
+        .stock-info a:hover {
+            text-decoration: underline;
         }
 
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 9px 18px;
-            border-radius: 8px;
-            font-size: 0.88rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid;
-            transition: background 0.15s, transform 0.1s;
-            font-family: inherit
-        }
-
-        .btn:active {
-            transform: translateY(1px)
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary)
-        }
-
-        .btn-primary:hover {
-            background: #cf6d17;
-            border-color: #cf6d17
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-muted);
-            border-color: var(--card-border)
-        }
-
-        .btn-ghost:hover {
-            background: var(--page-bg);
-            color: var(--text)
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: #fff;
-            border-color: #ef4444
-        }
-
-        .btn-danger:hover {
-            background: #dc2626
-        }
-
-        .img-upload-wrap {
-            border: 2px dashed var(--card-border);
-            border-radius: 10px;
-            padding: 16px;
+        /* Image upload */
+        .img-upload {
+            border: 2px dashed var(--line-strong);
+            border-radius: var(--r);
+            padding: var(--s4);
             text-align: center;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
             position: relative;
-            background: var(--page-bg);
-            overflow: hidden
+            background: var(--surface-2);
+            overflow: hidden;
+            transition: border-color 0.2s, background 0.2s;
         }
 
-        .img-upload-wrap:hover,
-        .img-upload-wrap.dragover {
-            border-color: var(--primary);
-            background: #fef3e8
+        .img-upload:hover,
+        .img-upload.dragover {
+            border-color: var(--brand);
+            background: var(--brand-tint);
         }
 
-        .img-upload-wrap input[type="file"] {
+        .img-upload input[type="file"] {
             position: absolute;
             inset: 0;
             opacity: 0;
             cursor: pointer;
             width: 100%;
             height: 100%;
-            z-index: 2
+            z-index: 2;
         }
 
-        .img-upload-wrap.has-image {
+        .img-upload.has-image {
             padding: 0;
-            border-color: var(--primary);
-            border-style: solid
+            border-color: var(--brand);
+            border-style: solid;
         }
 
-        .img-upload-wrap.has-image .upload-placeholder {
-            display: none
-        }
-
-        .upload-placeholder {
-            pointer-events: none
-        }
-
-        .img-preview-box {
+        .img-upload.has-image .upload-ph {
             display: none;
-            position: relative
         }
 
-        .img-preview-box.show {
-            display: block
+        .upload-ph {
+            pointer-events: none;
         }
 
-        .img-preview-box img {
+        .img-preview {
+            display: none;
+            position: relative;
+        }
+
+        .img-preview.show {
+            display: block;
+        }
+
+        .img-preview img {
             width: 100%;
             height: 200px;
             object-fit: cover;
             display: block;
-            border-radius: 8px
+            border-radius: var(--r-sm);
         }
 
-        .img-preview-overlay {
+        .img-overlay {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent);
+            background: linear-gradient(to top, rgba(35, 32, 28, 0.65), transparent);
             padding: 10px 12px 8px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-radius: 0 0 8px 8px
+            border-radius: 0 0 var(--r-sm) var(--r-sm);
         }
 
-        .img-preview-label {
-            font-size: 0.75rem;
-            font-weight: 600;
+        .img-overlay-label {
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
             color: #fff;
             display: flex;
             align-items: center;
-            gap: 5px
+            gap: 5px;
         }
 
-        .img-remove-btn {
-            background: rgba(239, 68, 68, 0.9);
+        .img-remove {
+            background: rgba(217, 79, 70, 0.9);
             border: none;
             color: #fff;
             width: 26px;
             height: 26px;
-            border-radius: 6px;
+            border-radius: var(--r-sm);
             cursor: pointer;
             font-size: 0.8rem;
             display: flex;
             align-items: center;
-            justify-content: center
+            justify-content: center;
         }
 
-        .img-remove-btn:hover {
-            background: #ef4444
+        .img-remove:hover {
+            background: var(--danger);
         }
 
         .upload-spinner {
             display: none;
             width: 20px;
             height: 20px;
-            border: 2px solid #e5e7eb;
-            border-top-color: var(--primary);
+            margin: 8px auto 0;
+            border: 2px solid var(--line);
+            border-top-color: var(--brand);
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
-            margin: 0 auto
         }
 
         @keyframes spin {
             to {
-                transform: rotate(360deg)
+                transform: rotate(360deg);
             }
         }
 
         .upload-status {
-            font-size: 0.75rem;
-            margin-top: 6px
+            font-size: var(--fs-xs);
+            margin-top: 6px;
         }
 
         .upload-status.ok {
-            color: #10b981
+            color: var(--ok);
         }
 
         .upload-status.err {
-            color: #ef4444
+            color: var(--danger);
         }
 
+        /* Crop modal */
         .crop-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(35, 32, 28, 0.75);
             backdrop-filter: blur(4px);
             z-index: 2000;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 20px
+            padding: 20px;
         }
 
         .crop-backdrop.open {
-            display: flex
+            display: flex;
         }
 
         .crop-modal {
-            background: #1e1e2e;
-            border-radius: 14px;
+            background: #201d1a;
+            border-radius: var(--r-lg);
             width: 100%;
             max-width: 560px;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-            overflow: hidden
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
         }
 
         .crop-header {
@@ -1253,13 +961,13 @@ $activePage = 'products';
             align-items: center;
             justify-content: space-between;
             padding: 16px 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1)
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .crop-header-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #fff
+            font-size: var(--fs-h3);
+            font-weight: var(--fw-bold);
+            color: #fff;
         }
 
         .crop-close {
@@ -1268,16 +976,16 @@ $activePage = 'products';
             color: #fff;
             width: 28px;
             height: 28px;
-            border-radius: 6px;
+            border-radius: var(--r-sm);
             cursor: pointer;
             font-size: 1rem;
             display: flex;
             align-items: center;
-            justify-content: center
+            justify-content: center;
         }
 
         .crop-close:hover {
-            background: #ef4444
+            background: var(--danger);
         }
 
         .crop-canvas-wrap {
@@ -1288,53 +996,53 @@ $activePage = 'products';
             align-items: center;
             justify-content: center;
             height: 340px;
-            user-select: none
+            user-select: none;
         }
 
         #cropCanvas {
             max-width: 100%;
             max-height: 340px;
-            display: block
+            display: block;
         }
 
         .crop-box {
             position: absolute;
-            border: 2px solid var(--primary);
+            border: 2px solid var(--brand);
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
             cursor: move;
-            box-sizing: border-box
+            box-sizing: border-box;
         }
 
         .crop-handle {
             position: absolute;
             width: 10px;
             height: 10px;
-            background: var(--primary);
-            border-radius: 2px
+            background: var(--brand);
+            border-radius: 2px;
         }
 
         .crop-handle.tl {
             top: -5px;
             left: -5px;
-            cursor: nw-resize
+            cursor: nw-resize;
         }
 
         .crop-handle.tr {
             top: -5px;
             right: -5px;
-            cursor: ne-resize
+            cursor: ne-resize;
         }
 
         .crop-handle.bl {
             bottom: -5px;
             left: -5px;
-            cursor: sw-resize
+            cursor: sw-resize;
         }
 
         .crop-handle.br {
             bottom: -5px;
             right: -5px;
-            cursor: se-resize
+            cursor: se-resize;
         }
 
         .crop-controls {
@@ -1344,286 +1052,251 @@ $activePage = 'products';
             justify-content: space-between;
             gap: 10px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
-            flex-wrap: wrap
+            flex-wrap: wrap;
         }
 
         .crop-ratio-btns {
             display: flex;
-            gap: 6px
+            gap: 6px;
         }
 
         .crop-ratio-btn {
             padding: 5px 12px;
-            border-radius: 6px;
+            border-radius: var(--r-sm);
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: transparent;
             color: #ccc;
-            font-size: 0.78rem;
-            font-weight: 600;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
             cursor: pointer;
-            transition: all 0.15s
+            transition: all 0.15s;
         }
 
         .crop-ratio-btn.active,
         .crop-ratio-btn:hover {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: #fff
+            background: var(--brand);
+            border-color: var(--brand);
+            color: #fff;
         }
 
         .crop-actions {
             display: flex;
-            gap: 8px
+            gap: 8px;
         }
 
         .btn-crop-cancel {
             padding: 7px 16px;
-            border-radius: 7px;
+            border-radius: var(--r-sm);
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: transparent;
             color: #ccc;
-            font-size: 0.83rem;
-            font-weight: 600;
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
             cursor: pointer;
-            font-family: inherit
+            font-family: inherit;
         }
 
         .btn-crop-cancel:hover {
-            background: rgba(255, 255, 255, 0.1)
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .btn-crop-apply {
             padding: 7px 16px;
-            border-radius: 7px;
+            border-radius: var(--r-sm);
             border: none;
-            background: var(--primary);
+            background: var(--brand);
             color: #fff;
-            font-size: 0.83rem;
-            font-weight: 700;
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-bold);
             cursor: pointer;
-            font-family: inherit
+            font-family: inherit;
         }
 
         .btn-crop-apply:hover {
-            background: #cf6d17
+            background: var(--brand-strong);
         }
 
-        .delete-icon-wrap {
-            width: 60px;
-            height: 60px;
-            background: #fee2e2;
+        /* Confirm modal icons */
+        .confirm-icon {
+            width: 58px;
+            height: 58px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 16px;
-            font-size: 1.8rem
+            margin: 0 auto var(--s4);
+            font-size: 1.6rem;
         }
 
-        .archive-icon-wrap {
-            width: 60px;
-            height: 60px;
-            background: #f3f4f6;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-            font-size: 1.8rem
+        .confirm-icon.danger {
+            background: var(--danger-tint);
+            color: var(--danger);
         }
 
-        .delete-title {
+        .confirm-icon.archive {
+            background: #f0eee9;
+            color: var(--ink-2);
+        }
+
+        .confirm-title {
             text-align: center;
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 8px
+            font-size: var(--fs-h3);
+            font-weight: var(--fw-bold);
+            color: var(--ink);
+            margin-bottom: var(--s2);
         }
 
-        .delete-text {
+        .confirm-text {
             text-align: center;
-            font-size: 0.88rem;
-            color: var(--text-muted);
-            line-height: 1.5
+            font-size: var(--fs-sm);
+            color: var(--ink-2);
+            line-height: 1.55;
         }
 
-        .delete-name {
-            font-weight: 700;
-            color: #ef4444
+        .confirm-name {
+            font-weight: var(--fw-bold);
         }
 
-        .archive-name {
-            font-weight: 700;
-            color: #374151
-        }
-
-        .mobile-menu-btn {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            background: var(--card-bg);
-            cursor: pointer;
-            color: var(--dark);
-            flex-shrink: 0
-        }
-
-        /* ── Price History modal ── */
+        /* Price history modal */
         .ph-loading {
             text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted)
+            padding: var(--s8) var(--s5);
+            color: var(--ink-3);
         }
 
         .ph-spinner {
             width: 28px;
             height: 28px;
-            border: 3px solid #e5e7eb;
-            border-top-color: var(--primary);
+            margin: 0 auto 10px;
+            border: 3px solid var(--line);
+            border-top-color: var(--brand);
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
-            margin: 0 auto 10px
         }
 
         .ph-current {
-            background: var(--primary-light, #fef3e8);
-            border: 1px solid #fde9d0;
-            border-radius: 10px;
-            padding: 14px 16px;
+            background: var(--brand-tint);
+            border: 1px solid var(--brand-tint-2);
+            border-radius: var(--r);
+            padding: var(--s4) var(--s5);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px
+            margin-bottom: var(--s4);
         }
 
         .ph-current-label {
-            font-size: 0.72rem;
-            font-weight: 700;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-bold);
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: #9a5b0f
+            color: var(--brand-strong);
         }
 
         .ph-current-value {
             font-size: 1.3rem;
-            font-weight: 900;
-            color: var(--primary)
+            font-weight: 800;
+            color: var(--brand);
+            font-variant-numeric: tabular-nums;
         }
 
         .ph-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.83rem
+            font-size: var(--fs-sm);
         }
 
         .ph-table th {
             text-align: left;
-            font-size: 0.68rem;
+            font-size: var(--fs-xs);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--text-muted);
+            color: var(--ink-3);
             padding: 8px 10px;
-            border-bottom: 1.5px solid var(--card-border)
+            border-bottom: 1.5px solid var(--line);
         }
 
         .ph-table td {
             padding: 10px;
-            border-bottom: 1px solid #f3f4f6;
-            vertical-align: top
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
         }
 
         .ph-table tr:last-child td {
-            border-bottom: none
+            border-bottom: none;
         }
 
-        .ph-price-move {
+        .ph-move {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-weight: 700;
-            white-space: nowrap
+            font-weight: var(--fw-bold);
+            white-space: nowrap;
         }
 
-        .ph-arrow-up {
-            color: #ef4444
+        .ph-up {
+            color: var(--danger);
         }
 
-        .ph-arrow-down {
-            color: #10b981
+        .ph-down {
+            color: var(--ok);
         }
 
         .ph-diff {
-            font-size: 0.72rem;
-            font-weight: 700;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-bold);
             padding: 1px 7px;
-            border-radius: 10px
+            border-radius: var(--r-pill);
         }
 
         .ph-diff.up {
-            background: #fee2e2;
-            color: #991b1b
+            background: var(--danger-tint);
+            color: #b23c34;
         }
 
         .ph-diff.down {
-            background: #d1fae5;
-            color: #065f46
+            background: var(--ok-tint);
+            color: #1f7a48;
         }
 
         .ph-date {
-            color: var(--text-muted);
-            font-size: 0.78rem;
-            white-space: nowrap
+            color: var(--ink-3);
+            font-size: var(--fs-xs);
+            white-space: nowrap;
         }
 
         .ph-reason {
-            color: var(--text);
-            font-size: 0.8rem
+            color: var(--ink);
+            font-size: var(--fs-sm);
         }
 
         .ph-reason.empty {
-            color: #b0b7c0;
-            font-style: italic
+            color: var(--ink-3);
+            font-style: italic;
         }
 
         .ph-empty {
             text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted)
+            padding: var(--s8) var(--s5);
+            color: var(--ink-3);
         }
 
-        @media(max-width:768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 16px 16px 48px;
-                width: 100%
-            }
-
-            .mobile-menu-btn {
-                display: flex
-            }
-
+        @media (max-width: 768px) {
             .form-grid {
-                grid-template-columns: 1fr
+                grid-template-columns: 1fr;
             }
 
             .form-group.span-2 {
-                grid-column: span 1
+                grid-column: span 1;
             }
 
             .toolbar {
                 flex-direction: column;
-                align-items: stretch
+                align-items: stretch;
             }
 
-            .toolbar-right {
-                justify-content: flex-end
-            }
-
-            .ph-table {
-                font-size: 0.78rem
+            .search-input {
+                width: 100%;
             }
         }
     </style>
@@ -1632,164 +1305,209 @@ $activePage = 'products';
 <body>
     <div class="admin-layout">
         <?php include '../includes/sidebar.php'; ?>
+
         <div class="main-content">
 
+            <!-- Mobile topbar -->
+            <div class="mobile-topbar">
+                <div class="mobile-brand">
+                    <div class="mobile-brand-icon"><i class="fa-solid fa-egg"></i></div>
+                    Hiney's Admin
+                </div>
+                <button class="icon-btn" onclick="openSidebar()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Header -->
             <div class="page-header">
                 <div>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                        <button class="mobile-menu-btn" onclick="openSidebar()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                            </svg></button>
-                        <h1 class="page-title"><?= $showArchive ? 'Archived Products' : 'Products' ?></h1>
-                    </div>
-                    <div class="page-title-sub"><?= $showArchive ? 'Restore or permanently delete archived products.' : 'Manage your product catalog — eggs and live chicken inventory' ?></div>
+                    <h1 class="page-title"><?= $showArchive ? 'Archived Products' : 'Products' ?></h1>
+                    <div class="page-title-sub"><?= $showArchive ? 'Restore or permanently delete archived products.' : 'Manage your egg and live chicken catalog' ?></div>
+                </div>
+                <div style="display:flex;gap:var(--s2);align-items:center;">
+                    <?php if ($showArchive): ?>
+                        <a href="products.php" class="btn btn-secondary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="19" y1="12" x2="5" y2="12" />
+                                <polyline points="12 19 5 12 12 5" />
+                            </svg>
+                            Back to Products
+                        </a>
+                    <?php else: ?>
+                        <a href="products.php?view=archive" class="btn btn-secondary">
+                            <i class="fa-solid fa-box-archive"></i> Archive
+                        </a>
+                        <button class="btn btn-primary" onclick="openModal('addModal')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Add Product
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <?= flash() ?>
 
+            <!-- Toolbar -->
             <div class="toolbar">
-                <div class="toolbar-left">
-                    <span class="toolbar-title"><?= $showArchive ? 'Archive' : 'All Products' ?></span>
+                <span class="toolbar-count">
+                    <?= $showArchive ? 'Archive' : 'All Products' ?>
                     <span class="count-pill <?= $showArchive ? 'archive' : '' ?>"><?= number_format($totalCount) ?></span>
-                    <?php if (!$showArchive): ?>
-                        <form method="GET" style="display:contents;">
-                            <div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="11" cy="11" r="8" />
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                                </svg><input type="text" name="q" class="search-input" placeholder="Search products…" value="<?= htmlspecialchars($search) ?>"></div>
-                            <select name="cat" class="filter-select" onchange="this.form.submit()" id="catFilterSel">
-                                <option value="">All Categories</option><?php foreach ($categories as $cat): ?><option value="<?= $cat['id'] ?>" <?= $filterCat == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option><?php endforeach; ?>
-                            </select>
-                            <select name="unit" class="filter-select" id="unitFilterSel" onchange="this.form.submit()" style="display:<?= $filterCat ? 'block' : 'none' ?>">
-                                <option value="">All Units</option>
-                                <?php
-                                $unitOptions = [];
-                                if ($filterCat) {
-                                    $catName = '';
-                                    foreach ($categories as $c) {
-                                        if ($c['id'] == $filterCat) {
-                                            $catName = strtolower($c['name']);
-                                            break;
-                                        }
+                </span>
+                <?php if (!$showArchive): ?>
+                    <form method="GET" style="display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap;">
+                        <div class="search-wrap">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input type="text" name="q" class="search-input" placeholder="Search products…" value="<?= htmlspecialchars($search) ?>">
+                        </div>
+                        <select name="cat" class="select-field" onchange="this.form.submit()">
+                            <option value="">All Categories</option>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>" <?= $filterCat == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="unit" class="select-field" id="unitFilterSel" onchange="this.form.submit()" style="display:<?= $filterCat ? 'block' : 'none' ?>">
+                            <option value="">All Units</option>
+                            <?php
+                            $unitOptions = [];
+                            if ($filterCat) {
+                                $catName = '';
+                                foreach ($categories as $c) {
+                                    if ($c['id'] == $filterCat) {
+                                        $catName = strtolower($c['name']);
+                                        break;
                                     }
-                                    if (str_contains($catName, 'egg')) $unitOptions = ['per tray' => 'Per Tray', 'per piece' => 'Per Piece'];
-                                    if (str_contains($catName, 'chicken')) $unitOptions = ['alive' => 'Alive Chicken', 'processed' => 'Processed Chicken'];
                                 }
-                                foreach ($unitOptions as $val => $label): ?><option value="<?= $val ?>" <?= $filterUnit === $val ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?>
-                            </select>
-                            <?php if ($search || $filterCat || $filterUnit): ?><a href="products.php" style="font-size:0.8rem;color:var(--primary);text-decoration:none;white-space:nowrap;">✕ Clear</a><?php endif; ?>
-                        </form>
-                    <?php endif; ?>
-                </div>
-                <div class="toolbar-right">
-                    <?php if ($showArchive): ?>
-                        <a href="products.php" class="btn-archive-view">← Back to Products</a>
-                    <?php else: ?>
-                        <a href="products.php?view=archive" class="btn-archive-view"><i class="fa-solid fa-box-archive"></i> Archive</a>
-                        <button class="btn-add" onclick="openModal('addModal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg> Add Product</button>
-                    <?php endif; ?>
-                </div>
+                                if (str_contains($catName, 'egg')) $unitOptions = ['per tray' => 'Per Tray', 'per piece' => 'Per Piece'];
+                                if (str_contains($catName, 'chicken')) $unitOptions = ['alive' => 'Alive Chicken', 'processed' => 'Processed Chicken'];
+                            }
+                            foreach ($unitOptions as $val => $label): ?>
+                                <option value="<?= $val ?>" <?= $filterUnit === $val ? 'selected' : '' ?>><?= $label ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if ($search || $filterCat || $filterUnit): ?>
+                            <a href="products.php" class="clear-link">✕ Clear</a>
+                        <?php endif; ?>
+                    </form>
+                <?php endif; ?>
             </div>
 
-            <div class="table-wrapper">
+            <!-- Table -->
+            <div class="table-card">
                 <?php if ($products && $products->num_rows > 0): ?>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width:44px;">#</th>
-                                <th>Product</th>
-                                <th>Category</th>
-                                <th>Price</th>
-                                <th>Stock</th>
-                                <th>Status</th>
-                                <th style="text-align:center;width:<?= $showArchive ? '160px' : '190px' ?>;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php $rowNum = $offset + 1;
-                            while ($p = $products->fetch_assoc()):
-                                $isChicken = stripos($p['category_name'] ?? '', 'chicken') !== false;
-                                $emoji = $isChicken ? '<i class="fa-solid fa-drumstick-bite"></i>' : '<i class="fa-solid fa-egg"></i>';
-                                $stockPct = $p['reorder_level'] > 0 ? min(100, round(($p['stock'] / max($p['reorder_level'] * 2, 1)) * 100)) : 100;
-                                $stockColor = $p['stock'] <= 0 ? '#ef4444' : ($p['stock'] <= $p['reorder_level'] ? '#f59e0b' : '#10b981');
-
-                                // ── Price Maintenance: recent-change badge (within last 7 days) ──
-                                $priceBadge = '';
-                                if (!empty($p['last_price_change_at']) && $p['last_old_price'] !== null) {
-                                    $changedAt = strtotime($p['last_price_change_at']);
-                                    $isRecent  = $changedAt && (time() - $changedAt) <= (7 * 86400);
-                                    $curPrice  = (float)$p['price'];
-                                    $oldP      = (float)$p['last_old_price'];
-                                    if ($isRecent && abs($curPrice - $oldP) > 0.0001) {
-                                        $went = $curPrice > $oldP ? 'up' : 'down';
-                                        $arrow = $went === 'up' ? '▲' : '▼';
-                                        $priceBadge = "<span class=\"price-change-badge {$went}\">{$arrow} " . date('M j', $changedAt) . "</span>";
-                                    }
-                                }
-                                $historyCount = (int)($p['price_change_count'] ?? 0);
-                            ?>
-                                <tr <?= $showArchive ? 'class="archived-row"' : '' ?>>
-                                    <td style="color:var(--text-muted);font-size:0.78rem;font-weight:600;"><?= $rowNum++ ?></td>
-                                    <td>
-                                        <div class="product-cell">
-                                            <div class="product-thumb"><?php if (!empty($p['image_url'])): ?><img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>"><?php else: ?><?= $emoji ?><?php endif; ?></div>
-                                            <div>
-                                                <div class="product-name"><?= htmlspecialchars($p['name']) ?></div><?php if ($p['description']): ?><div class="product-desc"><?= htmlspecialchars($p['description']) ?></div><?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span style="background:#f3f4f6;color:var(--text-muted);padding:2px 8px;border-radius:6px;font-size:0.78rem;font-weight:500;"><?= htmlspecialchars($p['category_name'] ?? '—') ?></span></td>
-                                    <td class="price-cell"><?= peso((float)$p['price']) ?><?= $priceBadge ?><br><span class="unit-label"><?= htmlspecialchars($p['unit']) ?></span><?php if ($historyCount > 0): ?><span class="price-history-count"><?= $historyCount ?> price change<?= $historyCount !== 1 ? 's' : '' ?> on record</span><?php endif; ?></td>
-                                    <td>
-                                        <div class="stock-cell"><span class="stock-num" style="color:<?= $stockColor ?>;"><?= number_format((int)$p['stock']) ?></span>
-                                            <div class="stock-bar">
-                                                <div class="stock-bar-fill" style="width:<?= $stockPct ?>%;background:<?= $stockColor ?>;"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="status-dot <?= $showArchive ? 'archived' : ($p['is_active'] ? 'active' : 'inactive') ?>"><?= $showArchive ? 'Archived' : ($p['is_active'] ? 'Active' : 'Inactive') ?></span></td>
-                                    <td style="text-align:center;">
-                                        <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;">
-                                            <?php if ($showArchive): ?>
-                                                <form method="POST" style="display:inline;"><input type="hidden" name="action" value="restore"><input type="hidden" name="id" value="<?= $p['id'] ?>"><button type="submit" class="btn-action btn-restore"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                            <polyline points="1 4 1 10 7 10" />
-                                                            <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
-                                                        </svg> Restore</button></form>
-                                                <button class="btn-action btn-delete" onclick="openHardDelete(<?= $p['id'] ?>,'<?= htmlspecialchars(addslashes($p['name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                        <polyline points="3 6 5 6 21 6" />
-                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                    </svg> Delete</button>
-                                            <?php else: ?>
-                                                <button class="btn-action btn-edit" onclick="openEdit(<?= htmlspecialchars(json_encode(['id' => $p['id'], 'category_id' => $p['category_id'], 'category_name' => strtolower($p['category_name'] ?? ''), 'name' => $p['name'], 'description' => $p['description'], 'price' => $p['price'], 'unit' => $p['unit'], 'image_url' => $p['image_url'], 'is_active' => $p['is_active'], 'reorder_level' => $p['reorder_level'], 'stock' => $p['stock']]), ENT_QUOTES) ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                    </svg> Edit</button>
-                                                <button class="btn-action btn-history" onclick="openHistory(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name']), ENT_QUOTES) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                        <circle cx="12" cy="12" r="10" />
-                                                        <polyline points="12 6 12 12 16 14" />
-                                                    </svg> History</button>
-                                                <button class="btn-action btn-delete" onclick="openArchive(<?= $p['id'] ?>,'<?= htmlspecialchars(addslashes($p['name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                        <polyline points="21 8 21 21 3 21 3 8" />
-                                                        <rect x="1" y="3" width="22" height="5" />
-                                                        <line x1="10" y1="12" x2="14" y2="12" />
-                                                    </svg> Archive</button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead>
+                                <tr>
+                                    <th style="width:44px;">#</th>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th style="text-align:center;width:<?= $showArchive ? '160px' : '200px' ?>;">Actions</th>
                                 </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php $rowNum = $offset + 1;
+                                while ($p = $products->fetch_assoc()):
+                                    $isChicken = stripos($p['category_name'] ?? '', 'chicken') !== false;
+                                    $emoji = $isChicken ? '<i class="fa-solid fa-drumstick-bite"></i>' : '<i class="fa-solid fa-egg"></i>';
+                                    $stockPct = $p['reorder_level'] > 0 ? min(100, round(($p['stock'] / max($p['reorder_level'] * 2, 1)) * 100)) : 100;
+                                    $stockColor = $p['stock'] <= 0 ? 'var(--danger)' : ($p['stock'] <= $p['reorder_level'] ? 'var(--warn)' : 'var(--ok)');
+
+                                    $priceBadge = '';
+                                    if (!empty($p['last_price_change_at']) && $p['last_old_price'] !== null) {
+                                        $changedAt = strtotime($p['last_price_change_at']);
+                                        $isRecent  = $changedAt && (time() - $changedAt) <= (7 * 86400);
+                                        $curPrice  = (float)$p['price'];
+                                        $oldP      = (float)$p['last_old_price'];
+                                        if ($isRecent && abs($curPrice - $oldP) > 0.0001) {
+                                            $went = $curPrice > $oldP ? 'up' : 'down';
+                                            $arrow = $went === 'up' ? '▲' : '▼';
+                                            $priceBadge = "<span class=\"price-move {$went}\">{$arrow} " . date('M j', $changedAt) . "</span>";
+                                        }
+                                    }
+                                    $historyCount = (int)($p['price_change_count'] ?? 0);
+                                    [$stPillCls, $stPillLbl] = $showArchive
+                                        ? ['pill-neutral', 'Archived']
+                                        : ($p['is_active'] ? ['pill-ok', 'Active'] : ['pill-danger', 'Inactive']);
+                                ?>
+                                    <tr <?= $showArchive ? 'class="archived-row"' : '' ?>>
+                                        <td style="color:var(--ink-3);font-size:var(--fs-xs);font-weight:var(--fw-semi);"><?= $rowNum++ ?></td>
+                                        <td>
+                                            <div class="cell-lead">
+                                                <div class="prod-thumb"><?php if (!empty($p['image_url'])): ?><img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>"><?php else: ?><?= $emoji ?><?php endif; ?></div>
+                                                <div>
+                                                    <div class="cell-title"><?= htmlspecialchars($p['name']) ?></div>
+                                                    <?php if ($p['description']): ?><div class="prod-desc"><?= htmlspecialchars($p['description']) ?></div><?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="cat-tag"><?= htmlspecialchars($p['category_name'] ?? '—') ?></span></td>
+                                        <td>
+                                            <span class="price-strong"><?= peso((float)$p['price']) ?></span><?= $priceBadge ?><br>
+                                            <span class="unit-label"><?= htmlspecialchars($p['unit']) ?></span>
+                                            <?php if ($historyCount > 0): ?><span class="price-count"><?= $historyCount ?> price change<?= $historyCount !== 1 ? 's' : '' ?></span><?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="stock-cell">
+                                                <span class="stock-num" style="color:<?= $stockColor ?>;"><?= number_format((int)$p['stock']) ?></span>
+                                                <div class="stock-bar">
+                                                    <div class="stock-bar-fill" style="width:<?= $stockPct ?>%;background:<?= $stockColor ?>;"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="pill <?= $stPillCls ?> pill-dot"><?= $stPillLbl ?></span></td>
+                                        <td style="text-align:center;">
+                                            <div class="row-actions">
+                                                <?php if ($showArchive): ?>
+                                                    <form method="POST" style="display:inline;"><input type="hidden" name="action" value="restore"><input type="hidden" name="id" value="<?= $p['id'] ?>">
+                                                        <button type="submit" class="act act-restore"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                                <polyline points="1 4 1 10 7 10" />
+                                                                <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
+                                                            </svg><span class="act-label">Restore</span></button>
+                                                    </form>
+                                                    <button class="act act-delete" onclick="openHardDelete(<?= $p['id'] ?>,'<?= htmlspecialchars(addslashes($p['name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <polyline points="3 6 5 6 21 6" />
+                                                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                        </svg><span class="act-label">Delete</span></button>
+                                                <?php else: ?>
+                                                    <button class="act act-edit" onclick="openEdit(<?= htmlspecialchars(json_encode(['id' => $p['id'], 'category_id' => $p['category_id'], 'category_name' => strtolower($p['category_name'] ?? ''), 'name' => $p['name'], 'description' => $p['description'], 'price' => $p['price'], 'unit' => $p['unit'], 'image_url' => $p['image_url'], 'is_active' => $p['is_active'], 'reorder_level' => $p['reorder_level'], 'stock' => $p['stock']]), ENT_QUOTES) ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                        </svg><span class="act-label">Edit</span></button>
+                                                    <button class="act act-history" onclick="openHistory(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name']), ENT_QUOTES) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <circle cx="12" cy="12" r="10" />
+                                                            <polyline points="12 6 12 12 16 14" />
+                                                        </svg><span class="act-label">History</span></button>
+                                                    <button class="act act-archive" onclick="openArchive(<?= $p['id'] ?>,'<?= htmlspecialchars(addslashes($p['name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <polyline points="21 8 21 21 3 21 3 8" />
+                                                            <rect x="1" y="3" width="22" height="5" />
+                                                            <line x1="10" y1="12" x2="14" y2="12" />
+                                                        </svg><span class="act-label">Archive</span></button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
                     <?php if ($totalPages > 1): ?>
                         <div class="pagination">
                             <div>Showing <?= number_format($offset + 1) ?>–<?= number_format(min($offset + $perPage, $totalCount)) ?> of <?= number_format($totalCount) ?></div>
-                            <div class="pagination-pages">
+                            <div class="pg-pages">
                                 <?php
                                 $qs = http_build_query(array_merge($_GET, ['page' => max(1, $page - 1)]));
                                 echo "<a href='?{$qs}' class='pg-btn" . ($page <= 1 ? ' disabled' : '') . "'>← Prev</a>";
@@ -1816,10 +1534,10 @@ $activePage = 'products';
                         </div>
                     <?php endif; ?>
                 <?php else: ?>
-                    <div class="empty-state">
-                        <div class="empty-icon"><i class="fa-solid fa-<?= $showArchive ? 'box-archive' : 'box' ?>"></i></div>
-                        <div class="empty-text"><?= $showArchive ? 'No archived products' : 'No products found' ?></div>
-                        <div><?= $showArchive ? 'Archived products will appear here.' : 'Click "Add Product" to add your first product.' ?></div>
+                    <div class="empty">
+                        <div class="empty-icon"><i class="fa-solid fa-<?= $showArchive ? 'box-archive' : 'box-open' ?>"></i></div>
+                        <div class="empty-title"><?= $showArchive ? 'No archived products' : 'No products found' ?></div>
+                        <div class="empty-text"><?= $showArchive ? 'Archived products will appear here.' : 'Click "Add Product" to add your first product.' ?></div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1830,28 +1548,32 @@ $activePage = 'products';
     <!-- ADD MODAL -->
     <div class="modal-backdrop" id="addModal" onclick="backdropClose(event,'addModal')">
         <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="modal-head">
+                <div class="modal-heading"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg> Add New Product</div><button class="modal-close" onclick="closeModal('addModal')">✕</button>
+                    </svg> Add New Product</div>
+                <button class="modal-x" onclick="closeModal('addModal')">✕</button>
             </div>
             <form method="POST" action="products.php" id="addForm">
                 <input type="hidden" name="action" value="add">
                 <input type="hidden" name="image_url" id="add_image_url">
                 <div class="modal-body">
-                    <div class="form-section-label">Basic Information</div>
+                    <div class="form-section">Basic Information</div>
                     <div class="form-grid">
-                        <div class="form-group span-2"><label class="form-label">Product Name <span class="req">*</span></label><input type="text" name="name" class="form-input" placeholder="e.g. Egg Large, Chicken" required></div>
-                        <div class="form-group"><label class="form-label">Category <span class="req">*</span></label><select name="category_id" id="add_category_id" class="form-select" required onchange="updateUnits('add',this.value)">
-                                <option value="">— Select Category —</option><?php foreach ($categories as $cat): ?><option value="<?= $cat['id'] ?>" data-name="<?= strtolower(htmlspecialchars($cat['name'])) ?>"><?= htmlspecialchars($cat['name']) ?></option><?php endforeach; ?>
-                            </select></div>
+                        <div class="form-group span-2"><label class="form-label">Product Name <span class="req">*</span></label><input type="text" name="name" class="form-input" placeholder="e.g. Egg Large, Native Chicken" required></div>
+                        <div class="form-group"><label class="form-label">Category <span class="req">*</span></label>
+                            <select name="category_id" id="add_category_id" class="form-select" required onchange="updateUnits('add',this.value)">
+                                <option value="">— Select Category —</option>
+                                <?php foreach ($categories as $cat): ?><option value="<?= $cat['id'] ?>" data-name="<?= strtolower(htmlspecialchars($cat['name'])) ?>"><?= htmlspecialchars($cat['name']) ?></option><?php endforeach; ?>
+                            </select>
+                        </div>
                         <div class="form-group"><label class="form-label">Unit <span class="req">*</span></label><select name="unit" id="add_unit" class="form-select" required>
                                 <option value="">— Select Category first —</option>
                             </select></div>
                         <div class="form-group span-2"><label class="form-label">Description</label><textarea name="description" class="form-textarea" placeholder="Short product description…"></textarea></div>
                     </div>
-                    <div class="form-section-label">Pricing</div>
+                    <div class="form-section">Pricing</div>
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Price (₱) <span class="req">*</span></label><input type="number" name="price" class="form-input" placeholder="0.00" step="0.01" min="0.01" required></div>
                         <div class="form-group"><label class="form-label">Status</label><select name="is_active" class="form-select">
@@ -1859,31 +1581,32 @@ $activePage = 'products';
                                 <option value="0">Inactive</option>
                             </select></div>
                     </div>
-                    <div class="form-section-label">Product Image</div>
+                    <div class="form-section">Product Image</div>
                     <div class="form-group span-2">
-                        <div class="img-upload-wrap" id="add_upload_wrap" ondragover="this.classList.add('dragover');event.preventDefault();" ondragleave="this.classList.remove('dragover');" ondrop="handleDrop(event,'add')">
+                        <div class="img-upload" id="add_upload_wrap" ondragover="this.classList.add('dragover');event.preventDefault();" ondragleave="this.classList.remove('dragover');" ondrop="handleDrop(event,'add')">
                             <input type="file" accept="image/*" onchange="uploadToCloudinary(this,'add')">
-                            <div class="upload-placeholder"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);margin:0 auto 6px;display:block;">
+                            <div class="upload-ph">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);margin:0 auto 6px;display:block;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                     <polyline points="17 8 12 3 7 8" />
                                     <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
-                                <div style="font-size:0.82rem;font-weight:600;color:var(--text-muted);">Click or drag image here</div>
-                                <div style="font-size:0.72rem;color:#b0b7c0;margin-top:2px;">JPG, PNG, WEBP — max 5MB</div>
-                                <div class="upload-spinner" id="add_spinner" style="margin-top:8px;"></div>
+                                <div style="font-size:var(--fs-sm);font-weight:var(--fw-semi);color:var(--ink-2);">Click or drag image here</div>
+                                <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px;">JPG, PNG, WEBP — max 5MB</div>
+                                <div class="upload-spinner" id="add_spinner"></div>
                             </div>
-                            <div class="img-preview-box" id="add_preview"><img src="" id="add_preview_img" alt="Preview">
-                                <div class="img-preview-overlay"><span class="img-preview-label">✓ Image uploaded</span><button type="button" class="img-remove-btn" onclick="removeImage('add')">✕</button></div>
+                            <div class="img-preview" id="add_preview"><img src="" id="add_preview_img" alt="Preview">
+                                <div class="img-overlay"><span class="img-overlay-label">✓ Image uploaded</span><button type="button" class="img-remove" onclick="removeImage('add')">✕</button></div>
                             </div>
                         </div>
                         <div class="upload-status" id="add_upload_status"></div>
                     </div>
-                    <div class="form-section-label">Inventory Setup</div>
+                    <div class="form-section">Inventory Setup</div>
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Reorder Level</label><input type="number" name="reorder_level" class="form-input" value="10" min="0"><span class="form-hint">Alert when stock falls below this</span></div>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('addModal')">Cancel</button><button type="submit" class="btn btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="modal-foot"><button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button><button type="submit" class="btn btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                         </svg> Save Product</button></div>
             </form>
@@ -1893,25 +1616,26 @@ $activePage = 'products';
     <!-- EDIT MODAL -->
     <div class="modal-backdrop" id="editModal" onclick="backdropClose(event,'editModal')">
         <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="modal-head">
+                <div class="modal-heading"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg> Edit Product</div><button class="modal-close" onclick="closeModal('editModal')">✕</button>
+                    </svg> Edit Product</div>
+                <button class="modal-x" onclick="closeModal('editModal')">✕</button>
             </div>
             <form method="POST" action="products.php" id="editForm">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit_id">
                 <input type="hidden" name="image_url" id="edit_image_url">
                 <div class="modal-body">
-                    <div class="form-section-label">Basic Information</div>
+                    <div class="form-section">Basic Information</div>
                     <div class="form-grid">
                         <div class="form-group span-2"><label class="form-label">Product Name <span class="req">*</span></label><input type="text" name="name" id="edit_name" class="form-input" required></div>
                         <div class="form-group"><label class="form-label">Category <span class="req">*</span></label><select name="category_id" id="edit_category_id" class="form-select" required onchange="updateUnits('edit',this.value)"><?php foreach ($categories as $cat): ?><option value="<?= $cat['id'] ?>" data-name="<?= strtolower(htmlspecialchars($cat['name'])) ?>"><?= htmlspecialchars($cat['name']) ?></option><?php endforeach; ?></select></div>
                         <div class="form-group"><label class="form-label">Unit <span class="req">*</span></label><select name="unit" id="edit_unit" class="form-select" required></select></div>
                         <div class="form-group span-2"><label class="form-label">Description</label><textarea name="description" id="edit_description" class="form-textarea"></textarea></div>
                     </div>
-                    <div class="form-section-label">Pricing & Status</div>
+                    <div class="form-section">Pricing &amp; Status</div>
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Price (₱) <span class="req">*</span></label><input type="number" name="price" id="edit_price" class="form-input" step="0.01" min="0.01" required oninput="checkPriceChanged()"><span class="form-hint" id="edit_price_current_hint"></span></div>
                         <div class="form-group"><label class="form-label">Status</label><select name="is_active" id="edit_is_active" class="form-select">
@@ -1919,42 +1643,43 @@ $activePage = 'products';
                                 <option value="0">Inactive</option>
                             </select></div>
                         <div class="form-group span-2">
-                            <div class="price-reason-wrap" id="price_reason_wrap">
+                            <div class="price-reason-box" id="price_reason_wrap">
                                 <div class="price-reason-note"><i class="fa-solid fa-circle-info"></i> You're changing the price — this will be logged to Price History.</div>
                                 <label class="form-label">Reason for change (optional)</label>
                                 <input type="text" name="price_reason" id="edit_price_reason" class="form-input" placeholder="e.g. Market markup, supplier price increase…">
                             </div>
                         </div>
                     </div>
-                    <div class="form-section-label">Product Image</div>
+                    <div class="form-section">Product Image</div>
                     <div class="form-group span-2">
-                        <div class="img-upload-wrap" id="edit_upload_wrap" ondragover="this.classList.add('dragover');event.preventDefault();" ondragleave="this.classList.remove('dragover');" ondrop="handleDrop(event,'edit')">
+                        <div class="img-upload" id="edit_upload_wrap" ondragover="this.classList.add('dragover');event.preventDefault();" ondragleave="this.classList.remove('dragover');" ondrop="handleDrop(event,'edit')">
                             <input type="file" accept="image/*" onchange="uploadToCloudinary(this,'edit')">
-                            <div class="upload-placeholder"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);margin:0 auto 6px;display:block;">
+                            <div class="upload-ph">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);margin:0 auto 6px;display:block;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                     <polyline points="17 8 12 3 7 8" />
                                     <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
-                                <div style="font-size:0.82rem;font-weight:600;color:var(--text-muted);">Click or drag to replace image</div>
-                                <div style="font-size:0.72rem;color:#b0b7c0;margin-top:2px;">JPG, PNG, WEBP — max 5MB</div>
-                                <div class="upload-spinner" id="edit_spinner" style="margin-top:8px;"></div>
+                                <div style="font-size:var(--fs-sm);font-weight:var(--fw-semi);color:var(--ink-2);">Click or drag to replace image</div>
+                                <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px;">JPG, PNG, WEBP — max 5MB</div>
+                                <div class="upload-spinner" id="edit_spinner"></div>
                             </div>
-                            <div class="img-preview-box" id="edit_preview"><img src="" id="edit_preview_img" alt="Preview">
-                                <div class="img-preview-overlay"><span class="img-preview-label">✓ Image ready</span><button type="button" class="img-remove-btn" onclick="removeImage('edit')">✕</button></div>
+                            <div class="img-preview" id="edit_preview"><img src="" id="edit_preview_img" alt="Preview">
+                                <div class="img-overlay"><span class="img-overlay-label">✓ Image ready</span><button type="button" class="img-remove" onclick="removeImage('edit')">✕</button></div>
                             </div>
                         </div>
                         <div class="upload-status" id="edit_upload_status"></div>
                     </div>
-                    <div class="form-section-label">Inventory</div>
+                    <div class="form-section">Inventory</div>
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Reorder Level</label><input type="number" name="reorder_level" id="edit_reorder_level" class="form-input" min="0"><span class="form-hint">Alert when stock falls below this</span></div>
                         <div class="form-group" style="justify-content:flex-end;">
                             <label class="form-label">Current Stock</label>
-                            <div class="stock-info-box"><i class="fa-solid fa-circle-info"></i><span>Stock is managed via <a href="stocks/add.php" target="_blank">Stock Batches</a>. Current: <strong id="edit_stock_display">—</strong></span></div>
+                            <div class="stock-info"><i class="fa-solid fa-circle-info"></i><span>Managed via <a href="stocks/add.php" target="_blank">Stock Batches</a>. Current: <strong id="edit_stock_display">—</strong></span></div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('editModal')">Cancel</button><button type="submit" class="btn btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="modal-foot"><button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button><button type="submit" class="btn btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                         </svg> Update Product</button></div>
             </form>
@@ -1964,21 +1689,22 @@ $activePage = 'products';
     <!-- ARCHIVE MODAL -->
     <div class="modal-backdrop" id="archiveModal" onclick="backdropClose(event,'archiveModal')">
         <div class="modal-card sm">
-            <div class="modal-header">
-                <div class="modal-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="modal-head">
+                <div class="modal-heading"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="21 8 21 21 3 21 3 8" />
                         <rect x="1" y="3" width="22" height="5" />
                         <line x1="10" y1="12" x2="14" y2="12" />
-                    </svg> Archive Product</div><button class="modal-close" onclick="closeModal('archiveModal')">✕</button>
+                    </svg> Archive Product</div>
+                <button class="modal-x" onclick="closeModal('archiveModal')">✕</button>
             </div>
             <form method="POST" action="products.php"><input type="hidden" name="action" value="archive"><input type="hidden" name="id" id="archive_id">
                 <div class="modal-body">
-                    <div class="archive-icon-wrap"><i class="fa-solid fa-box-archive" style="color:#6b7280;"></i></div>
-                    <div class="delete-title">Archive Product?</div>
-                    <div class="delete-text"><span class="archive-name" id="archive_name"></span> will be hidden from customers.<br><br>You can restore it anytime from the Archive section.</div>
-                    <div style="margin-top:16px;"><label style="font-size:0.8rem;font-weight:600;color:var(--dark);display:block;margin-bottom:5px;">Reason (optional)</label><input type="text" name="archive_reason" class="form-input" placeholder="e.g. Out of season, discontinued…" style="width:100%;"></div>
+                    <div class="confirm-icon archive"><i class="fa-solid fa-box-archive" style="color:var(--ink-2);"></i></div>
+                    <div class="confirm-title">Archive Product?</div>
+                    <div class="confirm-text"><span class="confirm-name" id="archive_name" style="color:var(--ink);"></span> will be hidden from customers.<br><br>You can restore it anytime from the Archive section.</div>
+                    <div style="margin-top:var(--s4);"><label class="form-label" style="display:block;margin-bottom:5px;">Reason (optional)</label><input type="text" name="archive_reason" class="form-input" placeholder="e.g. Out of season, discontinued…"></div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('archiveModal')">Cancel</button><button type="submit" class="btn" style="background:#6b7280;color:#fff;border-color:#6b7280;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="modal-foot"><button type="button" class="btn btn-secondary" onclick="closeModal('archiveModal')">Cancel</button><button type="submit" class="btn" style="background:var(--ink-2);color:#fff;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="21 8 21 21 3 21 3 8" />
                             <rect x="1" y="3" width="22" height="5" />
                         </svg> Archive</button></div>
@@ -1989,20 +1715,21 @@ $activePage = 'products';
     <!-- HARD DELETE MODAL -->
     <div class="modal-backdrop" id="hardDeleteModal" onclick="backdropClose(event,'hardDeleteModal')">
         <div class="modal-card sm">
-            <div class="modal-header">
-                <div class="modal-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="modal-head">
+                <div class="modal-heading"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                         <line x1="12" y1="9" x2="12" y2="13" />
                         <line x1="12" y1="17" x2="12.01" y2="17" />
-                    </svg><span style="color:#ef4444;">Permanently Delete</span></div><button class="modal-close" onclick="closeModal('hardDeleteModal')">✕</button>
+                    </svg> <span style="color:var(--danger);">Permanently Delete</span></div>
+                <button class="modal-x" onclick="closeModal('hardDeleteModal')">✕</button>
             </div>
             <form method="POST" action="products.php"><input type="hidden" name="action" value="delete_hard"><input type="hidden" name="id" id="hard_delete_id">
                 <div class="modal-body">
-                    <div class="delete-icon-wrap"><i class="fa-solid fa-trash"></i></div>
-                    <div class="delete-title">Permanently Delete?</div>
-                    <div class="delete-text"><span class="delete-name" id="hard_delete_name"></span> will be permanently removed along with all its inventory, price history, and log records.<br><br><strong style="color:#ef4444;">This cannot be undone.</strong></div>
+                    <div class="confirm-icon danger"><i class="fa-solid fa-trash"></i></div>
+                    <div class="confirm-title">Permanently Delete?</div>
+                    <div class="confirm-text"><span class="confirm-name" id="hard_delete_name" style="color:var(--danger);"></span> will be permanently removed along with all its inventory, price history, and log records.<br><br><strong style="color:var(--danger);">This cannot be undone.</strong></div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('hardDeleteModal')">Cancel</button><button type="submit" class="btn btn-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="modal-foot"><button type="button" class="btn btn-secondary" onclick="closeModal('hardDeleteModal')">Cancel</button><button type="submit" class="btn btn-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                         </svg> Delete Forever</button></div>
@@ -2013,16 +1740,16 @@ $activePage = 'products';
     <!-- PRICE HISTORY MODAL -->
     <div class="modal-backdrop" id="historyModal" onclick="backdropClose(event,'historyModal')">
         <div class="modal-card md">
-            <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-clock-rotate-left" style="color:#8b5cf6;"></i> Price History — <span id="history_product_name" style="color:#8b5cf6;">—</span></div>
-                <button class="modal-close" onclick="closeModal('historyModal')">✕</button>
+            <div class="modal-head">
+                <div class="modal-heading"><i class="fa-solid fa-clock-rotate-left" style="color:#7c5cd0;"></i> Price History — <span id="history_product_name" style="color:#7c5cd0;">—</span></div>
+                <button class="modal-x" onclick="closeModal('historyModal')">✕</button>
             </div>
             <div class="modal-body" id="history_body">
                 <div class="ph-loading">
                     <div class="ph-spinner"></div>Loading price history…
                 </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('historyModal')">Close</button></div>
+            <div class="modal-foot"><button type="button" class="btn btn-secondary" onclick="closeModal('historyModal')">Close</button></div>
         </div>
     </div>
 
@@ -2044,7 +1771,7 @@ $activePage = 'products';
             </div>
             <div class="crop-controls">
                 <div class="crop-ratio-btns"><button class="crop-ratio-btn active" onclick="setRatio(1,1,this)">1:1</button><button class="crop-ratio-btn" onclick="setRatio(4,3,this)">4:3</button><button class="crop-ratio-btn" onclick="setRatio(16,9,this)">16:9</button><button class="crop-ratio-btn" onclick="setRatio(0,0,this)">Free</button></div>
-                <div class="crop-actions"><button class="btn-crop-cancel" onclick="cancelCrop()">Cancel</button><button class="btn-crop-apply" onclick="applyCrop()">✓ Apply & Upload</button></div>
+                <div class="crop-actions"><button class="btn-crop-cancel" onclick="cancelCrop()">Cancel</button><button class="btn-crop-apply" onclick="applyCrop()">✓ Apply &amp; Upload</button></div>
             </div>
         </div>
     </div>

@@ -1,17 +1,3 @@
-/* ============================================================
-   Hiney's Eggs & Live Chicken Business — Admin Design System
-   File: admin/assets/admin.css
-
-   One shared stylesheet for the whole admin panel. Pages link
-   this and add only page-specific styles. Everything here is
-   built from CSS custom properties so the identity stays
-   consistent across every screen.
-
-   Identity: warm poultry orange used with restraint, on a
-   calm bone-white canvas, with a light sidebar.
-   ============================================================ */
-
-/* ── Design tokens ──────────────────────────────────────── */
 :root {
   /* Brand */
   --brand: #e67e22; /* the poultry orange — used sparingly */

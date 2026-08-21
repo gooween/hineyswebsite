@@ -166,7 +166,7 @@ function orderPill(string $s): array
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Dashboard</h1>
-                    <div class="page-title-sub">Welcome back, <?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></div>
+
                 </div>
                 <div class="chip">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">

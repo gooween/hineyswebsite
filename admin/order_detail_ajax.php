@@ -5,7 +5,7 @@ requireAdmin();
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
-    echo '<div style="padding:32px;text-align:center;color:#ef4444;">Invalid order ID.</div>';
+    echo '<div style="padding:32px;text-align:center;color:#d94f46;">Invalid order ID.</div>';
     exit;
 }
 
@@ -24,7 +24,7 @@ $o = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$o) {
-    echo '<div style="padding:32px;text-align:center;color:#ef4444;">Order not found.</div>';
+    echo '<div style="padding:32px;text-align:center;color:#d94f46;">Order not found.</div>';
     exit;
 }
 
@@ -47,24 +47,24 @@ $transactions = $conn->query("
 ");
 
 $statusMap = [
-    'pending'          => ['⏳', '#92400e', '#fef3c7', 'Pending'],
-    'approved'         => ['✓',  '#1e40af', '#dbeafe', 'Approved'],
-    'processing'       => ['⚙',  '#5b21b6', '#ede9fe', 'Processing'],
-    'out_for_delivery' => ['🚚', '#9a3412', '#ffedd5', 'Out for Delivery'],
-    'delivered'        => ['✓',  '#065f46', '#d1fae5', 'Delivered'],
-    'cancelled'        => ['✕',  '#991b1b', '#fee2e2', 'Cancelled'],
+    'pending'          => ['⏳', '#8a5a0c', '#fbf1de', 'Pending'],
+    'approved'         => ['✓',  '#2b62ad', '#e8f0fb', 'Approved'],
+    'processing'       => ['⚙',  '#6a4bc0', '#f0ecfa', 'Processing'],
+    'out_for_delivery' => ['🚚', '#a4680c', '#fde8d4', 'Out for Delivery'],
+    'delivered'        => ['✓',  '#1f7a48', '#e6f4ec', 'Delivered'],
+    'cancelled'        => ['✕',  '#b23c34', '#fbeae9', 'Cancelled'],
 ];
-[$sIcon, $sColor, $sBg, $sLabel] = $statusMap[$o['status']] ?? ['?', '#374151', '#f3f4f6', ucfirst($o['status'])];
+[$sIcon, $sColor, $sBg, $sLabel] = $statusMap[$o['status']] ?? ['?', '#6f6a62', '#f0eee9', ucfirst($o['status'])];
 ?>
 <style>
     .od-wrap {
-        font-family: 'Segoe UI', system-ui, sans-serif;
-        color: #374151;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        color: #4b4740;
     }
 
     /* Dark header banner */
     .od-banner {
-        background: linear-gradient(135deg, #1a252f, #2c3e50);
+        background: linear-gradient(135deg, #2b2823, #3d3833);
         padding: 20px 24px;
         display: flex;
         align-items: flex-start;
@@ -85,7 +85,7 @@ $statusMap = [
 
     .od-banner-date {
         font-size: 0.75rem;
-        color: #8fa3b3;
+        color: #b0a99e;
     }
 
     .od-banner-right {
@@ -119,13 +119,13 @@ $statusMap = [
     }
 
     .od-pay-paid {
-        background: #d1fae5;
-        color: #065f46;
+        background: #e6f4ec;
+        color: #1f7a48;
     }
 
     .od-pay-unpaid {
-        background: #fee2e2;
-        color: #991b1b;
+        background: #fbeae9;
+        color: #b23c34;
     }
 
     /* Quick chips */
@@ -139,8 +139,8 @@ $statusMap = [
     .od-chip {
         flex: 1;
         min-width: 100px;
-        background: #f8f7f4;
-        border: 1px solid #e9e8e4;
+        background: #faf9f7;
+        border: 1px solid #ebe8e3;
         border-radius: 10px;
         padding: 10px 14px;
     }
@@ -150,19 +150,19 @@ $statusMap = [
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        color: #9ca3af;
+        color: #9c968c;
         margin-bottom: 3px;
     }
 
     .od-chip-value {
         font-size: 0.88rem;
         font-weight: 700;
-        color: #111827;
+        color: #23201c;
     }
 
     .od-chip-value.big {
         font-size: 1.05rem;
-        color: #e67e22;
+        color: #d16b12;
     }
 
     /* Section */
@@ -175,10 +175,10 @@ $statusMap = [
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.12em;
-        color: #e67e22;
+        color: #d16b12;
         margin-bottom: 10px;
         padding-bottom: 6px;
-        border-bottom: 1px solid #fde9d0;
+        border-bottom: 1px solid #fde8d4;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -193,8 +193,8 @@ $statusMap = [
         display: flex;
         align-items: center;
         gap: 12px;
-        background: #f8f7f4;
-        border: 1px solid #e9e8e4;
+        background: #faf9f7;
+        border: 1px solid #ebe8e3;
         border-radius: 10px;
         padding: 12px 16px;
     }
@@ -203,7 +203,7 @@ $statusMap = [
         width: 42px;
         height: 42px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #e67e22, #f39c12);
+        background: linear-gradient(135deg, #e67e22, #f0a04b);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -215,24 +215,24 @@ $statusMap = [
 
     .od-cust-name {
         font-weight: 700;
-        color: #111827;
+        color: #23201c;
         font-size: 0.92rem;
     }
 
     .od-cust-sub {
         font-size: 0.76rem;
-        color: #6b7280;
+        color: #6f6a62;
         margin-top: 2px;
     }
 
     /* Address */
     .od-address {
-        background: #f8f7f4;
-        border: 1px solid #e9e8e4;
+        background: #faf9f7;
+        border: 1px solid #ebe8e3;
         border-radius: 10px;
         padding: 12px 14px;
         font-size: 0.86rem;
-        color: #374151;
+        color: #4b4740;
         line-height: 1.65;
     }
 
@@ -242,7 +242,7 @@ $statusMap = [
         align-items: center;
         gap: 12px;
         padding: 10px 0;
-        border-bottom: 1px solid #f3f2f0;
+        border-bottom: 1px solid #f0eee9;
     }
 
     .od-item-row:last-child {
@@ -255,7 +255,7 @@ $statusMap = [
         border-radius: 9px;
         object-fit: cover;
         flex-shrink: 0;
-        border: 1px solid #e9e8e4;
+        border: 1px solid #ebe8e3;
     }
 
     .od-item-emoji {
@@ -277,7 +277,7 @@ $statusMap = [
     .od-item-name {
         font-size: 0.88rem;
         font-weight: 700;
-        color: #111827;
+        color: #23201c;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -285,15 +285,15 @@ $statusMap = [
 
     .od-item-unit {
         font-size: 0.7rem;
-        color: #6b7280;
+        color: #6f6a62;
         margin-top: 1px;
     }
 
     .od-item-qty {
         font-size: 0.82rem;
         font-weight: 700;
-        color: #374151;
-        background: #f3f4f6;
+        color: #4b4740;
+        background: #f0eee9;
         border-radius: 6px;
         padding: 3px 8px;
         white-space: nowrap;
@@ -301,7 +301,7 @@ $statusMap = [
 
     .od-item-price {
         font-size: 0.78rem;
-        color: #6b7280;
+        color: #6f6a62;
         min-width: 60px;
         text-align: right;
     }
@@ -309,15 +309,15 @@ $statusMap = [
     .od-item-sub {
         font-size: 0.92rem;
         font-weight: 800;
-        color: #e67e22;
+        color: #d16b12;
         min-width: 72px;
         text-align: right;
     }
 
     /* Totals */
     .od-totals {
-        background: #f8f7f4;
-        border: 1px solid #e9e8e4;
+        background: #faf9f7;
+        border: 1px solid #ebe8e3;
         border-radius: 10px;
         padding: 12px 14px;
         margin-top: 8px;
@@ -328,17 +328,17 @@ $statusMap = [
         justify-content: space-between;
         font-size: 0.84rem;
         padding: 3px 0;
-        color: #6b7280;
+        color: #6f6a62;
     }
 
     .od-total-row span:last-child {
         font-weight: 600;
-        color: #374151;
+        color: #4b4740;
     }
 
     .od-total-divider {
         height: 1px;
-        background: #e9e8e4;
+        background: #ebe8e3;
         margin: 8px 0;
     }
 
@@ -351,23 +351,23 @@ $statusMap = [
     .od-grand-label {
         font-size: 0.95rem;
         font-weight: 800;
-        color: #111827;
+        color: #23201c;
     }
 
     .od-grand-value {
         font-size: 1.2rem;
         font-weight: 900;
-        color: #e67e22;
+        color: #d16b12;
     }
 
     /* Notes */
     .od-notes {
-        background: #fffbeb;
-        border: 1px solid #fde68a;
+        background: #fbf1de;
+        border: 1px solid #f2ddb0;
         border-radius: 10px;
         padding: 12px 14px;
         font-size: 0.84rem;
-        color: #92400e;
+        color: #8a5a0c;
         line-height: 1.6;
         white-space: pre-line;
     }
@@ -377,7 +377,7 @@ $statusMap = [
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        color: #f59e0b;
+        color: #a4680c;
         margin-bottom: 5px;
     }
 
@@ -385,8 +385,8 @@ $statusMap = [
     .od-proof-img {
         width: 100%;
         border-radius: 10px;
-        border: 1px solid #e9e8e4;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid #ebe8e3;
+        box-shadow: 0 2px 12px rgba(35, 32, 28, 0.08);
         cursor: pointer;
         transition: transform 0.15s;
     }
@@ -397,18 +397,18 @@ $statusMap = [
 
     .od-proof-hint {
         font-size: 0.72rem;
-        color: #9ca3af;
+        color: #9c968c;
         text-align: center;
         margin-top: 6px;
     }
 
     .od-no-proof {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
+        background: #e8f0fb;
+        border: 1px solid #bcd6f5;
         border-radius: 10px;
         padding: 14px 16px;
         font-size: 0.82rem;
-        color: #1e40af;
+        color: #2b62ad;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -416,8 +416,8 @@ $statusMap = [
 
     /* Transaction */
     .od-txn {
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
+        background: #e6f4ec;
+        border: 1px solid #a7dcbc;
         border-radius: 10px;
         padding: 12px 14px;
     }
@@ -427,7 +427,7 @@ $statusMap = [
         justify-content: space-between;
         font-size: 0.84rem;
         padding: 4px 0;
-        border-bottom: 1px solid #d1fae5;
+        border-bottom: 1px solid #cde9d7;
     }
 
     .od-txn-row:last-child {
@@ -435,21 +435,21 @@ $statusMap = [
     }
 
     .od-txn-label {
-        color: #6b7280;
+        color: #6f6a62;
     }
 
     .od-txn-value {
         font-weight: 700;
-        color: #065f46;
+        color: #1f7a48;
     }
 
     .od-no-txn {
-        background: #f8f7f4;
-        border: 1px solid #e9e8e4;
+        background: #faf9f7;
+        border: 1px solid #ebe8e3;
         border-radius: 10px;
         padding: 14px 16px;
         font-size: 0.82rem;
-        color: #9ca3af;
+        color: #9c968c;
         text-align: center;
     }
 
@@ -500,7 +500,7 @@ $statusMap = [
         <?php else: ?>
             <div class="od-chip">
                 <div class="od-chip-label">Delivery Fee</div>
-                <div class="od-chip-value" style="color:#f59e0b;">Not set yet</div>
+                <div class="od-chip-value" style="color:#a4680c;">Not set yet</div>
             </div>
         <?php endif; ?>
         <div class="od-chip">
@@ -546,7 +546,7 @@ $statusMap = [
                     $itemsSubtotal += (float)$item['subtotal'];
                     $isChick = stripos((string)($item['category_name'] ?? ''), 'chicken') !== false || stripos($item['product_name'], 'chicken') !== false;
                     $emoji   = $isChick ? '<i class="fa-solid fa-drumstick-bite"></i>' : '<i class="fa-solid fa-egg"></i>';
-                    $emojiBg = $isChick ? 'background:linear-gradient(135deg,#f0fdf4,#bbf7d0)' : 'background:linear-gradient(135deg,#fef9ee,#fdeec8)';
+                    $emojiBg = $isChick ? 'background:linear-gradient(135deg,#e6f4ec,#cde9d7)' : 'background:linear-gradient(135deg,#fef4ea,#fde8d4)';
             ?>
                     <div class="od-item-row">
                         <?php if (!empty($item['image_url'])): ?>
@@ -559,7 +559,7 @@ $statusMap = [
                             <div class="od-item-unit"><?= htmlspecialchars($item['unit']) ?></div>
                         </div>
                         <span class="od-item-qty">×<?= (int)$item['quantity'] ?></span>
-                        <div class="od-item-price">₱<?= number_format((float)$item['unit_price'], 2) ?><br><span style="font-size:0.65rem;color:#9ca3af;">each</span></div>
+                        <div class="od-item-price">₱<?= number_format((float)$item['unit_price'], 2) ?><br><span style="font-size:0.65rem;color:#9c968c;">each</span></div>
                         <div class="od-item-sub">₱<?= number_format((float)$item['subtotal'], 2) ?></div>
                     </div>
             <?php endwhile;
@@ -570,7 +570,7 @@ $statusMap = [
                 <div class="od-total-row"><span>Items subtotal</span><span>₱<?= number_format($itemsSubtotal, 2) ?></span></div>
                 <div class="od-total-row">
                     <span>Delivery fee</span>
-                    <span><?= $o['delivery_fee'] !== null ? '₱' . number_format((float)$o['delivery_fee'], 2) : '<span style="color:#f59e0b;font-size:0.78rem;">Not set</span>' ?></span>
+                    <span><?= $o['delivery_fee'] !== null ? '₱' . number_format((float)$o['delivery_fee'], 2) : '<span style="color:#a4680c;font-size:0.78rem;">Not set</span>' ?></span>
                 </div>
                 <div class="od-total-divider"></div>
                 <div class="od-grand">

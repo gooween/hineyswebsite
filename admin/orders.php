@@ -203,720 +203,442 @@ $activePage = 'orders';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style id="hineys-icon-colors">
-        .navbar .fa-solid,
-        .mobile-drawer .fa-solid,
-        .sidebar .fa-solid,
-        button .fa-solid,
-        [class*="btn"] .fa-solid,
-        .badge .fa-solid,
-        .status-badge .fa-solid,
-        .status-tab .fa-solid,
-        .pay-badge .fa-solid,
-        .page-banner .fa-solid,
-        .page-header .fa-solid,
-        .hero .fa-solid,
-        .cta-card .fa-solid,
-        .about-strip .fa-solid,
-        .nav-cart .fa-solid,
-        .user-chip .fa-solid,
-        .info-card-top .fa-solid,
-        .sidebar-logout .fa-solid {
-            color: inherit !important
-        }
-
-        .fa-egg {
-            color: #f4a72c
-        }
-
-        .fa-drumstick-bite {
-            color: #c2703b
-        }
-
-        .fa-circle-check,
-        .fa-check,
-        .fa-shield-halved,
-        .fa-leaf,
-        .fa-seedling,
-        .fa-phone {
-            color: #10b981
-        }
-
-        .fa-circle-xmark,
-        .fa-xmark,
-        .fa-trash,
-        .fa-ban,
-        .fa-location-dot {
-            color: #ef4444
-        }
-
-        .fa-cart-shopping,
-        .fa-bag-shopping,
-        .fa-store,
-        .fa-shop {
-            color: #e67e22
-        }
-
-        .fa-truck {
-            color: #f97316
-        }
-
-        .fa-triangle-exclamation,
-        .fa-circle-exclamation,
-        .fa-clock,
-        .fa-star {
-            color: #f59e0b
-        }
-
-        .fa-info-circle,
-        .fa-credit-card,
-        .fa-mobile-screen,
-        .fa-envelope,
-        .fa-envelope-open,
-        .fa-envelope-open-text,
-        .fa-inbox,
-        .fa-comment,
-        .fa-map,
-        .fa-paperclip {
-            color: #3b82f6
-        }
-
-        .fa-sack-dollar,
-        .fa-money-bill,
-        .fa-money-bill-transfer {
-            color: #16a34a
-        }
-
-        .fa-users,
-        .fa-user,
-        .fa-user-plus {
-            color: #6366f1
-        }
-
-        .fa-box,
-        .fa-box-open,
-        .fa-boxes-stacked,
-        .fa-warehouse,
-        .fa-receipt,
-        .fa-clipboard-list,
-        .fa-file-lines {
-            color: #8b5cf6
-        }
-
-        .fa-chart-bar,
-        .fa-chart-line,
-        .fa-chart-pie,
-        .fa-gauge-high {
-            color: #0ea5e9
-        }
-
-        .fa-heart {
-            color: #ef4444
-        }
-
-        .fa-gear {
-            color: #6b7280
-        }
-
-        .fa-lightbulb {
-            color: #f59e0b
-        }
-    </style>
     <title>Orders — Hiney's Admin</title>
     <style>
-        :root {
-            --card-border: #e9e8e4
-        }
+        /* Page-specific only — shared system comes from admin.css */
 
-        .main-content {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            padding: 32px 32px 48px;
-            min-height: 100vh;
-            background: var(--page-bg);
-            box-sizing: border-box;
-            width: calc(100% - var(--sidebar-w))
-        }
-
-        .page-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 12px
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.02em
-        }
-
-        .page-title-sub {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            margin-top: 2px
-        }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px
-        }
-
-        @media(max-width:1100px) {
-            .stats-row {
-                grid-template-columns: repeat(2, 1fr)
-            }
-        }
-
-        @media(max-width:600px) {
-            .stats-row {
-                grid-template-columns: 1fr
-            }
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 18px 20px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.18s, box-shadow 0.18s
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md)
-        }
-
-        .stat-card-accent {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px
-        }
-
-        .stat-icon-wrap {
-            width: 44px;
-            height: 44px;
-            border-radius: 11px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0
-        }
-
-        .stat-body {
-            flex: 1
-        }
-
-        .stat-value {
-            font-size: 1.7rem;
-            font-weight: 800;
-            color: var(--dark);
-            line-height: 1;
-            letter-spacing: -0.03em
-        }
-
-        .stat-label {
-            font-size: 0.73rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            font-weight: 700;
-            margin-top: 4px
-        }
-
-        .sc-orange .stat-card-accent {
-            background: #e67e22
-        }
-
-        .sc-orange .stat-icon-wrap {
-            background: #fef3e8;
-            color: #e67e22
-        }
-
-        .sc-blue .stat-card-accent {
-            background: #3b82f6
-        }
-
-        .sc-blue .stat-icon-wrap {
-            background: #eff6ff;
-            color: #3b82f6
-        }
-
-        .sc-amber .stat-card-accent {
-            background: #f59e0b
-        }
-
-        .sc-amber .stat-icon-wrap {
-            background: #fffbeb;
-            color: #f59e0b
-        }
-
-        .sc-green .stat-card-accent {
-            background: #10b981
-        }
-
-        .sc-green .stat-icon-wrap {
-            background: #ecfdf5;
-            color: #10b981
-        }
-
+        /* Alert banners */
         .alert-banner {
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-radius: 9px;
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            font-size: 0.87rem
+            gap: var(--s3);
+            border-radius: var(--r);
+            padding: var(--s3) var(--s4);
+            font-size: var(--fs-sm);
+            margin-bottom: var(--s3);
+        }
+
+        .alert-banner svg {
+            flex-shrink: 0;
         }
 
         .alert-warn {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-left: 4px solid #f59e0b;
-            color: #92400e
+            background: var(--warn-tint);
+            border: 1px solid #f2ddb0;
+            color: #8a5a0c;
+        }
+
+        .alert-warn svg {
+            stroke: var(--warn);
         }
 
         .alert-blue {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-left: 4px solid #3b82f6;
-            color: #1e40af
+            background: var(--info-tint);
+            border: 1px solid #bcd6f5;
+            color: #2b62ad;
         }
 
+        .alert-blue svg {
+            stroke: var(--info);
+        }
+
+        /* Filter tabs */
         .filter-tabs {
             display: flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius) var(--radius) 0 0;
-            padding: 10px 16px;
-            border-bottom: none;
-            flex-wrap: wrap
+            gap: 4px;
+            margin-bottom: var(--s4);
+            border-bottom: 1px solid var(--line);
+            overflow-x: auto;
+            padding-bottom: 0;
         }
 
         .filter-tab {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            color: var(--text-muted);
-            transition: background 0.15s, color 0.15s;
-            border: 1px solid transparent;
-            white-space: nowrap
+            padding: 9px var(--s4);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-med);
+            color: var(--ink-2);
+            white-space: nowrap;
+            position: relative;
+            border-bottom: 2px solid transparent;
+            transition: color 0.14s;
         }
 
         .filter-tab:hover {
-            background: var(--page-bg);
-            color: var(--dark)
+            color: var(--ink);
         }
 
         .filter-tab.active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary)
+            color: var(--brand);
+            border-bottom-color: var(--brand);
+            font-weight: var(--fw-semi);
         }
 
         .tab-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-bold);
+            background: var(--surface-2);
+            color: var(--ink-2);
+            padding: 1px 7px;
+            border-radius: var(--r-pill);
             min-width: 18px;
-            height: 18px;
-            padding: 0 5px;
-            background: rgba(255, 255, 255, 0.25);
-            border-radius: 10px;
-            font-size: 0.68rem;
-            font-weight: 700
+            text-align: center;
         }
 
-        .filter-tab:not(.active) .tab-count {
-            background: var(--page-bg);
-            color: var(--text-muted)
+        .filter-tab.active .tab-count {
+            background: var(--brand-tint);
+            color: var(--brand-strong);
         }
 
+        /* Toolbar */
         .toolbar {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            padding: 12px 16px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            gap: var(--s3);
             flex-wrap: wrap;
-            border-top: none;
-            border-bottom: none;
-            box-sizing: border-box
+            margin-bottom: var(--s4);
         }
 
         .toolbar-left {
             display: flex;
             align-items: center;
-            gap: 8px;
-            flex: 1;
-            flex-wrap: wrap
-        }
-
-        .toolbar-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0
+            gap: var(--s3);
+            flex-wrap: wrap;
         }
 
         .search-wrap {
             position: relative;
             display: flex;
-            align-items: center
+            align-items: center;
         }
 
         .search-wrap svg {
             position: absolute;
-            left: 10px;
-            color: var(--text-muted);
-            pointer-events: none
+            left: 11px;
+            color: var(--ink-3);
+            pointer-events: none;
         }
 
         .search-input {
-            padding: 7px 12px 7px 34px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            width: 210px;
-            background: var(--page-bg);
-            color: var(--text);
+            padding: 8px 12px 8px 34px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            width: 230px;
+            background: var(--surface);
+            color: var(--ink);
             outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s
+            font-family: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
 
         .search-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
         .filter-select {
-            padding: 7px 28px 7px 10px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.83rem;
-            background: var(--page-bg);
-            color: var(--text);
+            padding: 8px 30px 8px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            background: var(--surface);
+            color: var(--ink);
             outline: none;
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            font-family: inherit;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239c968c' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 9px center
+            background-position: right 10px center;
         }
 
         .filter-select:focus {
-            border-color: var(--primary);
-            outline: none
+            border-color: var(--brand);
         }
 
-        .table-wrapper {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 0 0 var(--radius) var(--radius);
-            overflow-x: auto;
-            box-shadow: var(--shadow);
-            box-sizing: border-box
-        }
-
-        table.data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.87rem
-        }
-
-        table.data-table thead th {
-            background: var(--dark);
-            color: #e5e7eb;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            padding: 12px 14px;
+        .clear-link {
+            font-size: var(--fs-sm);
+            color: var(--brand);
+            font-weight: var(--fw-med);
             white-space: nowrap;
-            text-align: left
         }
 
-        table.data-table tbody tr:nth-child(even) {
-            background: #faf9f7
+        .clear-link:hover {
+            text-decoration: underline;
         }
 
-        table.data-table tbody tr:hover {
-            background: #fef9f4;
-            transition: background 0.12s
+        .toolbar-right {
+            font-size: var(--fs-sm);
+            color: var(--ink-3);
         }
 
-        table.data-table tbody td {
-            padding: 11px 14px;
-            color: var(--text);
-            border-bottom: 1px solid #f3f2f0;
-            vertical-align: middle
-        }
-
-        table.data-table tbody tr:last-child td {
-            border-bottom: none
-        }
-
-        .customer-cell {
-            display: flex;
-            align-items: center;
-            gap: 8px
-        }
-
-        .customer-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #e67e22, #f39c12);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #fff;
-            flex-shrink: 0
-        }
-
-        .customer-name {
-            font-weight: 600;
-            color: var(--dark);
-            font-size: 0.87rem
-        }
-
-        .customer-sub {
-            font-size: 0.73rem;
-            color: var(--text-muted)
-        }
-
+        /* Order & customer cells */
         .order-id {
-            font-weight: 700;
-            color: var(--primary);
-            font-size: 0.9rem
+            font-weight: var(--fw-bold);
+            color: var(--brand);
+            font-size: 0.9rem;
         }
 
         .order-date {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 2px
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
+            margin-top: 1px;
+        }
+
+        .cust-name {
+            font-weight: var(--fw-semi);
+            color: var(--ink);
+            font-size: var(--fs-sm);
+        }
+
+        .cust-sub {
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
         }
 
         .total-main {
-            font-weight: 700;
-            color: var(--dark)
+            font-weight: var(--fw-bold);
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
         }
 
         .total-fee-set {
-            font-size: 0.72rem;
-            color: #10b981;
-            font-weight: 600;
-            margin-top: 2px
+            font-size: var(--fs-xs);
+            color: var(--ok);
+            margin-top: 1px;
+            font-weight: var(--fw-med);
         }
 
         .total-fee-unset {
-            font-size: 0.72rem;
-            color: #f59e0b;
-            font-weight: 600;
-            margin-top: 2px
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 9px;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            white-space: nowrap
-        }
-
-        .status-badge::before {
-            content: '';
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: currentColor
-        }
-
-        .s-pending {
-            background: #fef3c7;
-            color: #92400e
-        }
-
-        .s-approved {
-            background: #dbeafe;
-            color: #1e40af
-        }
-
-        .s-processing {
-            background: #ede9fe;
-            color: #5b21b6
-        }
-
-        .s-out_for_delivery {
-            background: #ffedd5;
-            color: #9a3412
-        }
-
-        .s-delivered {
-            background: #d1fae5;
-            color: #065f46
-        }
-
-        .s-cancelled {
-            background: #fee2e2;
-            color: #991b1b
-        }
-
-        .pay-unpaid {
-            background: #fee2e2;
-            color: #991b1b
-        }
-
-        .pay-paid {
-            background: #d1fae5;
-            color: #065f46
+            font-size: var(--fs-xs);
+            color: var(--warn);
+            margin-top: 1px;
+            font-weight: var(--fw-semi);
         }
 
         .method-badge {
             display: inline-flex;
             align-items: center;
-            gap: 3px;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            background: #f3f4f6;
-            color: #374151;
-            white-space: nowrap
+            gap: 4px;
+            padding: 2px 9px;
+            border-radius: var(--r-pill);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            background: var(--surface-2);
+            color: var(--ink-2);
         }
 
         .proof-badge {
             display: inline-flex;
             align-items: center;
-            gap: 3px;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            white-space: nowrap;
-            cursor: pointer
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: var(--r-pill);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            cursor: pointer;
         }
 
         .proof-yes {
-            background: #d1fae5;
-            color: #065f46
+            background: var(--brand-tint);
+            color: var(--brand-strong);
+        }
+
+        .proof-yes:hover {
+            background: var(--brand-tint-2);
         }
 
         .proof-no {
-            background: #fef3c7;
-            color: #92400e
+            background: var(--surface-2);
+            color: var(--ink-3);
+            cursor: default;
         }
 
-        .btn-action {
+        /* Status + payment pills use shared .pill; map colors here */
+        .st-pill {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: var(--r-pill);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            white-space: nowrap;
+        }
+
+        .st-pill::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .s-pending {
+            background: var(--warn-tint);
+            color: #8a5a0c;
+        }
+
+        .s-approved {
+            background: var(--info-tint);
+            color: #2b62ad;
+        }
+
+        .s-processing {
+            background: #f0ecfa;
+            color: #6a4bc0;
+        }
+
+        .s-out_for_delivery {
+            background: var(--brand-tint);
+            color: var(--brand-strong);
+        }
+
+        .s-delivered {
+            background: var(--ok-tint);
+            color: #1f7a48;
+        }
+
+        .s-cancelled {
+            background: var(--danger-tint);
+            color: #b23c34;
+        }
+
+        .pay-paid {
+            background: var(--ok-tint);
+            color: #1f7a48;
+        }
+
+        .pay-unpaid {
+            background: var(--danger-tint);
+            color: #b23c34;
+        }
+
+        /* Row actions — icon by default, expand to show label on hover (matches Products) */
+        .row-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .oact {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+            width: 32px;
+            padding: 0;
+            border-radius: var(--r-sm);
             cursor: pointer;
             border: 1px solid;
             background: transparent;
-            transition: background 0.15s, color 0.15s;
-            white-space: nowrap
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            font-family: inherit;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), background 0.14s, color 0.14s, border-color 0.14s, padding 0.22s;
         }
 
-        .btn-view {
-            color: #3b82f6;
-            border-color: #3b82f6
+        .oact svg,
+        .oact i {
+            flex-shrink: 0;
         }
 
-        .btn-view:hover {
-            background: #3b82f6;
-            color: #fff
+        .oact .act-label {
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            transition: max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s, margin-left 0.22s;
         }
 
-        .btn-approve {
-            color: #10b981;
-            border-color: #10b981
+        .oact:hover {
+            width: auto;
+            padding: 0 11px;
         }
 
-        .btn-approve:hover {
-            background: #10b981;
-            color: #fff
+        .oact:hover .act-label {
+            max-width: 90px;
+            opacity: 1;
+            margin-left: 5px;
         }
 
-        .btn-reject {
-            color: #ef4444;
-            border-color: #ef4444
+        .oact-view {
+            color: var(--ink-2);
+            border-color: var(--line-strong);
         }
 
-        .btn-reject:hover {
-            background: #ef4444;
-            color: #fff
+        .oact-view:hover {
+            background: var(--ink-2);
+            color: #fff;
+            border-color: var(--ink-2);
         }
 
-        .btn-edit-s {
-            color: var(--primary);
-            border-color: var(--primary)
+        .oact-approve {
+            color: var(--ok);
+            border-color: #a7dcbc;
         }
 
-        .btn-edit-s:hover {
-            background: var(--primary);
-            color: #fff
+        .oact-approve:hover {
+            background: var(--ok);
+            color: #fff;
+            border-color: var(--ok);
         }
 
-        .btn-cancel {
-            color: #ef4444;
-            border-color: #ef4444
+        .oact-reject {
+            color: var(--danger);
+            border-color: #f0c4c0;
         }
 
-        .btn-cancel:hover {
-            background: #ef4444;
-            color: #fff
+        .oact-reject:hover {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
         }
 
+        .oact-update {
+            color: var(--brand);
+            border-color: var(--brand);
+        }
+
+        .oact-update:hover {
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .oact-cancel {
+            color: var(--danger);
+            border-color: #f0c4c0;
+        }
+
+        .oact-cancel:hover {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
+        }
+
+        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 18px;
-            border-top: 1px solid var(--card-border);
-            font-size: 0.82rem;
-            color: var(--text-muted);
+            padding: var(--s4) var(--s5);
+            border-top: 1px solid var(--line);
+            font-size: var(--fs-sm);
+            color: var(--ink-2);
             flex-wrap: wrap;
-            gap: 8px
+            gap: var(--s2);
         }
 
         .pagination-pages {
             display: flex;
             align-items: center;
-            gap: 4px
+            gap: 4px;
         }
 
         .pg-btn {
@@ -926,88 +648,79 @@ $activePage = 'orders';
             min-width: 32px;
             height: 32px;
             padding: 0 8px;
-            border-radius: 6px;
-            border: 1px solid var(--card-border);
-            background: var(--card-bg);
-            color: var(--text);
-            font-size: 0.82rem;
-            font-weight: 500;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--line-strong);
+            background: var(--surface);
+            color: var(--ink);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-med);
             cursor: pointer;
             text-decoration: none;
-            transition: background 0.15s
+            transition: background 0.14s, border-color 0.14s;
         }
 
         .pg-btn:hover {
-            background: var(--page-bg)
+            background: var(--surface-2);
+            border-color: var(--ink-3);
         }
 
         .pg-btn.active {
-            background: var(--primary);
+            background: var(--brand);
             color: #fff;
-            border-color: var(--primary);
-            font-weight: 700
+            border-color: var(--brand);
+            font-weight: var(--fw-bold);
         }
 
         .pg-btn.disabled {
             opacity: 0.4;
-            pointer-events: none
+            pointer-events: none;
         }
 
-        .empty-state {
-            padding: 56px 20px;
-            text-align: center;
-            color: var(--text-muted)
-        }
-
-        .empty-icon {
-            font-size: 3rem;
-            margin-bottom: 12px
-        }
-
+        /* ── Modals ── */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(35, 32, 28, 0.45);
             backdrop-filter: blur(3px);
             z-index: 1000;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 20px
+            padding: 20px;
         }
 
         .modal-backdrop.open {
-            display: flex
+            display: flex;
         }
 
         .modal-card {
-            background: var(--card-bg);
-            border-radius: 14px;
+            background: var(--surface);
+            border-radius: var(--r-lg);
             width: 100%;
-            max-width: 600px;
+            max-width: 560px;
             max-height: 92vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            animation: modalIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both
-        }
-
-        .modal-card.lg {
-            max-width: 820px
+            box-shadow: var(--shadow-md);
+            animation: modalIn 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) both;
         }
 
         .modal-card.sm {
-            max-width: 460px
+            max-width: 440px;
+        }
+
+        .modal-card.lg {
+            max-width: 720px;
         }
 
         @keyframes modalIn {
             from {
                 opacity: 0;
-                transform: translateY(18px) scale(0.97)
+                transform: translateY(16px) scale(0.98);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1)
+                transform: none;
             }
         }
 
@@ -1015,22 +728,22 @@ $activePage = 'orders';
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 24px 16px;
-            border-bottom: 1px solid var(--card-border);
+            padding: var(--s5) var(--s6) var(--s4);
+            border-bottom: 1px solid var(--line);
             position: sticky;
             top: 0;
-            background: var(--card-bg);
+            background: var(--surface);
             z-index: 1;
-            border-radius: 14px 14px 0 0
+            border-radius: var(--r-lg) var(--r-lg) 0 0;
         }
 
         .modal-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--dark);
+            font-size: var(--fs-h3);
+            font-weight: var(--fw-bold);
+            color: var(--ink);
             display: flex;
             align-items: center;
-            gap: 8px
+            gap: var(--s2);
         }
 
         .modal-close {
@@ -1040,369 +753,312 @@ $activePage = 'orders';
             align-items: center;
             justify-content: center;
             border: none;
-            background: var(--page-bg);
-            border-radius: 7px;
+            background: var(--surface-2);
+            border-radius: var(--r-sm);
             cursor: pointer;
-            color: var(--text-muted);
+            color: var(--ink-3);
             font-size: 1rem;
-            transition: background 0.15s, color 0.15s
+            transition: background 0.14s, color 0.14s;
         }
 
         .modal-close:hover {
-            background: #fee2e2;
-            color: #ef4444
+            background: var(--danger-tint);
+            color: var(--danger);
         }
 
         .modal-body {
-            padding: 0
+            padding: var(--s5) var(--s6);
+        }
+
+        .modal-body-pad {
+            padding: var(--s5) var(--s6);
         }
 
         .modal-footer {
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 10px;
-            padding: 14px 24px;
-            border-top: 1px solid var(--card-border);
-            background: var(--page-bg);
-            border-radius: 0 0 14px 14px;
+            gap: var(--s3);
+            padding: var(--s4) var(--s6);
+            border-top: 1px solid var(--line);
+            background: var(--surface-2);
+            border-radius: 0 0 var(--r-lg) var(--r-lg);
             position: sticky;
-            bottom: 0
+            bottom: 0;
         }
 
-        .modal-body-pad {
-            padding: 20px 24px
-        }
-
+        /* Order summary box inside modals */
         .order-summary-box {
-            background: var(--page-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 14px 16px;
-            margin-bottom: 16px;
             display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            flex-wrap: wrap
+            align-items: center;
+            gap: var(--s3);
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: var(--r);
+            padding: var(--s4);
+            margin-bottom: var(--s4);
         }
 
         .order-summary-id {
-            font-size: 1.2rem;
-            font-weight: 800;
-            color: var(--primary)
+            font-weight: var(--fw-bold);
+            color: var(--ink);
+            font-size: 0.95rem;
         }
 
         .order-summary-sub {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 2px
+            font-size: var(--fs-sm);
+            color: var(--ink-2);
         }
 
+        /* Fee section */
+        .fee-section {
+            background: var(--brand-tint);
+            border: 1px solid var(--brand-tint-2);
+            border-radius: var(--r);
+            padding: var(--s4);
+            margin-bottom: var(--s4);
+        }
+
+        .fee-section-title {
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-bold);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--brand-strong);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: var(--s3);
+        }
+
+        .fee-preview {
+            font-size: var(--fs-sm);
+            color: var(--ink);
+            margin-top: var(--s2);
+            font-weight: var(--fw-semi);
+        }
+
+        /* Status steps tracker */
+        .status-steps {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: var(--s4);
+        }
+
+        .status-step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            position: relative;
+        }
+
+        .status-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 13px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--line);
+            z-index: 0;
+        }
+
+        .status-step.done:not(:last-child)::after {
+            background: var(--brand);
+        }
+
+        .step-dot {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-2);
+            border: 2px solid var(--line);
+            font-size: 0.7rem;
+            font-weight: var(--fw-bold);
+            color: var(--ink-3);
+        }
+
+        .status-step.done .step-dot {
+            background: var(--brand);
+            border-color: var(--brand);
+            color: #fff;
+        }
+
+        .status-step.current .step-dot {
+            border-color: var(--brand);
+            color: var(--brand);
+            background: var(--brand-tint);
+        }
+
+        .step-label {
+            font-size: 0.66rem;
+            color: var(--ink-3);
+            text-align: center;
+            font-weight: var(--fw-med);
+        }
+
+        .status-step.done .step-label,
+        .status-step.current .step-label {
+            color: var(--ink);
+            font-weight: var(--fw-semi);
+        }
+
+        /* Info notes */
+        .info-note {
+            display: flex;
+            align-items: center;
+            gap: var(--s2);
+            background: var(--warn-tint);
+            border: 1px solid #f2ddb0;
+            border-radius: var(--r-sm);
+            padding: 10px var(--s3);
+            font-size: var(--fs-sm);
+            color: #8a5a0c;
+            margin-bottom: var(--s4);
+        }
+
+        .info-note svg {
+            flex-shrink: 0;
+            stroke: var(--warn);
+        }
+
+        /* Forms */
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 14px
+            gap: var(--s3);
+            margin-bottom: var(--s4);
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 5px
+            gap: 5px;
         }
 
         .form-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--dark)
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
+            color: var(--ink);
         }
 
         .form-label .req {
-            color: #ef4444;
-            margin-left: 2px
+            color: var(--danger);
         }
 
-        .form-select,
         .form-input,
+        .form-select,
         .form-textarea {
             padding: 9px 12px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.87rem;
-            color: var(--text);
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            color: var(--ink);
             background: #fff;
             outline: none;
             font-family: inherit;
             width: 100%;
             transition: border-color 0.15s, box-shadow 0.15s;
-            box-sizing: border-box
         }
 
-        .form-select:focus,
         .form-input:focus,
+        .form-select:focus,
         .form-textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
         .form-textarea {
             resize: vertical;
-            min-height: 72px
+            min-height: 70px;
         }
 
         .form-hint {
-            font-size: 0.72rem;
-            color: var(--text-muted)
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
         }
 
-        .fee-section {
-            background: #fafafa;
-            border: 1.5px solid var(--card-border);
-            border-radius: 10px;
-            padding: 14px 16px;
-            margin-bottom: 14px
-        }
-
-        .fee-section-title {
-            font-size: 0.72rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--primary);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px
-        }
-
-        .fee-preview {
-            display: none;
-            margin-top: 8px;
-            background: #ecfdf5;
-            border: 1px solid #6ee7b7;
-            border-radius: 7px;
-            padding: 8px 12px;
-            font-size: 0.82rem;
-            color: #065f46;
-            line-height: 1.5
-        }
-
-        .fee-preview.show {
-            display: block
-        }
-
-        .fee-current-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            background: #d1fae5;
-            color: #065f46;
-            margin-left: 6px
-        }
-
-        .fee-unset-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            background: #fef3c7;
-            color: #92400e;
-            margin-left: 6px
-        }
-
-        .info-note {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 0.82rem;
-            color: #1e40af;
-            margin-bottom: 14px;
-            line-height: 1.5
-        }
-
-        .status-steps {
-            display: flex;
-            align-items: center;
-            background: var(--page-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 16px 20px;
-            margin-bottom: 18px;
-            overflow-x: auto
-        }
-
-        .status-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            flex: 1;
-            min-width: 56px
-        }
-
-        .status-step-dot {
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            background: #e5e7eb;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 700;
-            position: relative;
-            z-index: 1
-        }
-
-        .status-step-dot.done {
-            background: #10b981;
-            color: #fff
-        }
-
-        .status-step-dot.current {
-            background: var(--primary);
-            color: #fff;
-            box-shadow: 0 0 0 4px rgba(230, 126, 34, 0.2)
-        }
-
-        .status-step-label {
-            font-size: 0.58rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-muted);
-            text-align: center;
-            line-height: 1.3
-        }
-
-        .status-step-label.done {
-            color: #10b981
-        }
-
-        .status-step-label.current {
-            color: var(--primary)
-        }
-
-        .status-step-connector {
-            height: 2px;
-            background: #e5e7eb;
-            flex: 1;
-            margin-bottom: 16px
-        }
-
-        .status-step-connector.done {
-            background: #10b981
-        }
-
-        .proof-img-wrap {
-            margin-top: 10px
-        }
-
-        .proof-img-wrap img {
-            max-width: 100%;
-            border-radius: 10px;
-            border: 1px solid var(--card-border);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08)
-        }
-
+        /* Buttons inside modals (align to shared .btn look) */
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 9px 18px;
-            border-radius: 8px;
-            font-size: 0.88rem;
-            font-weight: 600;
+            justify-content: center;
+            gap: var(--s2);
+            padding: 9px var(--s4);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
+            font-family: inherit;
             cursor: pointer;
-            border: 1px solid;
-            transition: background 0.15s, transform 0.1s;
-            font-family: inherit
+            border: 1px solid transparent;
+            transition: background 0.14s, border-color 0.14s;
+            white-space: nowrap;
         }
 
-        .btn:active {
-            transform: translateY(1px)
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary)
-        }
-
-        .btn-primary:hover {
-            background: #cf6d17;
-            border-color: #cf6d17
-        }
-
-        .btn-success {
-            background: #10b981;
-            color: #fff;
-            border-color: #10b981
-        }
-
-        .btn-success:hover {
-            background: #059669
+        .btn svg {
+            flex-shrink: 0;
         }
 
         .btn-ghost {
             background: transparent;
-            color: var(--text-muted);
-            border-color: var(--card-border)
+            color: var(--ink-2);
         }
 
         .btn-ghost:hover {
-            background: var(--page-bg);
-            color: var(--text)
+            background: var(--surface-2);
+            color: var(--ink);
+        }
+
+        .btn-primary {
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-strong);
+        }
+
+        .btn-success {
+            background: var(--ok);
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #278a52;
         }
 
         .btn-danger {
-            background: #ef4444;
+            background: var(--danger);
             color: #fff;
-            border-color: #ef4444
         }
 
         .btn-danger:hover {
-            background: #dc2626
+            background: #c0433b;
         }
 
-        .mobile-menu-btn {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            background: var(--card-bg);
-            cursor: pointer;
-            color: var(--dark)
+        .proof-img-wrap {
+            text-align: center;
         }
 
-        @media(max-width:768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 16px 16px 48px;
-                width: 100%
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
             }
 
-            .mobile-menu-btn {
-                display: flex
+            .search-input {
+                width: 100%;
             }
 
             .form-grid {
-                grid-template-columns: 1fr
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -1411,85 +1067,94 @@ $activePage = 'orders';
 <body>
     <div class="admin-layout">
         <?php include '../includes/sidebar.php'; ?>
+
         <div class="main-content">
 
+            <!-- Mobile topbar -->
+            <div class="mobile-topbar">
+                <div class="mobile-brand">
+                    <div class="mobile-brand-icon"><i class="fa-solid fa-egg"></i></div>
+                    Hiney's Admin
+                </div>
+                <button class="icon-btn" onclick="openSidebar()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Header -->
             <div class="page-header">
                 <div>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                        <button class="mobile-menu-btn" onclick="openSidebar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                            </svg></button>
-                        <h1 class="page-title">Orders</h1>
-                    </div>
+                    <h1 class="page-title">Orders</h1>
                     <div class="page-title-sub">Approve or reject orders, set delivery fees, and confirm payments</div>
                 </div>
             </div>
 
             <?= flash() ?>
 
-            <div class="stats-row">
-                <div class="stat-card sc-orange">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="9" cy="21" r="1" />
-                            <circle cx="20" cy="21" r="1" />
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?= number_format($totalOrders) ?></div>
-                        <div class="stat-label">Total Orders</div>
+            <!-- Stat cards -->
+            <div class="grid cols-2 mb-6" style="grid-template-columns:repeat(4,1fr);">
+                <div class="stat-card tone-brand">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Total Orders</span>
+                        <div class="stat-icon"><i class="fa-solid fa-cart-shopping"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($totalOrders) ?></div>
+                    <div class="stat-foot">All time</div>
                 </div>
-                <div class="stat-card sc-blue">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?= number_format($todayCount) ?></div>
-                        <div class="stat-label">Orders Today</div>
+                <div class="stat-card tone-blue">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Orders Today</span>
+                        <div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($todayCount) ?></div>
+                    <div class="stat-foot"><?= date('F j') ?></div>
                 </div>
-                <div class="stat-card sc-amber">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?= number_format($pendingCount) ?></div>
-                        <div class="stat-label">Pending Review</div>
+                <div class="stat-card tone-amber">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Pending Review</span>
+                        <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
                     </div>
+                    <div class="stat-value">
+                        <?php if ($pendingCount > 0): ?><span class="pulse"><span class="pulse-dot amber"></span><?= number_format($pendingCount) ?></span><?php else: ?><?= number_format($pendingCount) ?><?php endif; ?>
+                    </div>
+                    <div class="stat-foot">Awaiting approval</div>
                 </div>
-                <div class="stat-card sc-green">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="1" x2="12" y2="23" />
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value" style="font-size:1.3rem;">₱<?= number_format($totalRevenue, 0) ?></div>
-                        <div class="stat-label">Revenue Collected</div>
+                <div class="stat-card tone-green">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Revenue Collected</span>
+                        <div class="stat-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
                     </div>
+                    <div class="stat-value money">₱<?= number_format($totalRevenue, 0) ?></div>
+                    <div class="stat-foot">Paid orders</div>
                 </div>
             </div>
 
-            <?php if ($pendingCount > 0): ?><div class="alert-banner alert-warn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <?php if ($pendingCount > 0): ?>
+                <div class="alert-banner alert-warn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg><span><strong><?= $pendingCount ?> order<?= $pendingCount !== 1 ? 's' : '' ?></strong> waiting for your approval.</span></div><?php endif; ?>
-            <?php if ($proofPendingCount > 0): ?><div class="alert-banner alert-blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    </svg>
+                    <span><strong><?= $pendingCount ?> order<?= $pendingCount !== 1 ? 's' : '' ?></strong> waiting for your approval.</span>
+                </div>
+            <?php endif; ?>
+            <?php if ($proofPendingCount > 0): ?>
+                <div class="alert-banner alert-blue">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg><span><strong><?= $proofPendingCount ?> GCash order<?= $proofPendingCount !== 1 ? 's' : '' ?></strong> approved but awaiting customer payment proof upload.</span></div><?php endif; ?>
+                    </svg>
+                    <span><strong><?= $proofPendingCount ?> GCash order<?= $proofPendingCount !== 1 ? 's' : '' ?></strong> approved but awaiting customer payment proof upload.</span>
+                </div>
+            <?php endif; ?>
 
+            <!-- Status tabs -->
             <div class="filter-tabs">
                 <?php
                 $tabDefs = ['' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'processing' => 'Processing', 'out_for_delivery' => 'Out for Delivery', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled/Rejected'];
@@ -1500,14 +1165,18 @@ $activePage = 'orders';
                 ?><a href="?<?= $qs ?>" class="filter-tab <?= $active ?>"><?= $label ?> <span class="tab-count"><?= $cnt ?></span></a><?php endforeach; ?>
             </div>
 
+            <!-- Toolbar -->
             <div class="toolbar">
                 <div class="toolbar-left">
-                    <form method="GET" style="display:contents;">
+                    <form method="GET" style="display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap;">
                         <?php if ($filterStatus): ?><input type="hidden" name="status" value="<?= htmlspecialchars($filterStatus) ?>"><?php endif; ?>
-                        <div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <div class="search-wrap">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="11" cy="11" r="8" />
                                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg><input type="text" name="q" class="search-input" placeholder="Search customer, order #…" value="<?= htmlspecialchars($search) ?>"></div>
+                            </svg>
+                            <input type="text" name="q" class="search-input" placeholder="Search customer, order #…" value="<?= htmlspecialchars($search) ?>">
+                        </div>
                         <select name="payment" class="filter-select" onchange="this.form.submit()">
                             <option value="">All Payments</option>
                             <option value="unpaid" <?= $filterPayment === 'unpaid' ? 'selected' : '' ?>>Unpaid</option>
@@ -1519,86 +1188,94 @@ $activePage = 'orders';
                             <option value="gcash" <?= $filterMethod === 'gcash' ? 'selected' : '' ?>>GCash</option>
                             <option value="cod" <?= $filterMethod === 'cod' ? 'selected' : '' ?>>COD</option>
                         </select>
-                        <?php if ($search || $filterPayment || $filterMethod): ?><a href="orders.php?status=<?= urlencode($filterStatus) ?>" style="font-size:0.8rem;color:var(--primary);text-decoration:none;white-space:nowrap;">✕ Clear</a><?php endif; ?>
+                        <?php if ($search || $filterPayment || $filterMethod): ?><a href="orders.php?status=<?= urlencode($filterStatus) ?>" class="clear-link">✕ Clear</a><?php endif; ?>
                     </form>
                 </div>
-                <div class="toolbar-right" style="font-size:0.82rem;color:var(--text-muted);"><?= number_format($totalCount) ?> order<?= $totalCount !== 1 ? 's' : '' ?></div>
+                <div class="toolbar-right"><?= number_format($totalCount) ?> order<?= $totalCount !== 1 ? 's' : '' ?></div>
             </div>
 
-            <div class="table-wrapper">
+            <!-- Orders table -->
+            <div class="table-card">
                 <?php if ($orders && $orders->num_rows > 0): ?>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width:44px;">#</th>
-                                <th>Order</th>
-                                <th>Customer</th>
-                                <th>Items</th>
-                                <th>Total</th>
-                                <th>Method</th>
-                                <th>Payment</th>
-                                <th>Proof</th>
-                                <th>Status</th>
-                                <th style="text-align:center;min-width:200px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php $rowNum = $offset + 1;
-                            while ($o = $orders->fetch_assoc()):
-                                $statusClass = 's-' . $o['status'];
-                                $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
-                                $initial = strtoupper(substr($o['full_name'], 0, 1));
-                                $isPending = ($o['status'] === 'pending');
-                                $isCancelled = ($o['status'] === 'cancelled');
-                                $isDelivered = ($o['status'] === 'delivered');
-                                $isFinalised = ($isCancelled || $isDelivered);
-                                $methodIcon = $o['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
-                                $feeIsSet = $o['delivery_fee'] !== null;
-                                $itemsSubtotal = (float)$o['items_subtotal'];
-                                $hasProof = !empty($o['gcash_proof']);
-                            ?>
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead>
                                 <tr>
-                                    <td style="color:var(--text-muted);font-size:0.78rem;font-weight:600;"><?= $rowNum++ ?></td>
-                                    <td>
-                                        <div class="order-id">#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?></div>
-                                        <div class="order-date"><?= date('M j, Y · g:i A', strtotime($o['created_at'])) ?></div>
-                                    </td>
-                                    <td>
-                                        <div class="customer-cell">
-                                            <div class="customer-avatar"><?= htmlspecialchars($initial) ?></div>
-                                            <div>
-                                                <div class="customer-name"><?= htmlspecialchars($o['full_name']) ?></div>
-                                                <div class="customer-sub"><?= $o['phone'] ? htmlspecialchars($o['phone']) : htmlspecialchars($o['email']) ?></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td style="font-weight:600;color:var(--dark);"><?= (int)$o['item_count'] ?> <span style="font-weight:400;color:var(--text-muted);font-size:0.78rem;">item<?= (int)$o['item_count'] !== 1 ? 's' : '' ?></span></td>
-                                    <td>
-                                        <div class="total-main">₱<?= number_format((float)$o['total_amount'], 2) ?></div><?php if (!$isCancelled): ?><?php if ($feeIsSet): ?><div class="total-fee-set">+₱<?= number_format((float)$o['delivery_fee'], 2) ?> fee ✓</div><?php else: ?><div class="total-fee-unset">Fee not set <i class="fa-solid fa-triangle-exclamation"></i></div><?php endif; ?><?php endif; ?>
-                                    </td>
-                                    <td><span class="method-badge"><?= $methodIcon ?> <?= strtoupper($o['payment_method']) ?></span></td>
-                                    <td><span class="status-badge <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span></td>
-                                    <td><?php if ($o['payment_method'] === 'gcash'): ?><?php if ($hasProof): ?><span class="proof-badge proof-yes" onclick="viewProof('<?= htmlspecialchars(addslashes($o['gcash_proof'])) ?>','<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-paperclip"></i> View</span><?php else: ?><span class="proof-badge proof-no"><i class="fa-solid fa-clock"></i> None</span><?php endif; ?><?php else: ?><span style="font-size:0.72rem;color:var(--text-muted);">N/A</span><?php endif; ?></td>
-                                    <td><span class="status-badge <?= $statusClass ?>"><?= $statusLabel ?></span></td>
-                                    <td style="text-align:center;">
-                                        <div style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;">
-                                            <button class="btn-action btn-view" onclick="openView(<?= $o['id'] ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                </svg> View</button>
-                                            <?php if ($isPending): ?>
-                                                <button class="btn-action btn-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method']]), ENT_QUOTES) ?>)">✓ Approve</button>
-                                                <button class="btn-action btn-reject" onclick="openReject(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')">✕ Reject</button>
-                                            <?php elseif (!$isFinalised): ?>
-                                                <button class="btn-action btn-edit-s" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)"><i class="fa-solid fa-pen-to-square"></i> Update</button>
-                                                <button class="btn-action btn-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')">✕</button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
+                                    <th style="width:44px;">#</th>
+                                    <th>Order</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Method</th>
+                                    <th>Payment</th>
+                                    <th>Proof</th>
+                                    <th>Status</th>
+                                    <th style="text-align:center;min-width:190px;">Actions</th>
                                 </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php $rowNum = $offset + 1;
+                                while ($o = $orders->fetch_assoc()):
+                                    $statusClass = 's-' . $o['status'];
+                                    $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
+                                    $initial = strtoupper(substr($o['full_name'], 0, 1));
+                                    $isPending = ($o['status'] === 'pending');
+                                    $isCancelled = ($o['status'] === 'cancelled');
+                                    $isDelivered = ($o['status'] === 'delivered');
+                                    $isFinalised = ($isCancelled || $isDelivered);
+                                    $methodIcon = $o['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
+                                    $feeIsSet = $o['delivery_fee'] !== null;
+                                    $itemsSubtotal = (float)$o['items_subtotal'];
+                                    $hasProof = !empty($o['gcash_proof']);
+                                ?>
+                                    <tr>
+                                        <td style="color:var(--ink-3);font-size:var(--fs-xs);font-weight:var(--fw-semi);"><?= $rowNum++ ?></td>
+                                        <td>
+                                            <div class="order-id">#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?></div>
+                                            <div class="order-date"><?= date('M j, Y · g:i A', strtotime($o['created_at'])) ?></div>
+                                        </td>
+                                        <td>
+                                            <div class="cell-lead">
+                                                <div class="avatar"><?= htmlspecialchars($initial) ?></div>
+                                                <div>
+                                                    <div class="cust-name"><?= htmlspecialchars($o['full_name']) ?></div>
+                                                    <div class="cust-sub"><?= $o['phone'] ? htmlspecialchars($o['phone']) : htmlspecialchars($o['email']) ?></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:var(--fw-semi);color:var(--ink);"><?= (int)$o['item_count'] ?> <span style="font-weight:400;color:var(--ink-3);font-size:var(--fs-xs);">item<?= (int)$o['item_count'] !== 1 ? 's' : '' ?></span></td>
+                                        <td>
+                                            <div class="total-main">₱<?= number_format((float)$o['total_amount'], 2) ?></div><?php if (!$isCancelled): ?><?php if ($feeIsSet): ?><div class="total-fee-set">+₱<?= number_format((float)$o['delivery_fee'], 2) ?> fee ✓</div><?php else: ?><div class="total-fee-unset">Fee not set <i class="fa-solid fa-triangle-exclamation"></i></div><?php endif; ?><?php endif; ?>
+                                        </td>
+                                        <td><span class="method-badge"><?= $methodIcon ?> <?= strtoupper($o['payment_method']) ?></span></td>
+                                        <td><span class="st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span></td>
+                                        <td><?php if ($o['payment_method'] === 'gcash'): ?><?php if ($hasProof): ?><span class="proof-badge proof-yes" onclick="viewProof('<?= htmlspecialchars(addslashes($o['gcash_proof'])) ?>','<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-paperclip"></i> View</span><?php else: ?><span class="proof-badge proof-no"><i class="fa-solid fa-clock"></i> None</span><?php endif; ?><?php else: ?><span style="font-size:var(--fs-xs);color:var(--ink-3);">N/A</span><?php endif; ?></td>
+                                        <td><span class="st-pill <?= $statusClass ?>"><?= $statusLabel ?></span></td>
+                                        <td style="text-align:center;">
+                                            <div class="row-actions">
+                                                <button class="oact oact-view" onclick="openView(<?= $o['id'] ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                        <circle cx="12" cy="12" r="3" />
+                                                    </svg><span class="act-label">View</span></button>
+                                                <?php if ($isPending): ?>
+                                                    <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method']]), ENT_QUOTES) ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                            <polyline points="20 6 9 17 4 12" />
+                                                        </svg><span class="act-label">Approve</span></button>
+                                                    <button class="oact oact-reject" onclick="openReject(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                            <line x1="18" y1="6" x2="6" y2="18" />
+                                                            <line x1="6" y1="6" x2="18" y2="18" />
+                                                        </svg><span class="act-label">Reject</span></button>
+                                                <?php elseif (!$isFinalised): ?>
+                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
+                                                    <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
                     <?php if ($totalPages > 1): ?>
                         <div class="pagination">
                             <div>Showing <?= number_format($offset + 1) ?>–<?= number_format(min($offset + $perPage, $totalCount)) ?> of <?= number_format($totalCount) ?> orders</div>
@@ -1629,9 +1306,10 @@ $activePage = 'orders';
                         </div>
                     <?php endif; ?>
                 <?php else: ?>
-                    <div class="empty-state">
+                    <div class="empty">
                         <div class="empty-icon"><i class="fa-solid fa-cart-shopping"></i></div>
-                        <div>No orders found<?= ($search || $filterStatus || $filterPayment || $filterMethod) ? ' — try adjusting filters.' : '.'; ?></div>
+                        <div class="empty-title">No orders found</div>
+                        <div class="empty-text"><?= ($search || $filterStatus || $filterPayment || $filterMethod) ? 'Try adjusting your filters.' : 'New orders will appear here.'; ?></div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1986,13 +1664,6 @@ $activePage = 'orders';
             openModal('proofModal');
         }
     </script>
-    <style>
-        @keyframes viewSpin {
-            to {
-                transform: rotate(360deg)
-            }
-        }
-    </style>
 </body>
 
 </html>
