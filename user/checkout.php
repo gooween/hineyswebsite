@@ -78,7 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($zrow = $zres->fetch_assoc()) {
                 $actualDeliveryFee = (float)$zrow['fee'];
             } else {
-                $actualDeliveryFee = $deliveryFee; // fallback flat fee
+                // Zone not found among active zones — do NOT silently charge a
+                // surprise flat fee. Ask the customer to reselect so the fee is
+                // always a real, matched zone fee.
+                $errors[] = 'We could not find a delivery fee for the selected barangay. Please reselect your municipality and barangay.';
             }
             $zstmt->close();
         }

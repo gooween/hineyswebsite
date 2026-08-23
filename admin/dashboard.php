@@ -1,41 +1,48 @@
 <?php
+// ============================================================
+// Hiney's Eggs & Live Chicken Business
+// File: admin/dashboard.php
+//
+// Admin dashboard — rebuilt on the shared design system
+// (admin/assets/admin.css). Light theme, orange accents.
+// ============================================================
+
 session_start();
 require_once '../config/db.php';
 requireAdmin();
 
 $activePage = 'dashboard';
 
-$r = $conn->query("SELECT COUNT(*) AS cnt FROM products WHERE is_active = 1");
-$totalProducts = (int)($r->fetch_assoc()['cnt'] ?? 0);
+// ── Metrics ───────────────────────────────────────────────────
+$totalProducts = (int)($conn->query("SELECT COUNT(*) AS cnt FROM products WHERE is_active = 1")->fetch_assoc()['cnt'] ?? 0);
 
-$r = $conn->query("SELECT COUNT(*) AS cnt FROM orders WHERE DATE(created_at) = CURDATE()");
-$ordersToday = (int)($r->fetch_assoc()['cnt'] ?? 0);
+$ordersToday = (int)($conn->query("SELECT COUNT(*) AS cnt FROM orders WHERE DATE(created_at) = CURDATE()")->fetch_assoc()['cnt'] ?? 0);
 
-// Only count approved/processing/out_for_delivery/delivered — NOT pending
-$r = $conn->query("SELECT COALESCE(SUM(total_amount),0) AS total FROM orders WHERE DATE(created_at) = CURDATE() AND status IN ('approved','processing','out_for_delivery','delivered')");
-$salesToday = (float)($r->fetch_assoc()['total'] ?? 0);
+// Sales today — approved/processing/out_for_delivery/delivered only (not pending)
+$salesToday = (float)($conn->query("
+    SELECT COALESCE(SUM(total_amount),0) AS total
+    FROM orders
+    WHERE DATE(created_at) = CURDATE()
+      AND status IN ('approved','processing','out_for_delivery','delivered')
+")->fetch_assoc()['total'] ?? 0);
 
-// Low stock from stock_batches
-$r = $conn->query("
+// Low stock — from stock_batches, respecting per-tray vs per-piece counting
+$lowStock = (int)($conn->query("
     SELECT COUNT(*) AS cnt FROM inventory i
     JOIN products p ON p.id = i.product_id
     WHERE p.is_active = 1
-    AND COALESCE((
-        SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
-        FROM stock_batches sb WHERE sb.product_id = i.product_id AND sb.status = 'active'
-    ), 0) <= i.reorder_level
-");
-$lowStock = (int)($r->fetch_assoc()['cnt'] ?? 0);
+      AND COALESCE((
+          SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
+          FROM stock_batches sb WHERE sb.product_id = i.product_id AND sb.status = 'active'
+      ), 0) <= i.reorder_level
+")->fetch_assoc()['cnt'] ?? 0);
 
-$r = $conn->query("SELECT COUNT(*) AS cnt FROM orders WHERE status = 'pending'");
-$pendingOrders = (int)($r->fetch_assoc()['cnt'] ?? 0);
+$pendingOrders  = (int)($conn->query("SELECT COUNT(*) AS cnt FROM orders WHERE status = 'pending'")->fetch_assoc()['cnt'] ?? 0);
+$totalCustomers = (int)($conn->query("SELECT COUNT(*) AS cnt FROM users WHERE role = 'customer'")->fetch_assoc()['cnt'] ?? 0);
 
-$r = $conn->query("SELECT COUNT(*) AS cnt FROM users WHERE role = 'customer'");
-$totalCustomers = (int)($r->fetch_assoc()['cnt'] ?? 0);
-
+// Latest 5 orders
 $latestOrders = $conn->query("
-    SELECT o.id, u.full_name, o.total_amount, o.status,
-           o.payment_status, o.created_at,
+    SELECT o.id, u.full_name, o.total_amount, o.status, o.payment_status, o.created_at,
            COUNT(oi.id) AS item_count
     FROM orders o
     JOIN users u ON u.id = o.user_id
@@ -45,7 +52,7 @@ $latestOrders = $conn->query("
     LIMIT 5
 ");
 
-// Low stock products from stock_batches
+// Low-stock products list
 $lowStockProducts = $conn->query("
     SELECT p.name, p.unit,
            COALESCE((
@@ -59,52 +66,38 @@ $lowStockProducts = $conn->query("
     WHERE p.is_active = 1
     HAVING quantity <= i.reorder_level
     ORDER BY quantity ASC
-    LIMIT 8
+    LIMIT 6
 ");
 
+// Sales this week (for the chart)
 $salesWeekData = [];
 $salesWeekLabels = [];
 for ($i = 6; $i >= 0; $i--) {
     $date  = date('Y-m-d', strtotime("-{$i} days"));
-    $label = date('D', strtotime($date));
-    $r = $conn->query("SELECT COALESCE(SUM(total_amount),0) AS s FROM orders WHERE DATE(created_at)='{$date}' AND status IN ('approved','processing','out_for_delivery','delivered')");
-    $salesWeekData[]   = (float)($r->fetch_assoc()['s'] ?? 0);
-    $salesWeekLabels[] = $label;
+    $salesWeekLabels[] = date('D', strtotime($date));
+    $salesWeekData[] = (float)($conn->query("
+        SELECT COALESCE(SUM(total_amount),0) AS s FROM orders
+        WHERE DATE(created_at)='{$date}'
+          AND status IN ('approved','processing','out_for_delivery','delivered')
+    ")->fetch_assoc()['s'] ?? 0);
 }
 
-// Status colors — approved=orange, pending=grey
-$statusData = $statusLabels = $statusColors = [];
-$statusMap = [
-    'pending'          => '#9ca3af',
-    'approved'         => '#e67e22',
-    'confirmed'        => '#3b82f6',
-    'processing'       => '#8b5cf6',
-    'out_for_delivery' => '#f97316',
-    'delivered'        => '#10b981',
-    'cancelled'        => '#ef4444',
-];
-$r = $conn->query("SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status ORDER BY cnt DESC");
-while ($row = $r->fetch_assoc()) {
-    $statusLabels[] = ucwords(str_replace('_', ' ', $row['status']));
-    $statusData[]   = (int)$row['cnt'];
-    $statusColors[] = $statusMap[$row['status']] ?? '#9ca3af';
-}
+$salesWeekJson  = json_encode($salesWeekData);
+$labelsWeekJson = json_encode($salesWeekLabels);
 
-$monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-$monthlyData   = array_fill(0, 12, 0);
-$year = date('Y');
-$r = $conn->query("SELECT MONTH(created_at) AS m, COALESCE(SUM(total_amount),0) AS s FROM orders WHERE YEAR(created_at)='{$year}' AND status IN ('approved','processing','out_for_delivery','delivered') GROUP BY m");
-while ($row = $r->fetch_assoc()) {
-    $monthlyData[(int)$row['m'] - 1] = (float)$row['s'];
+// Status → pill class map
+function orderPill(string $s): array
+{
+    return [
+        'pending'          => ['pill-warn',   'Pending'],
+        'approved'         => ['pill-info',   'Approved'],
+        'confirmed'        => ['pill-info',   'Confirmed'],
+        'processing'       => ['pill-violet', 'Processing'],
+        'out_for_delivery' => ['pill-brand',  'Out for Delivery'],
+        'delivered'        => ['pill-ok',     'Delivered'],
+        'cancelled'        => ['pill-danger', 'Cancelled'],
+    ][$s] ?? ['pill-neutral', ucfirst($s)];
 }
-
-$salesWeekJson    = json_encode($salesWeekData);
-$salesWeekLblJson = json_encode($salesWeekLabels);
-$statusDataJson   = json_encode($statusData);
-$statusLblJson    = json_encode($statusLabels);
-$statusColorJson  = json_encode($statusColors);
-$monthlyDataJson  = json_encode($monthlyData);
-$monthlyLblJson   = json_encode($monthlyLabels);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -112,566 +105,37 @@ $monthlyLblJson   = json_encode($monthlyLabels);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style id="hineys-icon-colors">
-        .navbar .fa-solid,
-        .mobile-drawer .fa-solid,
-        .sidebar .fa-solid,
-        button .fa-solid,
-        [class*="btn"] .fa-solid,
-        .badge .fa-solid,
-        .status-badge .fa-solid,
-        .status-tab .fa-solid,
-        .pay-badge .fa-solid,
-        .page-banner .fa-solid,
-        .page-header .fa-solid,
-        .hero .fa-solid,
-        .cta-card .fa-solid,
-        .about-strip .fa-solid,
-        .nav-cart .fa-solid,
-        .user-chip .fa-solid,
-        .info-card-top .fa-solid,
-        .sidebar-logout .fa-solid {
-            color: inherit !important
-        }
-
-        .fa-egg {
-            color: #f4a72c
-        }
-
-        .fa-drumstick-bite {
-            color: #c2703b
-        }
-
-        .fa-circle-check,
-        .fa-check,
-        .fa-shield-halved,
-        .fa-leaf,
-        .fa-seedling,
-        .fa-phone {
-            color: #10b981
-        }
-
-        .fa-circle-xmark,
-        .fa-xmark,
-        .fa-trash,
-        .fa-ban,
-        .fa-location-dot {
-            color: #ef4444
-        }
-
-        .fa-cart-shopping,
-        .fa-bag-shopping,
-        .fa-store,
-        .fa-shop {
-            color: #e67e22
-        }
-
-        .fa-truck {
-            color: #f97316
-        }
-
-        .fa-triangle-exclamation,
-        .fa-circle-exclamation,
-        .fa-clock,
-        .fa-star {
-            color: #f59e0b
-        }
-
-        .fa-info-circle,
-        .fa-credit-card,
-        .fa-mobile-screen,
-        .fa-envelope,
-        .fa-envelope-open,
-        .fa-envelope-open-text,
-        .fa-inbox,
-        .fa-comment,
-        .fa-map,
-        .fa-paperclip {
-            color: #3b82f6
-        }
-
-        .fa-sack-dollar,
-        .fa-money-bill,
-        .fa-money-bill-transfer {
-            color: #16a34a
-        }
-
-        .fa-users,
-        .fa-user,
-        .fa-user-plus {
-            color: #6366f1
-        }
-
-        .fa-box,
-        .fa-box-open,
-        .fa-boxes-stacked,
-        .fa-warehouse,
-        .fa-receipt,
-        .fa-clipboard-list,
-        .fa-file-lines {
-            color: #8b5cf6
-        }
-
-        .fa-chart-bar,
-        .fa-chart-line,
-        .fa-chart-pie,
-        .fa-gauge-high {
-            color: #0ea5e9
-        }
-
-        .fa-heart {
-            color: #ef4444
-        }
-
-        .fa-gear {
-            color: #6b7280
-        }
-
-        .fa-lightbulb {
-            color: #f59e0b
-        }
-    </style>
     <title>Dashboard — Hiney's Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .main-content {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            padding: 32px 32px 48px;
-            min-height: 100vh;
-            background: var(--page-bg);
-            transition: margin-left 0.3s ease
-        }
-
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 28px;
-            flex-wrap: wrap;
-            gap: 12px
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.02em
-        }
-
-        .page-title-sub {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            margin-top: 2px
-        }
-
-        .page-date-chip {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            padding: 8px 16px;
-            border-radius: 24px;
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            box-shadow: var(--shadow)
-        }
-
-        .page-date-chip svg {
-            flex-shrink: 0;
-            opacity: 0.6
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-bottom: 24px
-        }
-
-        @media(max-width:1100px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr)
-            }
-        }
-
-        @media(max-width:640px) {
-            .stats-grid {
-                grid-template-columns: 1fr
-            }
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 20px 20px 18px;
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md)
-        }
-
-        .stat-card-accent {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            border-radius: var(--radius) var(--radius) 0 0
-        }
-
-        .stat-icon-wrap {
-            width: 46px;
-            height: 46px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0
-        }
-
-        .stat-body {
-            flex: 1
-        }
-
-        .stat-value {
-            font-size: 1.85rem;
-            font-weight: 800;
-            line-height: 1;
-            color: var(--dark);
-            letter-spacing: -0.03em;
-            margin-bottom: 4px
-        }
-
-        .stat-value.money {
-            font-size: 1.4rem
-        }
-
-        .stat-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            font-weight: 700
-        }
-
-        .stat-sub {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px
-        }
-
-        .sc-orange .stat-card-accent {
-            background: #e67e22
-        }
-
-        .sc-orange .stat-icon-wrap {
-            background: #fef3e8;
-            color: #e67e22
-        }
-
-        .sc-blue .stat-card-accent {
-            background: #3b82f6
-        }
-
-        .sc-blue .stat-icon-wrap {
-            background: #eff6ff;
-            color: #3b82f6
-        }
-
-        .sc-green .stat-card-accent {
-            background: #10b981
-        }
-
-        .sc-green .stat-icon-wrap {
-            background: #ecfdf5;
-            color: #10b981
-        }
-
-        .sc-red .stat-card-accent {
-            background: #ef4444
-        }
-
-        .sc-red .stat-icon-wrap {
-            background: #fef2f2;
-            color: #ef4444
-        }
-
-        .sc-amber .stat-card-accent {
-            background: #f59e0b
-        }
-
-        .sc-amber .stat-icon-wrap {
-            background: #fffbeb;
-            color: #f59e0b
-        }
-
-        .sc-purple .stat-card-accent {
-            background: #8b5cf6
-        }
-
-        .sc-purple .stat-icon-wrap {
-            background: #f5f3ff;
-            color: #8b5cf6
-        }
-
-        .pulse-ring {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px
-        }
-
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ef4444;
-            animation: ring 1.4s ease infinite
-        }
-
-        .pulse-dot.amber {
-            background: #f59e0b
-        }
-
-        @keyframes ring {
-
-            0%,
-            100% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4)
-            }
-
-            50% {
-                box-shadow: 0 0 0 5px rgba(239, 68, 68, 0)
-            }
-        }
-
-        .charts-row {
+        /* Page-specific only — everything else comes from admin.css */
+        .dash-charts {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            gap: 16px;
-            margin-bottom: 24px
+            gap: var(--s4);
+            margin-bottom: var(--s6);
         }
 
-        @media(max-width:900px) {
-            .charts-row {
-                grid-template-columns: 1fr
+        @media (max-width: 900px) {
+            .dash-charts {
+                grid-template-columns: 1fr;
             }
         }
 
-        .chart-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 20px 22px;
-            box-shadow: var(--shadow)
-        }
-
-        .chart-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 18px
-        }
-
-        .chart-card-title {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: var(--dark);
-            display: flex;
-            align-items: center;
-            gap: 7px
-        }
-
-        .chart-legend {
-            font-size: 0.75rem;
-            color: var(--text-muted)
-        }
-
-        .chart-wrap {
+        .chart-box {
             position: relative;
-            width: 100%
-        }
-
-        .chart-full {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 20px 22px;
-            box-shadow: var(--shadow);
-            margin-bottom: 24px
-        }
-
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 24px
-        }
-
-        @media(max-width:900px) {
-            .two-col {
-                grid-template-columns: 1fr
-            }
-        }
-
-        .mini-table {
             width: 100%;
-            border-collapse: collapse;
-            font-size: 0.845rem
+            height: 260px;
         }
 
-        .mini-table thead th {
-            padding: 10px 16px;
-            text-align: left;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            background: #f9f8f6;
-            border-bottom: 1px solid var(--card-border);
-            white-space: nowrap
+        .lowstock-scroll {
+            max-height: 300px;
+            overflow-y: auto;
         }
 
-        .mini-table tbody tr {
-            border-bottom: 1px solid #f3f2f0;
-            transition: background 0.12s
-        }
-
-        .mini-table tbody tr:last-child {
-            border-bottom: none
-        }
-
-        .mini-table tbody tr:hover {
-            background: #fef9f4
-        }
-
-        .mini-table tbody td {
-            padding: 11px 16px;
-            color: var(--text);
-            vertical-align: middle
-        }
-
-        .view-all {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--primary);
-            text-decoration: none;
-            padding: 4px 10px;
-            border-radius: 6px;
-            transition: background 0.15s
-        }
-
-        .view-all:hover {
-            background: #fef3e8
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 36px 20px;
-            color: var(--text-muted)
-        }
-
-        .empty-state-icon {
-            font-size: 2.2rem;
-            display: block;
-            margin-bottom: 10px
-        }
-
-        .empty-state-text {
-            font-size: 0.88rem
-        }
-
-        .count-badge {
-            background: #fee2e2;
-            color: #991b1b;
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 1px 7px;
-            border-radius: 12px;
-            margin-left: 4px
-        }
-
-        .sales-note {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-            font-style: italic
-        }
-
-        .mobile-topbar {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--card-bg);
-            padding: 12px 16px;
-            box-shadow: 0 1px 0 var(--card-border), 0 4px 16px rgba(0, 0, 0, 0.04);
-            position: sticky;
-            top: 0;
-            z-index: 900;
-            margin-bottom: 20px
-        }
-
-        .mobile-topbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--dark)
-        }
-
-        .mobile-topbar-icon {
-            width: 30px;
-            height: 30px;
-            background: var(--primary);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 15px
-        }
-
-        .hamburger-btn {
-            background: none;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--dark);
-            font-size: 1.1rem
-        }
-
-        @media(max-width:768px) {
-            .mobile-topbar {
-                display: flex
-            }
-
-            .main-content {
-                margin-left: 0;
-                padding: 0 14px 32px
-            }
+        .qty-pill-cell {
+            text-align: right;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -683,226 +147,215 @@ $monthlyLblJson   = json_encode($monthlyLabels);
 
         <div class="main-content">
 
+            <!-- Mobile topbar -->
             <div class="mobile-topbar">
-                <div class="mobile-topbar-brand">
-                    <div class="mobile-topbar-icon"><i class="fa-solid fa-egg"></i></div>Hiney's Admin
+                <div class="mobile-brand">
+                    <div class="mobile-brand-icon"><i class="fa-solid fa-egg"></i></div>
+                    Hiney's Admin
                 </div>
-                <button class="hamburger-btn" onclick="openSidebar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <button class="icon-btn" onclick="openSidebar()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                         <line x1="3" y1="6" x2="21" y2="6" />
                         <line x1="3" y1="12" x2="21" y2="12" />
                         <line x1="3" y1="18" x2="21" y2="18" />
-                    </svg></button>
+                    </svg>
+                </button>
             </div>
 
+            <!-- Header -->
             <div class="page-header">
                 <div>
-                    <div class="page-title">Dashboard</div>
-                    <div class="page-title-sub">Welcome back, <?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></div>
+                    <h1 class="page-title">Dashboard</h1>
+
                 </div>
-                <div class="page-date-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <div class="chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                         <rect x="3" y="4" width="18" height="18" rx="2" />
                         <line x1="16" y1="2" x2="16" y2="6" />
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg><?= date('l, F j, Y') ?> &nbsp;·&nbsp; <?= date('g:i A') ?></div>
+                    </svg>
+                    <?= date('l, F j, Y') ?> &nbsp;·&nbsp; <?= date('g:i A') ?>
+                </div>
             </div>
 
             <?= flash() ?>
 
-            <div class="stats-grid">
-                <div class="stat-card sc-orange">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?= number_format($totalProducts) ?></div>
-                        <div class="stat-label">Active Products</div>
-                        <div class="stat-sub">All listed products</div>
+            <!-- Stat cards -->
+            <div class="grid cols-3 mb-6">
+
+                <div class="stat-card tone-brand">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Active Products</span>
+                        <div class="stat-icon"><i class="fa-solid fa-box-open"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($totalProducts) ?></div>
+                    <div class="stat-foot">All listed products</div>
                 </div>
 
-                <div class="stat-card sc-blue">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="9" cy="21" r="1" />
-                            <circle cx="20" cy="21" r="1" />
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?= number_format($ordersToday) ?></div>
-                        <div class="stat-label">Orders Today</div>
-                        <div class="stat-sub"><?= date('F j') ?></div>
+                <div class="stat-card tone-blue">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Orders Today</span>
+                        <div class="stat-icon"><i class="fa-solid fa-receipt"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($ordersToday) ?></div>
+                    <div class="stat-foot"><?= date('F j') ?></div>
                 </div>
 
-                <div class="stat-card sc-green">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="1" x2="12" y2="23" />
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value money"><?= peso($salesToday) ?></div>
-                        <div class="stat-label">Sales Today</div>
-                        <div class="stat-sub">Approved orders only</div>
+                <div class="stat-card tone-green">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Sales Today</span>
+                        <div class="stat-icon"><i class="fa-solid fa-money-bill"></i></div>
                     </div>
+                    <div class="stat-value money"><?= peso($salesToday) ?></div>
+                    <div class="stat-foot">Approved orders only</div>
                 </div>
 
-                <div class="stat-card sc-red">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                            <line x1="12" y1="9" x2="12" y2="13" />
-                            <line x1="12" y1="17" x2="12.01" y2="17" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?php if ($lowStock > 0): ?><span class="pulse-ring"><span class="pulse-dot"></span><?= number_format($lowStock) ?></span><?php else: ?><?= number_format($lowStock) ?><?php endif; ?></div>
-                        <div class="stat-label">Low Stock Items</div>
-                        <div class="stat-sub">At or below reorder level</div>
+                <div class="stat-card tone-red">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Low Stock</span>
+                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     </div>
+                    <div class="stat-value">
+                        <?php if ($lowStock > 0): ?><span class="pulse"><span class="pulse-dot"></span><?= number_format($lowStock) ?></span><?php else: ?><?= number_format($lowStock) ?><?php endif; ?>
+                    </div>
+                    <div class="stat-foot">At or below reorder level</div>
                 </div>
 
-                <div class="stat-card sc-amber">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?php if ($pendingOrders > 0): ?><span class="pulse-ring"><span class="pulse-dot amber"></span><?= number_format($pendingOrders) ?></span><?php else: ?><?= number_format($pendingOrders) ?><?php endif; ?></div>
-                        <div class="stat-label">Pending Orders</div>
-                        <div class="stat-sub">Awaiting approval</div>
+                <div class="stat-card tone-amber">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Pending Orders</span>
+                        <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
                     </div>
+                    <div class="stat-value">
+                        <?php if ($pendingOrders > 0): ?><span class="pulse"><span class="pulse-dot amber"></span><?= number_format($pendingOrders) ?></span><?php else: ?><?= number_format($pendingOrders) ?><?php endif; ?>
+                    </div>
+                    <div class="stat-foot">Awaiting approval</div>
                 </div>
 
-                <div class="stat-card sc-purple">
-                    <div class="stat-card-accent"></div>
-                    <div class="stat-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg></div>
-                    <div class="stat-body">
-                        <div class="stat-value"><?= number_format($totalCustomers) ?></div>
-                        <div class="stat-label">Total Customers</div>
-                        <div class="stat-sub">Registered accounts</div>
+                <div class="stat-card tone-violet">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Customers</span>
+                        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($totalCustomers) ?></div>
+                    <div class="stat-foot">Registered accounts</div>
                 </div>
+
             </div>
 
-            <div class="charts-row">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div class="chart-card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                            </svg> Sales This Week</div><span class="chart-legend">Approved orders · Last 7 days</span>
-                    </div>
-                    <div class="chart-wrap" style="height:220px;"><canvas id="weeklyChart"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div class="chart-card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                            </svg> Orders by Status</div>
-                    </div>
-                    <div class="chart-wrap" style="height:220px;"><canvas id="statusChart"></canvas></div>
-                </div>
-            </div>
-
-            <div class="chart-full">
-                <div class="chart-card-header">
-                    <div class="chart-card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg> Monthly Sales — <?= $year ?></div><span class="chart-legend">Approved orders · Jan – Dec</span>
-                </div>
-                <div class="chart-wrap" style="height:200px;"><canvas id="monthlyChart"></canvas></div>
-            </div>
-
-            <div class="two-col">
+            <!-- Charts row -->
+            <div class="dash-charts">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 14l6 0M9 10l6 0M16 2H8a4 4 0 0 0-4 4v14l4-2 4 2 4-2 4 2V6a4 4 0 0 0-4-4z" />
-                            </svg> Latest Orders</div>
-                        <a href="orders.php" class="view-all">View All <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                                <polyline points="12 5 19 12 12 19" />
-                            </svg></a>
+                        <div class="card-title"><i class="fa-solid fa-chart-line" style="color:var(--brand)"></i> Sales this week</div>
+                        <span style="font-size:var(--fs-xs);color:var(--ink-3)">Approved orders</span>
                     </div>
+                    <div class="card-pad">
+                        <div class="chart-box"><canvas id="salesChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--warn)"></i> Low stock</div>
+                        <a href="inventory.php" class="link-more">View <i class="fa-solid fa-arrow-right" style="font-size:10px"></i></a>
+                    </div>
+                    <div class="lowstock-scroll">
+                        <?php if ($lowStockProducts && $lowStockProducts->num_rows > 0): ?>
+                            <table class="data">
+                                <tbody>
+                                    <?php while ($ls = $lowStockProducts->fetch_assoc()):
+                                        $isChicken = stripos($ls['category'], 'chicken') !== false;
+                                        $q = (int)$ls['quantity'];
+                                        $rl = (int)$ls['reorder_level'];
+                                        $pillCls = $q === 0 ? 'pill-danger' : ($q <= $rl ? 'pill-warn' : 'pill-neutral');
+                                        $qLabel = $q === 0 ? 'Out' : $q . ' left';
+                                    ?>
+                                        <tr>
+                                            <td>
+                                                <div class="cell-lead">
+                                                    <div class="avatar" style="background:var(--warn-tint);color:#a4680c;">
+                                                        <i class="fa-solid <?= $isChicken ? 'fa-drumstick-bite' : 'fa-egg' ?>" style="font-size:12px;color:inherit;"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="cell-title"><?= htmlspecialchars($ls['name']) ?></div>
+                                                        <div class="cell-sub"><?= htmlspecialchars($ls['category']) ?> · <?= htmlspecialchars($ls['unit']) ?></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="qty-pill-cell"><span class="pill <?= $pillCls ?> pill-dot"><?= $qLabel ?></span></td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        <?php else: ?>
+                            <div class="empty">
+                                <div class="empty-icon"><i class="fa-solid fa-circle-check" style="color:var(--ok)"></i></div>
+                                <div class="empty-title">All stocked up</div>
+                                <div class="empty-text">No products below reorder level.</div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest orders -->
+            <div class="table-card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fa-solid fa-receipt" style="color:#7c5cd0"></i> Latest orders</div>
+                    <a href="orders.php" class="link-more">View all <i class="fa-solid fa-arrow-right" style="font-size:10px"></i></a>
+                </div>
+                <div class="table-scroll">
                     <?php if ($latestOrders && $latestOrders->num_rows > 0): ?>
-                        <table class="mini-table">
+                        <table class="data">
                             <thead>
                                 <tr>
-                                    <th>#</th>
+                                    <th>Order</th>
                                     <th>Customer</th>
-                                    <th>Amount</th>
+                                    <th class="num">Items</th>
+                                    <th class="num">Total</th>
                                     <th>Payment</th>
                                     <th>Status</th>
+                                    <th>Date</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php while ($o = $latestOrders->fetch_assoc()): ?>
+                                <?php while ($o = $latestOrders->fetch_assoc()):
+                                    [$pillCls, $pillLbl] = orderPill($o['status']);
+                                    $initial = strtoupper(substr($o['full_name'], 0, 1));
+                                ?>
                                     <tr>
-                                        <td style="font-weight:700;color:var(--primary);font-size:0.8rem;">#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?></td>
-                                        <td style="font-weight:500;"><?= htmlspecialchars($o['full_name']) ?></td>
-                                        <td style="font-weight:700;"><?= peso((float)$o['total_amount']) ?></td>
-                                        <td><?= paymentStatusBadge($o['payment_status']) ?></td>
-                                        <td><?= orderStatusBadge($o['status']) ?></td>
+                                        <td style="font-weight:650;color:var(--brand);">#<?= str_pad((string)$o['id'], 4, '0', STR_PAD_LEFT) ?></td>
+                                        <td>
+                                            <div class="cell-lead">
+                                                <div class="avatar"><?= htmlspecialchars($initial) ?></div>
+                                                <div class="cell-title"><?= htmlspecialchars($o['full_name']) ?></div>
+                                            </div>
+                                        </td>
+                                        <td class="num"><?= (int)$o['item_count'] ?></td>
+                                        <td class="num" style="font-weight:650;"><?= peso((float)$o['total_amount']) ?></td>
+                                        <td>
+                                            <?php if ($o['payment_status'] === 'paid'): ?>
+                                                <span class="pill pill-ok pill-dot">Paid</span>
+                                            <?php else: ?>
+                                                <span class="pill pill-danger pill-dot">Unpaid</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><span class="pill <?= $pillCls ?> pill-dot"><?= $pillLbl ?></span></td>
+                                        <td style="color:var(--ink-3);white-space:nowrap;font-size:var(--fs-xs);">
+                                            <?= date('M j, Y', strtotime($o['created_at'])) ?><br>
+                                            <?= date('g:i A', strtotime($o['created_at'])) ?>
+                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                             </tbody>
                         </table>
                     <?php else: ?>
-                        <div class="empty-state"><span class="empty-state-icon"><i class="fa-solid fa-cart-shopping"></i></span>
-                            <div class="empty-state-text">No orders yet.</div>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                <line x1="12" y1="9" x2="12" y2="13" />
-                                <line x1="12" y1="17" x2="12.01" y2="17" />
-                            </svg> Low Stock <?php if ($lowStock > 0): ?><span class="count-badge"><?= $lowStock ?> items</span><?php endif; ?></div>
-                        <a href="inventory.php" class="view-all">Manage <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                                <polyline points="12 5 19 12 12 19" />
-                            </svg></a>
-                    </div>
-                    <?php if ($lowStockProducts && $lowStockProducts->num_rows > 0): ?>
-                        <table class="mini-table">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Category</th>
-                                    <th>Qty</th>
-                                    <th>Reorder</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($ls = $lowStockProducts->fetch_assoc()): ?>
-                                    <tr>
-                                        <td style="font-weight:600;"><?= htmlspecialchars($ls['name']) ?></td>
-                                        <td style="color:var(--text-muted);font-size:0.8rem;"><?= htmlspecialchars($ls['category']) ?></td>
-                                        <td><span style="font-weight:700;color:<?= (int)$ls['quantity'] <= 0 ? '#ef4444' : '#f59e0b' ?>;"><?= number_format((int)$ls['quantity']) ?></span></td>
-                                        <td style="color:var(--text-muted);"><?= number_format((int)$ls['reorder_level']) ?></td>
-                                        <td><?= stockStatusBadge((int)$ls['quantity'], (int)$ls['reorder_level']) ?></td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <div class="empty-state"><span class="empty-state-icon">✓</span>
-                            <div class="empty-state-text">All stock levels are healthy!</div>
+                        <div class="empty">
+                            <div class="empty-icon"><i class="fa-solid fa-receipt"></i></div>
+                            <div class="empty-title">No orders yet</div>
+                            <div class="empty-text">New orders will appear here.</div>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -912,151 +365,36 @@ $monthlyLblJson   = json_encode($monthlyLabels);
     </div>
 
     <script>
-        Chart.defaults.font.family = "'Segoe UI',system-ui,sans-serif";
-        Chart.defaults.color = '#9ca3af';
-        const currency = v => '₱' + v.toLocaleString('en-PH', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        const compact = v => v >= 1000 ? '₱' + (v / 1000).toFixed(1) + 'k' : '₱' + v;
-
         (function() {
-            new Chart(document.getElementById('weeklyChart').getContext('2d'), {
+            const ctx = document.getElementById('salesChart');
+            if (!ctx) return;
+            Chart.defaults.font.family = "'Inter','Segoe UI',system-ui,sans-serif";
+            Chart.defaults.color = '#9c968c';
+
+            new Chart(ctx.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: <?= $salesWeekLblJson ?>,
+                    labels: <?= $labelsWeekJson ?>,
                     datasets: [{
                         label: 'Sales',
                         data: <?= $salesWeekJson ?>,
-                        backgroundColor: ctx => {
-                            const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
-                            g.addColorStop(0, 'rgba(230,126,34,0.85)');
-                            g.addColorStop(1, 'rgba(243,156,18,0.35)');
-                            return g;
-                        },
-                        borderColor: '#e67e22',
-                        borderWidth: 0,
-                        borderRadius: 8,
-                        borderSkipped: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: c => ' ' + currency(c.parsed.y)
-                            },
-                            backgroundColor: '#1f2937',
-                            titleColor: '#f9fafb',
-                            bodyColor: '#d1d5db',
-                            padding: 10,
-                            cornerRadius: 8
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0,0,0,0.04)'
-                            },
-                            ticks: {
-                                font: {
-                                    size: 11
-                                },
-                                callback: compact
-                            }
-                        }
-                    }
-                }
-            });
-        })();
-
-        (function() {
-            new Chart(document.getElementById('statusChart').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: <?= $statusLblJson ?>,
-                    datasets: [{
-                        data: <?= $statusDataJson ?>,
-                        backgroundColor: <?= $statusColorJson ?>,
-                        borderWidth: 3,
-                        borderColor: '#fff',
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '68%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: {
-                                    size: 11
-                                },
-                                padding: 12,
-                                boxWidth: 10,
-                                boxHeight: 10,
-                                borderRadius: 3
-                            }
-                        },
-                        টিtip: {
-                            callbacks: {
-                                label: c => '  ' + c.label + ': ' + c.parsed
-                            },
-                            backgroundColor: '#1f2937',
-                            titleColor: '#f9fafb',
-                            bodyColor: '#d1d5db',
-                            padding: 10,
-                            cornerRadius: 8
-                        }
-                    }
-                }
-            });
-        })();
-
-        (function() {
-            new Chart(document.getElementById('monthlyChart').getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: <?= $monthlyLblJson ?>,
-                    datasets: [{
-                        label: 'Sales',
-                        data: <?= $monthlyDataJson ?>,
-                        backgroundColor: ctx => {
+                        backgroundColor: function(c) {
                             const {
                                 chart
-                            } = ctx;
+                            } = c;
                             if (!chart.chartArea) return '#e67e22';
                             const {
                                 top,
                                 bottom
                             } = chart.chartArea;
                             const g = chart.ctx.createLinearGradient(0, top, 0, bottom);
-                            g.addColorStop(0, 'rgba(230,126,34,0.88)');
-                            g.addColorStop(1, 'rgba(243,156,18,0.3)');
+                            g.addColorStop(0, '#f0a04b');
+                            g.addColorStop(1, '#e67e22');
                             return g;
                         },
-                        borderColor: '#e67e22',
-                        borderWidth: 0,
-                        borderRadius: 6,
-                        borderSkipped: false
+                        borderRadius: 7,
+                        borderSkipped: false,
+                        maxBarThickness: 54,
                     }]
                 },
                 options: {
@@ -1067,14 +405,14 @@ $monthlyLblJson   = json_encode($monthlyLabels);
                             display: false
                         },
                         tooltip: {
-                            callbacks: {
-                                label: c => ' ' + currency(c.parsed.y)
-                            },
-                            backgroundColor: '#1f2937',
-                            titleColor: '#f9fafb',
-                            bodyColor: '#d1d5db',
+                            backgroundColor: '#23201c',
+                            titleColor: '#fff',
+                            bodyColor: '#e5e1da',
                             padding: 10,
-                            cornerRadius: 8
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: c => '  ₱' + c.parsed.y.toLocaleString('en-PH')
+                            }
                         }
                     },
                     scales: {
@@ -1091,13 +429,13 @@ $monthlyLblJson   = json_encode($monthlyLabels);
                         y: {
                             beginAtZero: true,
                             grid: {
-                                color: 'rgba(0,0,0,0.04)'
+                                color: 'rgba(35,32,28,0.05)'
                             },
                             ticks: {
                                 font: {
                                     size: 11
                                 },
-                                callback: compact
+                                callback: v => '₱' + (v >= 1000 ? (v / 1000) + 'k' : v)
                             }
                         }
                     }
