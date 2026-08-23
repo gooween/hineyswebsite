@@ -997,7 +997,7 @@ if (!empty($_SESSION['user_id'])) {
                         </p>
                         <p class="story-text">
                             Over the years, we've expanded our flock, improved our facilities, and built lasting
-                            relationships with hundreds of households, carinderias, and small businesses across Palawan.
+                            relationships with hundreds of households, carinderias, and small businesses across Cortes.
                             Every egg we sell is collected fresh daily. Every chicken is raised with proper care,
                             feed, and space to move freely.
                         </p>
@@ -1038,7 +1038,7 @@ if (!empty($_SESSION['user_id'])) {
                         <div class="mv-icon green"><i class="fa-solid fa-seedling"></i></div>
                         <div class="mv-card-title">Our Vision</div>
                         <p class="mv-card-text">
-                            To become Palawan's leading farm-to-table poultry brand — growing our flock,
+                            To become Bohol's leading farm-to-table poultry brand — growing our flock,
                             expanding our reach, and continuing to set the standard for freshness and quality
                             while giving back to the local farming community.
                         </p>
@@ -1148,7 +1148,7 @@ if (!empty($_SESSION['user_id'])) {
                     <div class="contact-card">
                         <div class="contact-icon ci-blue"><i class="fa-solid fa-phone"></i></div>
                         <div class="contact-label">Phone / GCash</div>
-                        <div class="contact-value">0917-XXX-XXXX<br><span style="font-size:0.78rem;color:var(--muted);">Mon–Sat, 7am–6pm</span></div>
+                        <div class="contact-value">0963-692-3722<br><span style="font-size:0.78rem;color:var(--muted);">Mon–Sat, 7am–6pm</span></div>
                     </div>
                     <div class="contact-card">
                         <div class="contact-icon ci-green"><i class="fa-solid fa-envelope"></i></div>

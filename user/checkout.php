@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO orders (user_id, status, total_amount, delivery_fee, payment_method, payment_status, delivery_address, delivery_municipality, delivery_barangay, notes, created_at, updated_at)
                 VALUES (?, 'pending', ?, ?, ?, 'unpaid', ?, ?, ?, ?, NOW(), NOW())
             ");
-            $stmt->bind_param('iddssssss', $uid, $grandTotal, $actualDeliveryFee, $pmFull, $finalAddress, $oMuni, $oBrgy, $notes);
+            $stmt->bind_param('iddsssss', $uid, $grandTotal, $actualDeliveryFee, $pmFull, $finalAddress, $oMuni, $oBrgy, $notes);
             $stmt->execute();
             $orderId = (int)$conn->insert_id;
             $stmt->close();

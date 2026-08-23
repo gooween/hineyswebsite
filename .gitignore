@@ -1,3 +1,4 @@
 config/db.php
 config/cloudinary.php
 config/mail.php
+config/auth.php
