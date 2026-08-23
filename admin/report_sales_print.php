@@ -99,29 +99,31 @@ $printMeta     = [
 require '../admin/report_print_header.php';
 ?>
 
-<!-- KPI summary -->
-<div class="rp-kpis">
-    <div class="rp-kpi accent-green">
-        <div class="k-label">Total Sales</div>
-        <div class="k-value" style="font-size:1.05rem;"><?= peso($totalRevenue) ?></div>
-        <div class="k-sub">Paid revenue in range</div>
-    </div>
-    <div class="rp-kpi accent-blue">
-        <div class="k-label">Paid Orders</div>
-        <div class="k-value"><?= number_format($paidOrders) ?></div>
-        <div class="k-sub">Completed &amp; paid</div>
-    </div>
-    <div class="rp-kpi accent-amber">
-        <div class="k-label">Avg Order Value</div>
-        <div class="k-value" style="font-size:1.05rem;"><?= peso($avgOrder) ?></div>
-        <div class="k-sub">Revenue ÷ orders</div>
-    </div>
-    <div class="rp-kpi accent-blue">
-        <div class="k-label">Units Sold</div>
-        <div class="k-value"><?= number_format($totalUnits) ?></div>
-        <div class="k-sub">Total items</div>
-    </div>
-</div>
+<!-- Summary figures -->
+<table class="rp-summary">
+    <tr>
+        <td>
+            <div class="s-label">Total Sales</div>
+            <div class="s-value"><?= peso($totalRevenue) ?></div>
+            <div class="s-sub">Paid revenue in range</div>
+        </td>
+        <td>
+            <div class="s-label">Paid Orders</div>
+            <div class="s-value"><?= number_format($paidOrders) ?></div>
+            <div class="s-sub">Completed &amp; paid</div>
+        </td>
+        <td>
+            <div class="s-label">Avg Order Value</div>
+            <div class="s-value"><?= peso($avgOrder) ?></div>
+            <div class="s-sub">Revenue &divide; orders</div>
+        </td>
+        <td>
+            <div class="s-label">Units Sold</div>
+            <div class="s-value"><?= number_format($totalUnits) ?></div>
+            <div class="s-sub">Total items</div>
+        </td>
+    </tr>
+</table>
 
 <!-- Top products -->
 <div class="rp-section-title">Top Products by Revenue</div>

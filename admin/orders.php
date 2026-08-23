@@ -1245,7 +1245,7 @@ $activePage = 'orders';
                                         </td>
                                         <td style="font-weight:var(--fw-semi);color:var(--ink);"><?= (int)$o['item_count'] ?> <span style="font-weight:400;color:var(--ink-3);font-size:var(--fs-xs);">item<?= (int)$o['item_count'] !== 1 ? 's' : '' ?></span></td>
                                         <td>
-                                            <div class="total-main">₱<?= number_format((float)$o['total_amount'], 2) ?></div><?php if (!$isCancelled): ?><?php if ($feeIsSet): ?><div class="total-fee-set">+₱<?= number_format((float)$o['delivery_fee'], 2) ?> fee ✓</div><?php else: ?><div class="total-fee-unset">Fee not set <i class="fa-solid fa-triangle-exclamation"></i></div><?php endif; ?><?php endif; ?>
+                                            <div class="total-main">₱<?= number_format((float)$o['total_amount'], 2) ?></div><?php if (!$isCancelled): ?><?php if ($feeIsSet): ?><div class="total-fee-set"><?= $o['delivery_fee'] > 0 ? 'incl. ₱' . number_format((float)$o['delivery_fee'], 2) . ' delivery' : 'free delivery' ?></div><?php else: ?><div class="total-fee-unset">Fee not set <i class="fa-solid fa-triangle-exclamation"></i></div><?php endif; ?><?php endif; ?>
                                         </td>
                                         <td><span class="method-badge"><?= $methodIcon ?> <?= strtoupper($o['payment_method']) ?></span></td>
                                         <td><span class="st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span></td>

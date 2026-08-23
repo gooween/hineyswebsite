@@ -930,7 +930,7 @@ if (!empty($_SESSION['user_id'])) {
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                         <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
-                    Family-Owned Since 2010
+                    Family-Owned Since 2022
                 </div>
                 <h1 class="hero-title">
                     Straight from the Farm,<br>
@@ -957,7 +957,7 @@ if (!empty($_SESSION['user_id'])) {
             <div class="container">
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-num">14+</div>
+                        <div class="stat-num">4+</div>
                         <div class="stat-label">Years in Business</div>
                     </div>
                     <div class="stat-item">
@@ -991,7 +991,7 @@ if (!empty($_SESSION['user_id'])) {
                         <div class="story-eyebrow">Our Story</div>
                         <h2 class="story-title">A Small Farm That Grew Into a Trusted Name</h2>
                         <p class="story-text">
-                            What started as a small backyard flock in 2010 has grown into one of Loreto, Cortes
+                            What started as a small backyard flock in 2022 has grown into one of Loreto, Cortes
                             most trusted sources for fresh eggs and live chickens. Hiney's was founded with a simple
                             belief — that families deserve to know exactly where their food comes from.
                         </p>

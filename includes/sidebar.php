@@ -65,7 +65,7 @@ $isReportPage = in_array($activePage, ['report_sales', 'report_inventory', 'repo
             class="sidebar-brand-logo"
             onerror="this.outerHTML='<div class=\'sidebar-brand-fallback\'><i class=\'fa-solid fa-egg\'></i></div>'">
         <div class="sidebar-brand-text">
-            <span class="sidebar-brand-name">Hiney's</span>
+            <span class="sidebar-brand-name">HATCH</span>
             <span class="sidebar-brand-sub">Admin Panel</span>
         </div>
     </a>

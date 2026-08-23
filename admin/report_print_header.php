@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// Hiney's Eggs and Live Chicken Business
+// HATCH — Hiney's Automated Tracking Commerce and Hub
 // File: admin/report_print_header.php
 //
 // Shared print-view chrome for the report print pages
@@ -9,12 +9,15 @@
 //
 // The including file must define, before including this:
 //   $printTitle    e.g. "Sales Report"
-//   $printSubtitle e.g. "Jan 1, 2026 – Jan 31, 2026"  (context line)
+//   $printSubtitle e.g. "Jan 1, 2026 - Jan 31, 2026"  (context line)
 //   $printMeta     (optional) array of ['label'=>, 'value'=>] chips
 //
-// This file opens <html>…<body> and the report letterhead,
+// This file opens <html>...<body> and the report letterhead,
 // then the including file renders its tables, then includes
 // report_print_footer.php to close everything.
+//
+// Design: plain black-and-white business document. No colour,
+// no shading, no rounded corners — photocopy/fax friendly.
 // ============================================================
 
 if (!isset($printTitle))    $printTitle    = 'Report';
@@ -33,7 +36,7 @@ function printSetting(mysqli $conn, string $key, string $default): string
     return $default;
 }
 
-$bizName    = printSetting($conn, 'business_name', "Hiney's Eggs & Live Chicken Business");
+$bizName    = printSetting($conn, 'business_name', 'HATCH — Hiney\'s Automated Tracking Commerce and Hub');
 $bizAddress = printSetting($conn, 'pickup_address', 'Loreto, Cortes, Bohol');
 
 // Who generated it
@@ -59,200 +62,173 @@ if (!empty($_SESSION['user_id'])) {
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            color: #111827;
-            background: #f3f4f6;
-            line-height: 1.5;
+            font-family: "Times New Roman", Georgia, "Liberation Serif", serif;
+            color: #000;
+            background: #d9d9d9;
+            line-height: 1.45;
             font-size: 12px;
         }
 
         /* The printable sheet */
         .sheet {
             background: #fff;
-            max-width: 1000px;
-            margin: 20px auto;
-            padding: 32px 36px 40px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+            max-width: 900px;
+            margin: 24px auto;
+            padding: 40px 44px 44px;
+            border: 1px solid #bbb;
         }
 
         /* ── Letterhead ── */
         .rp-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            border-bottom: 3px solid #e67e22;
-            padding-bottom: 16px;
-            margin-bottom: 4px;
-            gap: 20px;
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
         }
 
         .rp-brand-name {
-            font-size: 1.55rem;
-            font-weight: 800;
-            color: #1a1a2e;
-            letter-spacing: -0.02em;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #000;
+            letter-spacing: 0.01em;
+            line-height: 1.2;
         }
 
         .rp-brand-addr {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin-top: 2px;
-        }
-
-        .rp-brand-tag {
-            font-size: 0.72rem;
-            color: #9ca3af;
-            margin-top: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 600;
+            font-size: 0.82rem;
+            color: #000;
+            margin-top: 4px;
         }
 
         .rp-title-block {
-            text-align: right;
-            flex-shrink: 0;
+            margin-top: 12px;
         }
 
         .rp-report-title {
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: #e67e22;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #000;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.12em;
         }
 
         .rp-report-sub {
-            font-size: 0.82rem;
-            color: #374151;
-            margin-top: 3px;
-            font-weight: 600;
+            font-size: 0.85rem;
+            color: #000;
+            margin-top: 2px;
         }
 
         .rp-generated {
             font-size: 0.72rem;
-            color: #9ca3af;
-            margin-top: 8px;
+            color: #333;
+            margin-top: 6px;
+            font-style: italic;
         }
 
-        /* ── Meta chips row ── */
+        /* ── Meta row (plain key: value list) ── */
         .rp-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px 20px;
-            padding: 12px 0 4px;
-            margin-bottom: 18px;
-            border-bottom: 1px solid #e5e7eb;
+            gap: 4px 28px;
+            padding: 10px 0 12px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #000;
+            justify-content: center;
         }
 
         .rp-meta-item {
             font-size: 0.78rem;
-            color: #374151;
+            color: #000;
         }
 
         .rp-meta-item .lbl {
-            color: #9ca3af;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.68rem;
-            letter-spacing: 0.05em;
+            font-weight: 700;
             margin-right: 5px;
         }
 
         .rp-meta-item .val {
-            font-weight: 700;
-            color: #111827;
+            font-weight: 400;
         }
 
-        /* ── KPI summary strip ── */
-        .rp-kpis {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
+        /* ── Summary figures (plain bordered table, not cards) ── */
+        .rp-summary {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 22px;
         }
 
-        .rp-kpi {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 12px 14px;
-            background: #fafafa;
+        .rp-summary td {
+            border: 1px solid #000;
+            padding: 9px 12px;
+            text-align: center;
+            width: 25%;
         }
 
-        .rp-kpi .k-label {
-            font-size: 0.66rem;
+        .rp-summary .s-label {
+            font-size: 0.68rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: #6b7280;
-            margin-bottom: 5px;
+            color: #000;
+            margin-bottom: 4px;
         }
 
-        .rp-kpi .k-value {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: #111827;
-            line-height: 1;
+        .rp-summary .s-value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #000;
+            line-height: 1.1;
         }
 
-        .rp-kpi .k-sub {
-            font-size: 0.68rem;
-            color: #9ca3af;
-            margin-top: 4px;
-        }
-
-        .rp-kpi.accent-green .k-value {
-            color: #059669;
-        }
-
-        .rp-kpi.accent-red .k-value {
-            color: #dc2626;
-        }
-
-        .rp-kpi.accent-amber .k-value {
-            color: #d97706;
-        }
-
-        .rp-kpi.accent-blue .k-value {
-            color: #2563eb;
+        .rp-summary .s-sub {
+            font-size: 0.66rem;
+            color: #333;
+            margin-top: 3px;
         }
 
         /* ── Section titles ── */
         .rp-section-title {
-            font-size: 0.92rem;
-            font-weight: 800;
-            color: #1a1a2e;
-            margin: 24px 0 10px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #1a1a2e;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 22px 0 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #000;
             display: flex;
-            align-items: center;
+            align-items: baseline;
             justify-content: space-between;
         }
 
         .rp-section-title .count {
             font-size: 0.72rem;
-            font-weight: 600;
-            color: #9ca3af;
+            font-weight: 400;
+            color: #333;
+            text-transform: none;
+            letter-spacing: 0;
         }
 
         /* ── Tables ── */
         table.rp-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.78rem;
-            margin-bottom: 6px;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
         }
 
         table.rp-table thead th {
-            background: #1a1a2e;
-            color: #fff;
-            font-size: 0.66rem;
+            background: #fff;
+            color: #000;
+            font-size: 0.72rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 8px 10px;
+            letter-spacing: 0.03em;
+            padding: 7px 10px;
             text-align: left;
             white-space: nowrap;
+            border-bottom: 1.5px solid #000;
+            border-top: 1.5px solid #000;
         }
 
         table.rp-table thead th.num {
@@ -260,9 +236,10 @@ if (!empty($_SESSION['user_id'])) {
         }
 
         table.rp-table tbody td {
-            padding: 7px 10px;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 6px 10px;
+            border-bottom: 1px solid #bbb;
             vertical-align: middle;
+            color: #000;
         }
 
         table.rp-table tbody td.num {
@@ -270,88 +247,60 @@ if (!empty($_SESSION['user_id'])) {
             font-variant-numeric: tabular-nums;
         }
 
-        table.rp-table tbody tr:nth-child(even) {
-            background: #f9fafb;
-        }
-
         table.rp-table tbody tr:last-child td {
-            border-bottom: 1px solid #d1d5db;
+            border-bottom: 1.5px solid #000;
         }
 
         table.rp-table tfoot td {
-            padding: 9px 10px;
-            font-weight: 800;
-            background: #fef3e8;
-            border-top: 2px solid #e67e22;
+            padding: 8px 10px;
+            font-weight: 700;
+            border-bottom: 1.5px solid #000;
             font-size: 0.82rem;
+            color: #000;
         }
 
         table.rp-table tfoot td.num {
             text-align: right;
+            font-variant-numeric: tabular-nums;
         }
 
-        .rp-pill {
-            display: inline-block;
-            padding: 1px 7px;
-            border-radius: 10px;
-            font-size: 0.68rem;
-            font-weight: 700;
-        }
-
-        .pill-green {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .pill-red {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .pill-amber {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .pill-blue {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .pill-gray {
-            background: #f3f4f6;
-            color: #4b5563;
-        }
-
-        .pill-purple {
-            background: #ede9fe;
-            color: #5b21b6;
-        }
-
+        /* Status text — plain, no coloured pills */
+        .rp-pill,
+        .pill-green,
+        .pill-red,
+        .pill-amber,
+        .pill-blue,
+        .pill-gray,
+        .pill-purple,
         .pill-orange {
-            background: #ffedd5;
-            color: #9a3412;
+            display: inline;
+            padding: 0;
+            border-radius: 0;
+            background: none;
+            color: #000;
+            font-size: inherit;
+            font-weight: 600;
         }
 
         .text-up {
-            color: #dc2626;
+            color: #000;
             font-weight: 700;
         }
 
         .text-down {
-            color: #059669;
+            color: #000;
             font-weight: 700;
         }
 
         .muted {
-            color: #9ca3af;
+            color: #333;
         }
 
         /* ── Signature block ── */
         .rp-signatures {
             display: flex;
             gap: 60px;
-            margin-top: 40px;
+            margin-top: 48px;
             padding-top: 8px;
         }
 
@@ -360,31 +309,31 @@ if (!empty($_SESSION['user_id'])) {
         }
 
         .rp-sig-line {
-            border-top: 1.5px solid #374151;
+            border-top: 1px solid #000;
             padding-top: 5px;
-            margin-top: 34px;
+            margin-top: 40px;
         }
 
         .rp-sig-role {
-            font-size: 0.72rem;
-            color: #6b7280;
+            font-size: 0.74rem;
+            color: #000;
         }
 
         .rp-sig-name {
             font-size: 0.82rem;
             font-weight: 700;
-            color: #111827;
+            color: #000;
         }
 
         /* ── Footer note ── */
         .rp-foot {
-            margin-top: 28px;
-            padding-top: 12px;
-            border-top: 1px solid #e5e7eb;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #000;
             display: flex;
             justify-content: space-between;
-            font-size: 0.68rem;
-            color: #9ca3af;
+            font-size: 0.7rem;
+            color: #333;
         }
 
         /* ── Floating action bar (screen only) ── */
@@ -402,49 +351,46 @@ if (!empty($_SESSION['user_id'])) {
             align-items: center;
             gap: 6px;
             padding: 9px 16px;
-            border-radius: 8px;
+            border-radius: 4px;
             font-size: 0.85rem;
             font-weight: 700;
             cursor: pointer;
-            border: none;
-            font-family: inherit;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 1px solid #000;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         .rp-btn-print {
-            background: #e67e22;
+            background: #000;
             color: #fff;
         }
 
         .rp-btn-print:hover {
-            background: #cf6d17;
+            background: #333;
         }
 
         .rp-btn-close {
             background: #fff;
-            color: #6b7280;
-            border: 1px solid #d1d5db;
+            color: #000;
         }
 
         .rp-btn-close:hover {
-            background: #f9fafb;
-            color: #111827;
+            background: #eee;
         }
 
         .rp-empty {
-            padding: 40px 20px;
+            padding: 26px 20px;
             text-align: center;
-            color: #9ca3af;
-            border: 1px dashed #d1d5db;
-            border-radius: 8px;
-            margin: 10px 0;
+            color: #333;
+            border: 1px solid #000;
+            margin: 8px 0;
+            font-style: italic;
         }
 
         /* ══ PRINT RULES ══ */
         @media print {
             @page {
                 size: A4;
-                margin: 12mm 10mm;
+                margin: 14mm 12mm;
             }
 
             body {
@@ -453,7 +399,7 @@ if (!empty($_SESSION['user_id'])) {
             }
 
             .sheet {
-                box-shadow: none;
+                border: none;
                 margin: 0;
                 max-width: 100%;
                 padding: 0;
@@ -481,7 +427,7 @@ if (!empty($_SESSION['user_id'])) {
                 page-break-after: avoid;
             }
 
-            .rp-kpis {
+            .rp-summary {
                 page-break-inside: avoid;
             }
 
@@ -489,7 +435,7 @@ if (!empty($_SESSION['user_id'])) {
                 page-break-inside: avoid;
             }
 
-            /* force accurate colors on print */
+            /* force plain black/white on print */
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -501,30 +447,27 @@ if (!empty($_SESSION['user_id'])) {
 <body>
 
     <div class="rp-actions">
-        <button class="rp-btn rp-btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
-        <button class="rp-btn rp-btn-close" onclick="window.close()">✕ Close</button>
+        <button class="rp-btn rp-btn-print" onclick="window.print()">Print / Save as PDF</button>
+        <button class="rp-btn rp-btn-close" onclick="window.close()">Close</button>
     </div>
 
     <div class="sheet">
 
         <!-- Letterhead -->
         <div class="rp-head">
-            <div>
-                <div class="rp-brand-name"><?= htmlspecialchars($bizName) ?></div>
-                <div class="rp-brand-addr"><?= htmlspecialchars($bizAddress) ?></div>
-                <div class="rp-brand-tag">Fresh Eggs &amp; Live Chicken</div>
-            </div>
+            <div class="rp-brand-name"><?= htmlspecialchars($bizName) ?></div>
+            <div class="rp-brand-addr"><?= htmlspecialchars($bizAddress) ?></div>
             <div class="rp-title-block">
                 <div class="rp-report-title"><?= htmlspecialchars($printTitle) ?></div>
                 <?php if ($printSubtitle): ?><div class="rp-report-sub"><?= htmlspecialchars($printSubtitle) ?></div><?php endif; ?>
-                <div class="rp-generated">Generated <?= date('M j, Y \a\t g:i A') ?><?= $genBy ? ' by ' . htmlspecialchars($genBy) : '' ?></div>
+
             </div>
         </div>
 
         <?php if (!empty($printMeta)): ?>
             <div class="rp-meta">
                 <?php foreach ($printMeta as $m): ?>
-                    <div class="rp-meta-item"><span class="lbl"><?= htmlspecialchars($m['label']) ?></span><span class="val"><?= htmlspecialchars($m['value']) ?></span></div>
+                    <div class="rp-meta-item"><span class="lbl"><?= htmlspecialchars($m['label']) ?>:</span><span class="val"><?= htmlspecialchars($m['value']) ?></span></div>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

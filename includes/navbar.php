@@ -457,8 +457,8 @@ $base = '../';
     <a href="<?= $base ?>user/home.php" class="nav-brand">
         <img src="<?= $base ?>assets/images/hineys_logo.png" alt="Hiney's" class="nav-brand-logo">
         <div class="nav-brand-text">
-            <div class="nav-brand-name">Hiney's</div>
-            <div class="nav-brand-sub">Eggs & Chicken</div>
+            <div class="nav-brand-name">HATCH</div>
+            <div class="nav-brand-sub">Hiney's Automated Tracking Commerce and Hub</div>
         </div>
     </a>
 

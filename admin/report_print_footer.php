@@ -34,7 +34,7 @@ if (!empty($_SESSION['user_id'])) {
 
 <!-- Footer -->
 <div class="rp-foot">
-    <div>Hiney's Eggs &amp; Live Chicken Business — Internal Report</div>
+    <div><?= htmlspecialchars($bizName ?? 'HATCH — Hiney\'s Automated Tracking Commerce and Hub') ?> — Internal Report</div>
     <div>Printed <?= date('M j, Y g:i A') ?></div>
 </div>
 

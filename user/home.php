@@ -343,7 +343,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
 
         .hero-title-small {
             display: block;
-            font-size: clamp(1.1rem, 2vw, 1.6rem);
+            font-size: clamp(0.1rem, 2vw, 1.6rem);
             font-weight: 700;
             color: var(--dark2);
             line-height: 1.3;
@@ -1275,9 +1275,8 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                             Welcome Back,<br>
                             <span class="hero-title-brand"><?= htmlspecialchars($firstName) ?>!</span>
                         <?php else: ?>
-                            <span class="hero-title-brand">HINEY'S</span>
-                            <span class="hero-title-small">Bohol's Trusted Source for</span>
-                            <span class="hero-title-small">Fresh Eggs &amp; Live Chickens</span>
+                            <span class="hero-title-brand">HATCH</span>
+                            <span class="hero-title-small">Hiney's Automated Tracking Commerce and Hub</span>
                         <?php endif; ?>
                     </h1>
                     <p class="hero-desc">
