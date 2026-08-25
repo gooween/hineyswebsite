@@ -62,6 +62,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'approve') {
         $id     = (int)($_POST['id'] ?? 0);
         $newFee = (isset($_POST['delivery_fee']) && $_POST['delivery_fee'] !== '') ? (float)$_POST['delivery_fee'] : null;
+        // Guard: only a currently-pending order may be approved. This stops a
+        // second approve (double-click, back button, re-approve) from running
+        // deductStock() again and deducting the same stock twice.
+        $curStatus = '';
+        if ($id) {
+            $sres = $conn->query("SELECT status FROM orders WHERE id={$id} LIMIT 1");
+            if ($sres && $srow = $sres->fetch_assoc()) $curStatus = $srow['status'];
+        }
+        if ($id && $curStatus !== 'pending') {
+            redirect('orders.php', 'error', 'That order is no longer pending — it may already be approved. Stock was not deducted again.');
+        }
         if ($id) {
             if ($newFee !== null && $newFee >= 0) {
                 $itemsResult = $conn->query("SELECT COALESCE(SUM(subtotal),0) AS t FROM order_items WHERE order_id={$id}");
