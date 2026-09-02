@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// Hiney's Eggs and Live Chicken Business
+// HATCH — Hiney's Automated Tracking Commerce and Hub
 // File: includes/navbar.php
 // ============================================================
 
@@ -21,7 +21,11 @@ $base = '../';
 <link rel="icon" type="image/png" href="<?= $base ?>assets/images/hineys_logo.png">
 <link rel="apple-touch-icon" href="<?= $base ?>assets/images/hineys_logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650;700;750;800&display=swap" rel="stylesheet">
 <style id="hineys-icon-colors">
+    /* Icons inherit their parent's color inside buttons, badges, chips, etc. */
     .navbar .fa-solid,
     .mobile-drawer .fa-solid,
     .sidebar .fa-solid,
@@ -43,12 +47,13 @@ $base = '../';
         color: inherit !important
     }
 
+    /* Standalone semantic icons — toned to the calmer admin palette */
     .fa-egg {
-        color: #f4a72c
+        color: #e67e22
     }
 
     .fa-drumstick-bite {
-        color: #c2703b
+        color: #b06a35
     }
 
     .fa-circle-check,
@@ -57,7 +62,7 @@ $base = '../';
     .fa-leaf,
     .fa-seedling,
     .fa-phone {
-        color: #10b981
+        color: #2f9e60
     }
 
     .fa-circle-xmark,
@@ -65,7 +70,7 @@ $base = '../';
     .fa-trash,
     .fa-ban,
     .fa-location-dot {
-        color: #ef4444
+        color: #d94f46
     }
 
     .fa-cart-shopping,
@@ -76,14 +81,14 @@ $base = '../';
     }
 
     .fa-truck {
-        color: #f97316
+        color: #d98a17
     }
 
     .fa-triangle-exclamation,
     .fa-circle-exclamation,
     .fa-clock,
     .fa-star {
-        color: #f59e0b
+        color: #d98a17
     }
 
     .fa-info-circle,
@@ -96,19 +101,19 @@ $base = '../';
     .fa-comment,
     .fa-map,
     .fa-paperclip {
-        color: #3b82f6
+        color: #3b7dd8
     }
 
     .fa-sack-dollar,
     .fa-money-bill,
     .fa-money-bill-transfer {
-        color: #16a34a
+        color: #2f9e60
     }
 
     .fa-users,
     .fa-user,
     .fa-user-plus {
-        color: #6366f1
+        color: #6a5bc0
     }
 
     .fa-box,
@@ -118,43 +123,47 @@ $base = '../';
     .fa-receipt,
     .fa-clipboard-list,
     .fa-file-lines {
-        color: #8b5cf6
+        color: #6a5bc0
     }
 
     .fa-chart-bar,
     .fa-chart-line,
     .fa-chart-pie,
     .fa-gauge-high {
-        color: #0ea5e9
+        color: #3b7dd8
     }
 
     .fa-heart {
-        color: #ef4444
+        color: #d94f46
     }
 
     .fa-gear {
-        color: #6b7280
+        color: #6f6a62
     }
 
     .fa-lightbulb {
-        color: #f59e0b
+        color: #d98a17
     }
 </style>
 
 <style>
     :root {
+        /* Aligned to the admin design system (warm bone-white + orange) */
         --primary: #e67e22;
-        --primary-dark: #cf6d17;
-        --primary-bg: #fef3e8;
-        --dark: #111827;
-        --text: #374151;
-        --muted: #6b7280;
-        --border: #e5e7eb;
-        --bg: #f8f7f4;
-        --danger: #ef4444;
-        --radius: 10px;
+        --primary-dark: #d16b12;
+        --primary-bg: #fef4ea;
+        --dark: #23201c;
+        --text: #23201c;
+        --muted: #6f6a62;
+        --border: #ebe8e3;
+        --border-strong: #ddd8d0;
+        --bg: #f7f6f3;
+        --surface: #ffffff;
+        --danger: #d94f46;
+        --radius: 12px;
+        --radius-sm: 8px;
         --nav-h: 64px;
-        --shadow-nav: 0 1px 0 #e5e7eb, 0 4px 16px rgba(0, 0, 0, 0.04);
+        --shadow-nav: 0 1px 0 #ebe8e3, 0 6px 20px -8px rgba(35, 32, 28, 0.10);
     }
 
     *,
@@ -166,16 +175,18 @@ $base = '../';
     }
 
     body {
-        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
         background: var(--bg);
-        color: var(--text)
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11"
     }
 
     .navbar {
         position: sticky;
         top: 0;
         height: var(--nav-h);
-        background: #fff;
+        background: var(--surface);
         display: flex;
         align-items: center;
         padding: 0 28px;
@@ -198,7 +209,7 @@ $base = '../';
         height: 40px;
         border-radius: 10px;
         object-fit: cover;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)
+        box-shadow: 0 2px 8px rgba(35, 32, 28, 0.10)
     }
 
     .nav-brand-text {
@@ -208,14 +219,16 @@ $base = '../';
     .nav-brand-name {
         font-size: 1rem;
         font-weight: 800;
-        color: var(--dark)
+        color: var(--dark);
+        letter-spacing: -0.01em
     }
 
     .nav-brand-sub {
-        font-size: 0.65rem;
+        font-size: 0.64rem;
         color: var(--muted);
         letter-spacing: 0.04em;
-        text-transform: uppercase
+        text-transform: uppercase;
+        font-weight: 600
     }
 
     .nav-links {
@@ -234,9 +247,9 @@ $base = '../';
         padding: 7px 14px;
         text-decoration: none;
         color: var(--muted);
-        border-radius: 8px;
-        font-size: 0.88rem;
-        font-weight: 500;
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        font-weight: 550;
         transition: background 0.15s, color 0.15s;
         white-space: nowrap
     }
@@ -253,7 +266,7 @@ $base = '../';
     .nav-links a.active {
         background: var(--primary-bg);
         color: var(--primary);
-        font-weight: 600
+        font-weight: 650
     }
 
     .nav-actions {
@@ -270,16 +283,16 @@ $base = '../';
         gap: 7px;
         padding: 7px 14px;
         background: var(--primary-bg);
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         text-decoration: none;
         color: var(--primary);
-        font-size: 0.88rem;
-        font-weight: 600;
+        font-size: 0.875rem;
+        font-weight: 650;
         transition: background 0.15s
     }
 
     .nav-cart:hover {
-        background: #fde9d0
+        background: #fde8d4
     }
 
     .cart-badge {
@@ -309,12 +322,12 @@ $base = '../';
         align-items: center;
         gap: 8px;
         padding: 5px 14px 5px 6px;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-strong);
         border-radius: 24px;
         text-decoration: none;
         font-size: 0.85rem;
         color: var(--text);
-        font-weight: 500;
+        font-weight: 550;
         transition: border-color 0.15s, background 0.15s
     }
 
@@ -327,7 +340,7 @@ $base = '../';
     .user-avatar {
         width: 28px;
         height: 28px;
-        background: linear-gradient(135deg, var(--primary), #f39c12);
+        background: linear-gradient(135deg, var(--primary), #f0a340);
         color: #fff;
         display: flex;
         align-items: center;
@@ -342,10 +355,10 @@ $base = '../';
         padding: 7px 18px;
         background: var(--primary);
         color: #fff;
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         text-decoration: none;
-        font-size: 0.88rem;
-        font-weight: 600;
+        font-size: 0.875rem;
+        font-weight: 650;
         transition: background 0.15s;
         display: flex;
         align-items: center;
@@ -366,7 +379,7 @@ $base = '../';
         padding: 6px;
         background: none;
         border: none;
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         cursor: pointer;
         margin-left: auto
     }
@@ -390,10 +403,10 @@ $base = '../';
         top: var(--nav-h);
         left: 0;
         right: 0;
-        background: #fff;
+        background: var(--surface);
         border-bottom: 1px solid var(--border);
         padding: 8px 16px 16px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 16px 40px -12px rgba(35, 32, 28, 0.14);
         z-index: 999
     }
 
@@ -409,8 +422,8 @@ $base = '../';
         text-decoration: none;
         color: var(--text);
         font-size: 0.9rem;
-        font-weight: 500;
-        border-radius: 8px;
+        font-weight: 550;
+        border-radius: var(--radius-sm);
         transition: background 0.15s
     }
 
