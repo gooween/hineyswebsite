@@ -718,8 +718,8 @@ if (isset($_GET['msg'])) {
                     <img src="assets/images/hineys_logo.png" alt="Hiney's"
                         style="width:44px;height:44px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;object-fit:cover;">
                     <div>
-                        <div class="brand-name">Hiney's</div>
-                        <div class="brand-tagline">Eggs &amp; Live Chicken</div>
+                        <div class="brand-name">HATCH</div>
+                        <div class="brand-tagline">Hiney's Automated Tracking , Commerce and Hub</div>
                     </div>
                 </div>
 

@@ -1153,7 +1153,7 @@ if (!empty($_SESSION['user_id'])) {
                     <div class="contact-card">
                         <div class="contact-icon ci-green"><i class="fa-solid fa-envelope"></i></div>
                         <div class="contact-label">Email</div>
-                        <div class="contact-value">hineys@email.com<br><span style="font-size:0.78rem;color:var(--muted);">We reply within 24 hours</span></div>
+                        <div class="contact-value">hineyseggschicken@gmail.com<br><span style="font-size:0.78rem;color:var(--muted);">We reply within 24 hours</span></div>
                     </div>
                 </div>
             </div>
