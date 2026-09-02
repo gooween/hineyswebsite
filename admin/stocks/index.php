@@ -75,372 +75,190 @@ $stats = $conn->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <title>Stock Batches — Hiney's Admin</title>
+    <title>Stock Batches — HATCH Admin</title>
     <style>
-        :root {
-            --card-border: #e5e7eb;
-        }
+        /* Page-specific only — shared system comes from admin.css */
 
-        .main-content {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            padding: 32px 32px 48px;
-            min-height: 100vh;
-            background: var(--page-bg);
-            transition: margin-left 0.3s ease;
-            box-sizing: border-box;
-            width: calc(100% - var(--sidebar-w));
-        }
-
-        .page-header {
+        /* FIFO note */
+        .fifo-note {
             display: flex;
             align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 12px;
+            gap: var(--s2);
+            background: var(--info-tint);
+            border: 1px solid #bcd6f5;
+            border-radius: var(--r-sm);
+            padding: 10px var(--s4);
+            font-size: var(--fs-sm);
+            color: #2b62ad;
+            line-height: 1.5;
+            margin-bottom: var(--s5);
         }
 
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.02em;
-        }
-
-        .page-title-sub {
-            font-size: 0.82rem;
-            color: var(--text-muted);
+        .fifo-note i {
             margin-top: 2px;
-        }
-
-        .mobile-menu-btn {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            background: var(--card-bg);
-            cursor: pointer;
-            color: var(--dark);
             flex-shrink: 0;
         }
 
-        .btn-add {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 9px 18px;
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            border-radius: 8px;
-            font-size: 0.88rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
-        .btn-add:hover {
-            background: var(--primary);
-            color: #fff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px rgba(230, 126, 34, 0.35);
-        }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        @media(max-width:900px) {
-            .stats-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px 18px;
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .si-green {
-            background: #ecfdf5;
-        }
-
-        .si-gray {
-            background: #f3f4f6;
-        }
-
-        .si-red {
-            background: #fef2f2;
-        }
-
-        .si-yellow {
-            background: #fefce8;
-        }
-
-        .stat-num {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.03em;
-            line-height: 1;
-        }
-
-        .stat-lbl {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-top: 2px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
+        /* Toolbar / filters */
         .toolbar {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius) var(--radius) 0 0;
-            padding: 14px 18px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--s2);
             flex-wrap: wrap;
-            border-bottom: none;
+            margin-bottom: var(--s4);
+        }
+
+        .filter-select,
+        .filter-date {
+            padding: 8px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            background: var(--surface);
+            color: var(--ink);
+            outline: none;
+            cursor: pointer;
+            font-family: inherit;
         }
 
         .filter-select {
-            padding: 7px 28px 7px 10px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            background: var(--page-bg);
-            color: var(--text);
-            outline: none;
-            cursor: pointer;
+            padding-right: 30px;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239c968c' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 8px center;
+            background-position: right 10px center;
         }
 
-        .filter-select:focus {
-            border-color: var(--primary);
-            outline: none;
+        .filter-select:focus,
+        .filter-date:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
         .filter-date {
-            padding: 7px 10px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            background: var(--page-bg);
-            color: var(--text);
-            outline: none;
-            font-family: inherit;
-        }
-
-        .filter-date:focus {
-            border-color: var(--primary);
-            outline: none;
-        }
-
-        .btn-filter {
-            padding: 7px 14px;
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.2s;
-        }
-
-        .btn-filter:hover {
-            background: var(--primary);
-            color: #fff;
+            color: var(--ink-2);
         }
 
         .btn-clear {
-            font-size: 0.8rem;
-            color: var(--primary);
-            text-decoration: none;
+            font-size: var(--fs-sm);
+            color: var(--brand);
+            font-weight: var(--fw-med);
             white-space: nowrap;
         }
 
-        .table-wrapper {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 0 0 var(--radius) var(--radius);
-            overflow-x: auto;
-            box-shadow: var(--shadow);
+        .btn-clear:hover {
+            text-decoration: underline;
         }
 
-        table.data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.87rem;
-        }
-
-        table.data-table thead th {
-            background: var(--dark);
-            color: #e5e7eb;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            padding: 12px 14px;
-            white-space: nowrap;
-            text-align: left;
-        }
-
-        table.data-table tbody tr:nth-child(even) {
-            background: #fef9f0;
-        }
-
-        table.data-table tbody tr:hover {
-            background: #fdebd0;
-        }
-
-        table.data-table tbody td {
-            padding: 11px 14px;
-            color: var(--text);
-            border-bottom: 1px solid #f3f4f6;
-            vertical-align: middle;
-        }
-
-        table.data-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
+        /* Batch code */
         .batch-code {
-            font-family: monospace;
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: var(--dark);
-            background: #f3f4f6;
-            padding: 3px 8px;
-            border-radius: 6px;
-            white-space: nowrap;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 0.72rem;
-            font-weight: 700;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            background: var(--surface-2);
+            color: var(--ink);
             padding: 3px 9px;
-            border-radius: 20px;
+            border-radius: 5px;
             white-space: nowrap;
         }
 
-        .status-badge::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        .sb-active {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .sb-depleted {
-            background: #f3f4f6;
-            color: #6b7280;
-        }
-
-        .sb-expired {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .sb-expiring {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
+        /* Qty remaining bar */
         .qty-bar-wrap {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            min-width: 80px;
+            min-width: 120px;
         }
 
         .qty-nums {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--dark);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            color: var(--ink);
+            margin-bottom: 4px;
+            font-variant-numeric: tabular-nums;
         }
 
         .qty-bar {
-            height: 4px;
-            background: #e5e7eb;
-            border-radius: 2px;
+            height: 6px;
+            background: var(--line);
+            border-radius: 3px;
             overflow: hidden;
         }
 
         .qty-bar-fill {
             height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s;
+            border-radius: 3px;
         }
 
+        /* Status badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: var(--r-pill);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            white-space: nowrap;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .sb-active {
+            background: var(--ok-tint);
+            color: #1f7a48;
+        }
+
+        .sb-expiring {
+            background: var(--warn-tint);
+            color: #8a5a0c;
+        }
+
+        .sb-depleted {
+            background: var(--surface-2);
+            color: var(--ink-2);
+        }
+
+        .sb-expired {
+            background: var(--danger-tint);
+            color: #b23c34;
+        }
+
+        /* Expiry cell */
         .expiry-cell {
-            font-size: 0.82rem;
-        }
-
-        .expiry-soon {
-            color: #92400e;
-            font-weight: 700;
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-med);
+            white-space: nowrap;
         }
 
         .expiry-ok {
-            color: var(--text-muted);
+            color: var(--ink-2);
+        }
+
+        .expiry-soon {
+            color: #8a5a0c;
+            font-weight: var(--fw-bold);
         }
 
         .expiry-gone {
-            color: #991b1b;
-            font-weight: 700;
+            color: #b23c34;
+            font-weight: var(--fw-bold);
         }
 
+        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 18px;
-            border-top: 1px solid var(--card-border);
-            font-size: 0.82rem;
-            color: var(--text-muted);
+            padding: var(--s4) var(--s5);
+            border-top: 1px solid var(--line);
+            font-size: var(--fs-sm);
+            color: var(--ink-2);
             flex-wrap: wrap;
-            gap: 8px;
+            gap: var(--s2);
         }
 
         .pagination-pages {
@@ -456,24 +274,27 @@ $stats = $conn->query("
             min-width: 32px;
             height: 32px;
             padding: 0 8px;
-            border-radius: 6px;
-            border: 1px solid var(--card-border);
-            background: var(--card-bg);
-            color: var(--text);
-            font-size: 0.82rem;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--line-strong);
+            background: var(--surface);
+            color: var(--ink);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-med);
+            cursor: pointer;
             text-decoration: none;
-            transition: background 0.15s;
+            transition: background 0.14s, border-color 0.14s;
         }
 
         .pg-btn:hover {
-            background: var(--page-bg);
+            background: var(--surface-2);
+            border-color: var(--ink-3);
         }
 
         .pg-btn.active {
-            background: var(--primary);
+            background: var(--brand);
             color: #fff;
-            border-color: var(--primary);
-            font-weight: 700;
+            border-color: var(--brand);
+            font-weight: var(--fw-bold);
         }
 
         .pg-btn.disabled {
@@ -481,39 +302,10 @@ $stats = $conn->query("
             pointer-events: none;
         }
 
-        .empty-state {
-            padding: 56px 20px;
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        .empty-icon {
-            font-size: 3rem;
-            margin-bottom: 12px;
-        }
-
-        .fifo-note {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 0.8rem;
-            color: #1e40af;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        @media(max-width:768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 16px 16px 48px;
-                width: 100%;
-            }
-
-            .mobile-menu-btn {
-                display: flex;
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
             }
         }
     </style>
@@ -524,22 +316,29 @@ $stats = $conn->query("
         <?php include '../../includes/sidebar.php'; ?>
         <div class="main-content">
 
+            <!-- Mobile topbar -->
+            <div class="mobile-topbar">
+                <div class="mobile-brand">
+                    <div class="mobile-brand-icon"><i class="fa-solid fa-egg"></i></div>
+                    HATCH Admin
+                </div>
+                <button class="icon-btn" onclick="openSidebar()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Page Header -->
             <div class="page-header">
                 <div>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                        <button class="mobile-menu-btn" onclick="openSidebar()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                            </svg>
-                        </button>
-                        <h1 class="page-title">Stock Batches</h1>
-                    </div>
-                    <div class="page-title-sub">All batches sorted oldest first (FIFO). System assigns oldest active batch to orders automatically.</div>
+                    <h1 class="page-title">Stock Batches</h1>
+                    <div class="page-title-sub">All batches sorted oldest first (FIFO). The system assigns the oldest active batch to orders automatically.</div>
                 </div>
-                <a href="add.php" class="btn-add">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <a href="add.php" class="btn btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
@@ -547,42 +346,47 @@ $stats = $conn->query("
                 </a>
             </div>
 
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon si-green"><i class="fa-solid fa-boxes-stacked" style="color:#10b981;"></i></div>
-                    <div>
-                        <div class="stat-num"><?= number_format($stats['active'] ?? 0) ?></div>
-                        <div class="stat-lbl">Active Batches</div>
+            <!-- Stat cards -->
+            <div class="grid cols-2 mb-6" style="grid-template-columns:repeat(4,1fr);">
+                <div class="stat-card tone-green">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Active Batches</span>
+                        <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($stats['active'] ?? 0) ?></div>
+                    <div class="stat-foot">Currently in stock</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon si-yellow"><i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i></div>
-                    <div>
-                        <div class="stat-num"><?= number_format($stats['expiring_soon'] ?? 0) ?></div>
-                        <div class="stat-lbl">Expiring Soon</div>
+                <div class="stat-card tone-amber">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Expiring Soon</span>
+                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     </div>
+                    <div class="stat-value">
+                        <?php if (($stats['expiring_soon'] ?? 0) > 0): ?><span class="pulse amber"><span class="pulse-dot amber"></span><?= number_format($stats['expiring_soon']) ?></span><?php else: ?><?= number_format($stats['expiring_soon'] ?? 0) ?><?php endif; ?>
+                    </div>
+                    <div class="stat-foot">Within 3 days</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon si-gray"><i class="fa-solid fa-box" style="color:#6b7280;"></i></div>
-                    <div>
-                        <div class="stat-num"><?= number_format($stats['depleted'] ?? 0) ?></div>
-                        <div class="stat-lbl">Depleted</div>
+                <div class="stat-card tone-brand">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Depleted</span>
+                        <div class="stat-icon"><i class="fa-solid fa-box-open"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($stats['depleted'] ?? 0) ?></div>
+                    <div class="stat-foot">Fully used up</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon si-red"><i class="fa-solid fa-ban" style="color:#ef4444;"></i></div>
-                    <div>
-                        <div class="stat-num"><?= number_format($stats['expired'] ?? 0) ?></div>
-                        <div class="stat-lbl">Expired</div>
+                <div class="stat-card tone-red">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Expired</span>
+                        <div class="stat-icon"><i class="fa-solid fa-ban"></i></div>
                     </div>
+                    <div class="stat-value"><?= number_format($stats['expired'] ?? 0) ?></div>
+                    <div class="stat-foot">Past expiry date</div>
                 </div>
             </div>
 
-            <div class="fifo-note">
-                <i class="fa-solid fa-info-circle"></i>
-                <span>Batches are listed oldest first. When an order is fulfilled, the system automatically picks from the top of this list (FIFO). Each batch's "Qty Remaining" reflects how many trays/pieces/units are left.</span>
-            </div>
 
+
+            <!-- Toolbar / filters -->
             <div class="toolbar">
                 <form method="GET" style="display:contents;">
                     <select name="status" class="filter-select" onchange="this.form.submit()">
@@ -604,81 +408,84 @@ $stats = $conn->query("
                         <a href="index.php" class="btn-clear">✕ Clear</a>
                     <?php endif; ?>
                 </form>
-                <span style="margin-left:auto;font-size:0.82rem;color:var(--text-muted);"><?= number_format($totalCount) ?> batch<?= $totalCount !== 1 ? 'es' : '' ?></span>
+                <span style="margin-left:auto;font-size:var(--fs-sm);color:var(--ink-3);"><?= number_format($totalCount) ?> batch<?= $totalCount !== 1 ? 'es' : '' ?></span>
             </div>
 
-            <div class="table-wrapper">
+            <!-- Table -->
+            <div class="table-card">
                 <?php if ($batches && $batches->num_rows > 0): ?>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Batch Code</th>
-                                <th>Product</th>
-                                <th>Unit</th>
-                                <th>Qty Remaining</th>
-                                <th>Status</th>
-                                <th>Expires</th>
-                                <th>Logged</th>
-                                <th>By</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php while ($b = $batches->fetch_assoc()):
-                                $pct      = $b['quantity'] > 0 ? round(($b['remaining'] / $b['quantity']) * 100) : 0;
-                                $barColor = $pct > 50 ? '#10b981' : ($pct > 20 ? '#f59e0b' : '#ef4444');
-                                $isTrayUnit = stripos($b['unit'], 'tray') !== false;
-
-                                $today   = new DateTime();
-                                $expDate = $b['expires_at'] ? new DateTime($b['expires_at']) : null;
-                                $daysLeft = $expDate ? (int)$today->diff($expDate)->format('%r%a') : null;
-
-                                if ($b['status'] === 'expired') {
-                                    $expClass = 'expiry-gone';
-                                    $expText = 'Expired';
-                                } elseif ($daysLeft !== null && $daysLeft <= 3) {
-                                    $expClass = 'expiry-soon';
-                                    $expText = $daysLeft === 0 ? 'Today!' : "In {$daysLeft}d";
-                                } else {
-                                    $expClass = 'expiry-ok';
-                                    $expText = $expDate ? date('M j, Y', strtotime($b['expires_at'])) : '—';
-                                }
-
-                                if ($b['status'] === 'active' && $daysLeft !== null && $daysLeft <= 3 && $daysLeft >= 0) {
-                                    $badgeClass = 'sb-expiring';
-                                    $badgeLabel = 'Expiring';
-                                } else {
-                                    $badgeClass = 'sb-' . $b['status'];
-                                    $badgeLabel = ucfirst($b['status']);
-                                }
-
-                                $unitLabel = $isTrayUnit ? ('tray' . ($b['remaining'] != 1 ? 's' : '')) : '';
-                            ?>
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead>
                                 <tr>
-                                    <td><span class="batch-code"><?= htmlspecialchars($b['batch_code']) ?></span></td>
-                                    <td>
-                                        <div style="font-weight:600;color:var(--dark);"><?= htmlspecialchars($b['product_name'] ?? '—') ?></div>
-                                        <div style="font-size:0.72rem;color:var(--text-muted);"><?= htmlspecialchars($b['category_name'] ?? '') ?></div>
-                                    </td>
-                                    <td style="font-size:0.82rem;color:var(--text-muted);"><?= htmlspecialchars($b['unit']) ?></td>
-                                    <td>
-                                        <div class="qty-bar-wrap">
-                                            <div class="qty-nums"><?= number_format($b['remaining']) ?> / <?= number_format($b['quantity']) ?><?= $unitLabel ? ' ' . $unitLabel : '' ?></div>
-                                            <div class="qty-bar">
-                                                <div class="qty-bar-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>;"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="status-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span></td>
-                                    <td class="expiry-cell <?= $expClass ?>"><?= $expText ?></td>
-                                    <td style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">
-                                        <?= date('M j, Y', strtotime($b['created_at'])) ?><br>
-                                        <span style="font-size:0.72rem;"><?= date('g:i A', strtotime($b['created_at'])) ?></span>
-                                    </td>
-                                    <td style="font-size:0.82rem;color:var(--text-muted);"><?= htmlspecialchars($b['created_by_name'] ?? 'Admin') ?></td>
+                                    <th>Batch Code</th>
+                                    <th>Product</th>
+                                    <th>Unit</th>
+                                    <th>Qty Remaining</th>
+                                    <th>Status</th>
+                                    <th>Expires</th>
+                                    <th>Logged</th>
+                                    <th>By</th>
                                 </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php while ($b = $batches->fetch_assoc()):
+                                    $pct      = $b['quantity'] > 0 ? round(($b['remaining'] / $b['quantity']) * 100) : 0;
+                                    $barColor = $pct > 50 ? 'var(--ok)' : ($pct > 20 ? 'var(--warn)' : 'var(--danger)');
+                                    $isTrayUnit = stripos($b['unit'], 'tray') !== false;
+
+                                    $today   = new DateTime();
+                                    $expDate = $b['expires_at'] ? new DateTime($b['expires_at']) : null;
+                                    $daysLeft = $expDate ? (int)$today->diff($expDate)->format('%r%a') : null;
+
+                                    if ($b['status'] === 'expired') {
+                                        $expClass = 'expiry-gone';
+                                        $expText = 'Expired';
+                                    } elseif ($daysLeft !== null && $daysLeft <= 3) {
+                                        $expClass = 'expiry-soon';
+                                        $expText = $daysLeft === 0 ? 'Today!' : "In {$daysLeft}d";
+                                    } else {
+                                        $expClass = 'expiry-ok';
+                                        $expText = $expDate ? date('M j, Y', strtotime($b['expires_at'])) : '—';
+                                    }
+
+                                    if ($b['status'] === 'active' && $daysLeft !== null && $daysLeft <= 3 && $daysLeft >= 0) {
+                                        $badgeClass = 'sb-expiring';
+                                        $badgeLabel = 'Expiring';
+                                    } else {
+                                        $badgeClass = 'sb-' . $b['status'];
+                                        $badgeLabel = ucfirst($b['status']);
+                                    }
+
+                                    $unitLabel = $isTrayUnit ? ('tray' . ($b['remaining'] != 1 ? 's' : '')) : '';
+                                ?>
+                                    <tr>
+                                        <td><span class="batch-code"><?= htmlspecialchars($b['batch_code']) ?></span></td>
+                                        <td>
+                                            <div style="font-weight:var(--fw-semi);color:var(--ink);"><?= htmlspecialchars($b['product_name'] ?? '—') ?></div>
+                                            <div style="font-size:var(--fs-xs);color:var(--ink-3);"><?= htmlspecialchars($b['category_name'] ?? '') ?></div>
+                                        </td>
+                                        <td style="font-size:var(--fs-sm);color:var(--ink-2);"><?= htmlspecialchars($b['unit']) ?></td>
+                                        <td>
+                                            <div class="qty-bar-wrap">
+                                                <div class="qty-nums"><?= number_format($b['remaining']) ?> / <?= number_format($b['quantity']) ?><?= $unitLabel ? ' ' . $unitLabel : '' ?></div>
+                                                <div class="qty-bar">
+                                                    <div class="qty-bar-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>;"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="status-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span></td>
+                                        <td class="expiry-cell <?= $expClass ?>"><?= $expText ?></td>
+                                        <td style="font-size:var(--fs-xs);color:var(--ink-3);white-space:nowrap;">
+                                            <?= date('M j, Y', strtotime($b['created_at'])) ?><br>
+                                            <span style="font-size:0.7rem;"><?= date('g:i A', strtotime($b['created_at'])) ?></span>
+                                        </td>
+                                        <td style="font-size:var(--fs-sm);color:var(--ink-2);"><?= htmlspecialchars($b['created_by_name'] ?? 'Admin') ?></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <?php if ($totalPages > 1): ?>
                         <div class="pagination">
@@ -699,18 +506,16 @@ $stats = $conn->query("
                     <?php endif; ?>
 
                 <?php else: ?>
-                    <div class="empty-state">
+                    <div class="empty">
                         <div class="empty-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
-                        <div style="font-size:0.9rem;font-weight:600;color:var(--dark);margin-bottom:6px;">No batches found</div>
-                        <div style="font-size:0.82rem;">
-                            <?= ($filterStatus || $filterProduct || $filterDate) ? 'Try adjusting your filters.' : 'Click "Add Batch" to log your first stock batch.' ?>
-                        </div>
+                        <div class="empty-title">No batches found</div>
+                        <div class="empty-text"><?= ($filterStatus || $filterProduct || $filterDate) ? 'Try adjusting your filters.' : 'Click "Add Batch" to log your first stock batch.' ?></div>
                     </div>
                 <?php endif; ?>
             </div>
 
-        </div>
-    </div>
+        </div><!-- /.main-content -->
+    </div><!-- /.admin-layout -->
 </body>
 
-</html> 
+</html>

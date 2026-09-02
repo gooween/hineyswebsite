@@ -125,658 +125,564 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <title>Add Stock Batch — Hiney's Admin</title>
+    <title>Add Stock Batch — HATCH Admin</title>
     <style>
-        :root {
-            --card-border: #e5e7eb
-        }
-
-        .main-content {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            padding: 32px 32px 48px;
-            min-height: 100vh;
-            background: var(--page-bg);
-            transition: margin-left 0.3s ease;
-            box-sizing: border-box;
-            width: calc(100% - var(--sidebar-w))
-        }
-
-        .page-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 12px
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.02em
-        }
-
-        .page-title-sub {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            margin-top: 2px
-        }
-
-        .mobile-menu-btn {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            background: var(--card-bg);
-            cursor: pointer;
-            color: var(--dark);
-            flex-shrink: 0
-        }
+        /* Page-specific only — shared system comes from admin.css */
 
         .back-link {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            margin-bottom: 20px;
-            transition: color 0.15s
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-med);
+            color: var(--ink-2);
+            margin-bottom: var(--s4);
+            transition: color 0.14s;
         }
 
         .back-link:hover {
-            color: var(--primary)
+            color: var(--brand);
         }
 
+        /* Two-column layout: form + reference panel */
         .add-layout {
             display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 24px;
-            align-items: start
+            grid-template-columns: 1fr 300px;
+            gap: var(--s5);
+            align-items: start;
         }
 
-        @media(max-width:960px) {
+        @media (max-width: 900px) {
             .add-layout {
-                grid-template-columns: 1fr
-            }
-
-            .main-content {
-                margin-left: 0;
-                padding: 16px 16px 48px;
-                width: 100%
-            }
-
-            .mobile-menu-btn {
-                display: flex
+                grid-template-columns: 1fr;
             }
         }
 
-        .form-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            overflow: hidden
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-lg);
+            overflow: hidden;
         }
 
-        .form-card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--card-border);
+        .card-head {
+            padding: var(--s5) var(--s6) var(--s4);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .card-title {
+            font-size: var(--fs-h3);
+            font-weight: var(--fw-bold);
+            color: var(--ink);
             display: flex;
             align-items: center;
-            justify-content: space-between
+            gap: var(--s2);
         }
 
-        .form-card-title {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: var(--dark);
+        .card-title i {
+            color: var(--brand);
+        }
+
+        .card-sub {
+            font-size: var(--fs-sm);
+            color: var(--ink-3);
+            margin-top: 3px;
+        }
+
+        .card-body {
+            padding: var(--s5) var(--s6);
+        }
+
+        /* Error alert */
+        .alert-error {
             display: flex;
             align-items: center;
-            gap: 7px
+            gap: 8px;
+            background: var(--danger-tint);
+            border: 1px solid #f0c4c0;
+            color: #b23c34;
+            border-radius: var(--r-sm);
+            padding: 10px 14px;
+            font-size: var(--fs-sm);
+            margin-bottom: var(--s4);
         }
 
-        .form-card-sub {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 2px
+        /* Form fields — clean, no numbered steps */
+        .field {
+            margin-bottom: var(--s5);
         }
 
-        .form-body {
-            padding: 20px
+        .field:last-child {
+            margin-bottom: 0;
         }
 
-        .step-row {
-            display: flex;
-            flex-direction: column;
-            gap: 16px
-        }
-
-        .step-item {
-            display: flex;
-            gap: 14px
-        }
-
-        .step-num {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: #fff;
-            font-size: 0.75rem;
-            font-weight: 800;
+        .field-label {
             display: flex;
             align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            margin-top: 1px
+            gap: var(--s2);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
+            color: var(--ink);
+            margin-bottom: 7px;
         }
 
-        .step-content {
-            flex: 1
+        .tag {
+            font-size: 0.66rem;
+            font-weight: var(--fw-bold);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 2px 7px;
+            border-radius: var(--r-pill);
         }
 
-        .step-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px
+        .tag-req {
+            background: var(--brand-tint);
+            color: var(--brand-strong);
         }
 
-        .step-tag {
-            font-size: 0.68rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            background: #f3f4f6;
-            padding: 2px 8px;
-            border-radius: 10px
+        .tag-opt {
+            background: var(--surface-2);
+            color: var(--ink-3);
         }
 
-        .step-divider {
-            width: 1px;
-            background: var(--card-border);
-            margin-left: 13px;
-            min-height: 12px
-        }
-
-        .form-input,
         .form-select,
+        .form-input,
         .form-textarea {
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.87rem;
-            color: var(--text);
+            padding: 10px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            color: var(--ink);
             background: #fff;
             outline: none;
             font-family: inherit;
-            transition: border-color 0.15s, box-shadow 0.15s
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
 
-        .form-input:focus,
         .form-select:focus,
+        .form-input:focus,
         .form-textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
         .form-select {
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239c968c' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 10px center;
-            padding-right: 32px;
-            cursor: pointer
+            background-position: right 12px center;
+            padding-right: 34px;
         }
 
         .form-textarea {
             resize: vertical;
-            min-height: 72px;
-            line-height: 1.6
+            min-height: 70px;
         }
 
         .form-hint {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-top: 4px
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
+            margin-top: 5px;
         }
 
-        optgroup {
-            font-weight: 700;
-            color: var(--dark)
-        }
-
+        /* Tray box (shown only for tray units) — JS toggles .show */
         .tray-box {
-            background: #fffbeb;
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            padding: 14px 16px;
-            display: none
+            display: none;
         }
 
         .tray-box.show {
-            display: block
+            display: block;
         }
 
         .tray-box-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 6px
+            gap: var(--s3);
         }
 
         .tray-box-label {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: #78350f;
-            white-space: nowrap
+            font-size: var(--fs-sm);
+            color: var(--ink-2);
+            white-space: nowrap;
         }
 
         .tray-count-input {
-            width: 80px;
-            padding: 7px 10px;
-            border: 1.5px solid #f59e0b;
-            border-radius: 8px;
-            font-size: 0.92rem;
-            font-weight: 700;
-            color: var(--dark);
-            text-align: center;
-            outline: none;
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            color: var(--ink);
             background: #fff;
-            font-family: inherit
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
 
         .tray-count-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.12)
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px var(--brand-ring);
         }
 
         .tray-preview-text {
-            font-size: 0.75rem;
-            color: #92400e;
-            font-style: italic
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
+            margin-top: 7px;
         }
 
+        /* qtyGroup — JS toggles style.display; hidden by default */
         #qtyGroup {
-            display: none
+            display: none;
         }
 
-        .preview-box {
-            background: #f8f9fa;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            padding: 12px 14px;
+        /* notesStep — JS sets display:flex; hidden by default. Make flex lay out cleanly. */
+        #notesStep {
             display: none;
-            margin-top: 4px
+            flex-direction: column;
+        }
+
+        /* Batch code preview — JS toggles style.display; hidden by default */
+        .preview-box {
+            display: none;
+            margin-top: var(--s5);
+            background: var(--brand-tint);
+            border: 1px solid var(--brand-tint-2);
+            border-radius: var(--r-sm);
+            padding: var(--s4);
         }
 
         .preview-box-label {
-            font-size: 0.68rem;
-            font-weight: 800;
+            font-size: 0.66rem;
+            font-weight: var(--fw-bold);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            margin-bottom: 5px
+            letter-spacing: 0.06em;
+            color: var(--brand-strong);
+            margin-bottom: 6px;
         }
 
         .preview-code {
-            font-family: monospace;
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--dark)
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 1rem;
+            font-weight: var(--fw-bold);
+            color: var(--ink);
+            letter-spacing: 0.02em;
         }
 
         .preview-expiry {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 3px
+            font-size: var(--fs-xs);
+            color: var(--ink-2);
+            margin-top: 4px;
         }
 
-        .alert-error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #991b1b;
-            padding: 11px 14px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px
-        }
-
+        /* Submit — JS sets display:flex; hidden by default */
         .btn-submit {
-            width: 100%;
-            padding: 11px;
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            border-radius: 8px;
-            font-size: 0.92rem;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            margin-top: 20px
+            width: 100%;
+            margin-top: var(--s5);
+            padding: 12px;
+            background: var(--brand);
+            color: #fff;
+            border: none;
+            border-radius: var(--r-sm);
+            font-size: var(--fs-base);
+            font-weight: var(--fw-semi);
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.14s;
         }
 
         .btn-submit:hover {
-            background: var(--primary);
-            color: #fff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px rgba(230, 126, 34, 0.3)
+            background: var(--brand-strong);
         }
 
-        .right-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 16px
-        }
-
-        .reminder-card,
-        .id-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            overflow: hidden
-        }
-
-        .reminder-card-header,
-        .id-card-header {
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--card-border);
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: var(--dark)
-        }
-
-        .reminder-card-body,
-        .id-card-body {
-            padding: 16px 18px
-        }
-
-        .reminder-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 7px 0;
-            border-bottom: 1px solid #f3f4f6;
-            font-size: 0.83rem
-        }
-
-        .reminder-row:last-child {
-            border-bottom: none;
-            padding-bottom: 0
-        }
-
-        .reminder-row:first-child {
-            padding-top: 0
-        }
-
-        .reminder-key {
-            color: var(--text-muted)
-        }
-
-        .reminder-val {
-            font-weight: 700;
-            color: var(--primary)
-        }
-
-        .id-note {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 12px
-        }
-
-        .id-examples {
-            background: #f8f9fa;
-            border: 1px solid var(--card-border);
-            border-radius: 7px;
-            padding: 10px 12px;
-            font-family: monospace;
-            font-size: 0.78rem;
-            color: var(--dark2);
-            line-height: 2
-        }
-
-        .id-physical-note {
-            margin-top: 10px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            display: flex;
-            align-items: flex-start;
-            gap: 6px;
-            line-height: 1.55
-        }
-
-        .id-physical-note i {
-            color: var(--primary);
-            margin-top: 1px;
-            flex-shrink: 0
-        }
-
+        /* ── Success card ── */
         .success-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            overflow: hidden
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-lg);
+            overflow: hidden;
         }
 
         .success-top {
-            background: linear-gradient(135deg, #065f46, #047857);
-            padding: 22px;
             text-align: center;
-            position: relative;
-            overflow: hidden
-        }
-
-        .success-top::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse at 70% 30%, rgba(255, 255, 255, 0.1), transparent 60%)
+            padding: var(--s6) var(--s6) var(--s5);
+            background: var(--ok-tint);
+            border-bottom: 1px solid #a7dcbc;
         }
 
         .success-icon {
-            font-size: 2.2rem;
-            position: relative;
-            z-index: 1;
-            margin-bottom: 8px
+            width: 54px;
+            height: 54px;
+            margin: 0 auto var(--s3);
+            background: var(--ok);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
         }
 
         .success-title {
-            font-size: 1rem;
-            font-weight: 800;
-            color: #fff;
-            position: relative;
-            z-index: 1;
-            margin-bottom: 3px
+            font-size: var(--fs-h2);
+            font-weight: var(--fw-bold);
+            color: #1f7a48;
         }
 
         .success-sub {
-            font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.75);
-            position: relative;
-            z-index: 1
+            font-size: var(--fs-sm);
+            color: #2b7a52;
+            margin-top: 3px;
         }
 
         .success-meta {
             display: flex;
-            gap: 10px;
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--card-border);
-            flex-wrap: wrap
+            flex-wrap: wrap;
+            gap: var(--s2);
+            padding: var(--s5) var(--s6);
         }
 
         .meta-pill {
-            background: #f3f4f6;
-            border-radius: 7px;
-            padding: 6px 12px;
-            font-size: 0.8rem
+            font-size: var(--fs-xs);
+            color: var(--ink-2);
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: var(--r-pill);
+            padding: 5px 12px;
         }
 
         .meta-pill strong {
-            color: var(--dark)
-        }
-
-        .meta-pill span {
-            color: var(--text-muted)
+            color: var(--ink);
+            font-weight: var(--fw-semi);
         }
 
         .expiry-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 2px 7px;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 700
-        }
-
-        .expiry-ok {
-            background: #d1fae5;
-            color: #065f46
+            display: inline-block;
+            margin-left: 4px;
+            padding: 1px 7px;
+            border-radius: var(--r-pill);
+            font-size: 0.66rem;
+            font-weight: var(--fw-bold);
         }
 
         .expiry-warn {
-            background: #fef3c7;
-            color: #92400e
+            background: var(--warn-tint);
+            color: #8a5a0c;
+        }
+
+        .expiry-ok {
+            background: var(--ok-tint);
+            color: #1f7a48;
         }
 
         .codes-section {
-            padding: 16px 18px
+            padding: 0 var(--s6) var(--s5);
         }
 
         .codes-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px
+            margin-bottom: var(--s3);
         }
 
         .codes-label {
-            font-size: 0.68rem;
-            font-weight: 800;
+            font-size: 0.66rem;
+            font-weight: var(--fw-bold);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted)
+            letter-spacing: 0.06em;
+            color: var(--ink-3);
         }
 
         .btn-copy-all {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 5px 12px;
-            background: transparent;
-            color: var(--primary);
-            border: 1.5px solid var(--primary);
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 700;
+            padding: 5px 11px;
+            border-radius: var(--r-sm);
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            background: var(--surface);
+            color: var(--ink-2);
+            border: 1px solid var(--line-strong);
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.2s
+            transition: all 0.14s;
         }
 
         .btn-copy-all:hover {
-            background: var(--primary);
-            color: #fff
+            background: var(--surface-2);
+            color: var(--ink);
+            border-color: var(--ink-3);
         }
 
         .codes-list {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            max-height: 280px;
-            overflow-y: auto
         }
 
         .code-item {
             display: flex;
             align-items: center;
-            background: #f8f9fa;
-            border: 1px solid var(--card-border);
-            border-radius: 7px;
+            gap: var(--s3);
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
             padding: 9px 12px;
-            gap: 10px
         }
 
         .code-num {
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            min-width: 22px
+            font-size: var(--fs-xs);
+            color: var(--ink-3);
+            font-weight: var(--fw-semi);
         }
 
         .code-val {
-            font-family: monospace;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--dark);
-            flex: 1
+            flex: 1;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
+            color: var(--ink);
         }
 
         .btn-copy-single {
-            background: none;
-            border: none;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface);
+            border: 1px solid var(--line-strong);
+            border-radius: 6px;
+            color: var(--ink-3);
             cursor: pointer;
-            color: var(--text-muted);
-            padding: 3px 6px;
-            border-radius: 4px;
-            transition: color 0.15s;
-            font-size: 0.85rem
+            transition: all 0.14s;
         }
 
         .btn-copy-single:hover {
-            color: var(--primary)
+            background: var(--brand-tint);
+            color: var(--brand-strong);
+            border-color: var(--brand);
         }
 
         .btn-copy-single.copied {
-            color: #10b981
+            background: var(--ok-tint);
+            color: #1f7a48;
+            border-color: #a7dcbc;
         }
 
         .btn-add-another {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            margin: 0 18px 18px;
-            padding: 10px;
-            background: transparent;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.15s;
-            text-decoration: none
+            gap: 8px;
+            margin: 0 var(--s6) var(--s6);
+            padding: 11px;
+            background: var(--brand);
+            color: #fff;
+            border-radius: var(--r-sm);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-semi);
+            transition: background 0.14s;
         }
 
         .btn-add-another:hover {
-            border-color: var(--primary);
-            color: var(--primary)
+            background: var(--brand-strong);
+        }
+
+        /* ── Right reference panel ── */
+        .side-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            margin-bottom: var(--s4);
+        }
+
+        .side-head {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: var(--s4) var(--s5);
+            border-bottom: 1px solid var(--line);
+            font-size: var(--fs-sm);
+            font-weight: var(--fw-bold);
+            color: var(--ink);
+        }
+
+        .side-body {
+            padding: var(--s4) var(--s5);
+        }
+
+        .rem-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: var(--fs-sm);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .rem-row:last-child {
+            border-bottom: none;
+        }
+
+        .rem-key {
+            color: var(--ink-2);
+        }
+
+        .rem-val {
+            font-weight: var(--fw-semi);
+            color: var(--ink);
+        }
+
+        .fmt-note {
+            font-size: var(--fs-xs);
+            color: var(--ink-2);
+            line-height: 1.6;
+            margin-bottom: var(--s3);
+        }
+
+        .fmt-note strong {
+            color: var(--ink);
+        }
+
+        .fmt-examples {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: var(--fs-xs);
+            color: var(--ink-2);
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 10px 12px;
+            line-height: 1.8;
+            margin-bottom: var(--s3);
+        }
+
+        .fmt-physical {
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+            font-size: var(--fs-xs);
+            color: var(--ink-2);
+            line-height: 1.5;
+            background: var(--warn-tint);
+            border: 1px solid #f2ddb0;
+            border-radius: var(--r-sm);
+            padding: 9px 12px;
+        }
+
+        .fmt-physical i {
+            color: #8a5a0c;
+            margin-top: 2px;
+            flex-shrink: 0;
         }
     </style>
 </head>
@@ -786,21 +692,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php include '../../includes/sidebar.php'; ?>
         <div class="main-content">
 
-            <a href="index.php" class="back-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6" />
-                </svg> Back to Stock Batches</a>
+            <!-- Mobile topbar -->
+            <div class="mobile-topbar">
+                <div class="mobile-brand">
+                    <div class="mobile-brand-icon"><i class="fa-solid fa-egg"></i></div>
+                    HATCH Admin
+                </div>
+                <button class="icon-btn" onclick="openSidebar()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </div>
 
+            <a href="index.php" class="back-link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Back to Stock Batches
+            </a>
+
+            <!-- Page Header -->
             <div class="page-header">
                 <div>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                        <button class="mobile-menu-btn" onclick="openSidebar()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                            </svg></button>
-                        <h1 class="page-title">Add Stock Batch</h1>
-                    </div>
-                    <div class="page-title-sub">Log new stock — system generates the batch ID automatically.</div>
+                    <h1 class="page-title">Add Stock Batch</h1>
+                    <div class="page-title-sub">Log new stock — the system generates the batch ID automatically.</div>
                 </div>
             </div>
 
@@ -809,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if ($successBatches): ?>
                         <div class="success-card">
                             <div class="success-top">
-                                <div class="success-icon">✅</div>
+                                <div class="success-icon"><i class="fa-solid fa-check"></i></div>
                                 <div class="success-title">Batch Logged Successfully</div>
                                 <div class="success-sub"><?= isTray($successBatches['unit']) ? $successBatches['tray_count'] . ' tray(s) added' : $successBatches['tray_count'] . ' unit(s) added' ?></div>
                             </div>
@@ -827,109 +745,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <?php endforeach; ?>
                                 </div>
                             </div>
-                            <a href="add.php" class="btn-add-another"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <a href="add.php" class="btn-add-another">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="12" y1="5" x2="12" y2="19" />
                                     <line x1="5" y1="12" x2="19" y2="12" />
-                                </svg> Add Another Batch</a>
+                                </svg>
+                                Add Another Batch
+                            </a>
                         </div>
                     <?php else: ?>
-                        <div class="form-card">
-                            <div class="form-card-header">
-                                <div>
-                                    <div class="form-card-title"><i class="fa-solid fa-box-open" style="color:var(--primary);"></i> New Stock Batch</div>
-                                    <div class="form-card-sub">Select a product and enter the quantity to log.</div>
-                                </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title"><i class="fa-solid fa-box-open"></i> New Stock Batch</div>
+                                <div class="card-sub">Select a product and enter the quantity to log.</div>
                             </div>
-                            <div class="form-body">
+                            <div class="card-body">
                                 <?php if ($error): ?><div class="alert-error"><i class="fa-solid fa-circle-xmark"></i> <?= htmlspecialchars($error) ?></div><?php endif; ?>
                                 <form method="POST" action="add.php" id="batchForm">
-                                    <div class="step-row">
-                                        <div class="step-item">
-                                            <div class="step-num">1</div>
-                                            <div class="step-content">
-                                                <div class="step-label">Select Product <span class="step-tag">Required</span></div>
-                                                <select name="product_id" id="productSel" class="form-select" required onchange="onProductChange(this)">
-                                                    <option value="">— Select Product —</option>
-                                                    <?php foreach ($tree as $catName => $units): foreach ($units as $unitName => $prods): ?>
-                                                            <optgroup label="<?= htmlspecialchars($catName) ?> — <?= htmlspecialchars($unitName) ?>">
-                                                                <?php foreach ($prods as $p): ?>
-                                                                    <option value="<?= $p['id'] ?>" data-unit="<?= htmlspecialchars($p['unit']) ?>" data-category="<?= htmlspecialchars($p['category']) ?>" data-name="<?= htmlspecialchars($p['name']) ?>" <?= (isset($_POST['product_id']) && $_POST['product_id'] == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
-                                                                <?php endforeach; ?>
-                                                            </optgroup>
-                                                    <?php endforeach;
-                                                    endforeach; ?>
-                                                </select>
+
+                                    <!-- Product -->
+                                    <div class="field">
+                                        <div class="field-label">Product <span class="tag tag-req">Required</span></div>
+                                        <select name="product_id" id="productSel" class="form-select" required onchange="onProductChange(this)">
+                                            <option value="">— Select a product —</option>
+                                            <?php foreach ($tree as $catName => $units): foreach ($units as $unitName => $prods): ?>
+                                                    <optgroup label="<?= htmlspecialchars($catName) ?> — <?= htmlspecialchars($unitName) ?>">
+                                                        <?php foreach ($prods as $p): ?>
+                                                            <option value="<?= $p['id'] ?>" data-unit="<?= htmlspecialchars($p['unit']) ?>" data-category="<?= htmlspecialchars($p['category']) ?>" data-name="<?= htmlspecialchars($p['name']) ?>" <?= (isset($_POST['product_id']) && $_POST['product_id'] == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </optgroup>
+                                            <?php endforeach;
+                                            endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <!-- Quantity -->
+                                    <div class="field">
+                                        <div class="field-label" id="step2Label">Quantity <span class="tag tag-req" id="step2Num">Required</span></div>
+                                        <!-- TRAY -->
+                                        <div class="tray-box" id="trayBox">
+                                            <div class="tray-box-row">
+                                                <span class="tray-box-label">Number of trays:</span>
+                                                <input type="text" inputmode="numeric" pattern="[0-9]*" name="tray_count" id="trayCountInput" class="tray-count-input" placeholder="0" oninput="updateTrayPreview()">
                                             </div>
+                                            <div class="tray-preview-text" id="trayPreview">Enter number of trays to add</div>
                                         </div>
-                                        <div class="step-divider"></div>
-                                        <div class="step-item">
-                                            <div class="step-num" id="step2Num">2</div>
-                                            <div class="step-content">
-                                                <div class="step-label" id="step2Label">Quantity <span class="step-tag">Required</span></div>
-                                                <!-- TRAY -->
-                                                <div class="tray-box" id="trayBox">
-                                                    <div class="tray-box-row">
-                                                        <span class="tray-box-label">Number of trays:</span>
-                                                        <input type="text" inputmode="numeric" pattern="[0-9]*" name="tray_count" id="trayCountInput" class="tray-count-input" placeholder="0" oninput="updateTrayPreview()">
-                                                    </div>
-                                                    <div class="tray-preview-text" id="trayPreview">Enter number of trays to add</div>
-                                                </div>
-                                                <!-- NON-TRAY -->
-                                                <div id="qtyGroup">
-                                                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="quantity" id="qtyInput" class="form-input" placeholder="Enter quantity">
-                                                    <div class="form-hint" id="qtyHint"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="step-divider"></div>
-                                        <div class="step-item" id="notesStep" style="display:none;">
-                                            <div class="step-num">3</div>
-                                            <div class="step-content">
-                                                <div class="step-label">Notes <span class="step-tag">Optional</span></div>
-                                                <textarea name="notes" class="form-textarea" placeholder="e.g. Morning collection, slightly smaller than usual…"></textarea>
-                                            </div>
+                                        <!-- NON-TRAY -->
+                                        <div id="qtyGroup">
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" name="quantity" id="qtyInput" class="form-input" placeholder="Enter quantity">
+                                            <div class="form-hint" id="qtyHint"></div>
                                         </div>
                                     </div>
+
+                                    <!-- Notes -->
+                                    <div class="field" id="notesStep">
+                                        <div class="field-label">Notes <span class="tag tag-opt">Optional</span></div>
+                                        <textarea name="notes" class="form-textarea" placeholder="e.g. Morning collection, slightly smaller than usual…"></textarea>
+                                    </div>
+
+                                    <!-- Batch code preview -->
                                     <div class="preview-box" id="previewBox">
                                         <div class="preview-box-label">Batch Code Preview</div>
                                         <div class="preview-code" id="previewCode"></div>
                                         <div class="preview-expiry" id="previewExpiry"></div>
                                     </div>
-                                    <button type="submit" class="btn-submit" id="submitBtn" style="display:none;"><i class="fa-solid fa-circle-check"></i><span id="submitLabel">Log Batch</span></button>
+
+                                    <button type="submit" class="btn-submit" id="submitBtn"><i class="fa-solid fa-circle-check"></i><span id="submitLabel">Log Batch</span></button>
                                 </form>
                             </div>
                         </div>
                     <?php endif; ?>
                 </div>
 
-                <div class="right-panel">
-                    <div class="reminder-card">
-                        <div class="reminder-card-header"><i class="fa-solid fa-clock" style="color:#f59e0b;"></i> Expiry Reminders</div>
-                        <div class="reminder-card-body">
-                            <div class="reminder-row"><span class="reminder-key">Eggs (any)</span><span class="reminder-val">21 days</span></div>
-                            <div class="reminder-row"><span class="reminder-key">Cracked Eggs</span><span class="reminder-val">2 days</span></div>
-                            <div class="reminder-row"><span class="reminder-key">Alive Chicken</span><span class="reminder-val">1 day</span></div>
-                            <div class="reminder-row"><span class="reminder-key">Dressed Chicken</span><span class="reminder-val">3 days</span></div>
+                <!-- Right reference panel -->
+                <div>
+                    <div class="side-card">
+                        <div class="side-head"><i class="fa-solid fa-clock" style="color:var(--warn);"></i> Expiry Reminders</div>
+                        <div class="side-body">
+                            <div class="rem-row"><span class="rem-key">Eggs (any)</span><span class="rem-val">21 days</span></div>
+                            <div class="rem-row"><span class="rem-key">Cracked Eggs</span><span class="rem-val">2 days</span></div>
+                            <div class="rem-row"><span class="rem-key">Alive Chicken</span><span class="rem-val">1 day</span></div>
+                            <div class="rem-row"><span class="rem-key">Dressed Chicken</span><span class="rem-val">3 days</span></div>
                         </div>
                     </div>
-                    <div class="id-card">
-                        <div class="id-card-header"><i class="fa-solid fa-tag" style="color:var(--primary);"></i> Batch ID Format</div>
-                        <div class="id-card-body">
-                            <div class="id-note">One batch record per entry. <strong>Trays:</strong> remaining = number of trays. <strong>Others:</strong> remaining = piece/unit count.</div>
-                            <div class="id-examples">
+                    <div class="side-card">
+                        <div class="side-head"><i class="fa-solid fa-tag" style="color:var(--brand);"></i> Batch ID Format</div>
+                        <div class="side-body">
+                            <div class="fmt-note">One batch record per entry. <strong>Trays:</strong> remaining = number of trays. <strong>Others:</strong> remaining = piece / unit count.</div>
+                            <div class="fmt-examples">
                                 TRAY-LARGE-20260603-001<br>
                                 EGG-JUMBO-20260603-001<br>
                                 CRACKED-20260603-001<br>
                                 CHK-ALIVE-20260603-001<br>
                                 CHK-PROC-20260603-001
                             </div>
-                            <div class="id-physical-note"><i class="fa-solid fa-pen"></i> After logging, write the batch ID on the physical tray or container so staff can match it to the system.</div>
+                            <div class="fmt-physical"><i class="fa-solid fa-pen"></i> After logging, write the batch ID on the physical tray or container so staff can match it to the system.</div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+
+        </div><!-- /.main-content -->
+    </div><!-- /.admin-layout -->
 
     <script>
         function getExpiryDays(category, unit) {
