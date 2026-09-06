@@ -19,6 +19,19 @@ $thisYear = date('Y');
 $dateFrom     = trim($_GET['from']   ?? date('Y-m-01'));
 $dateTo       = trim($_GET['to']     ?? $today);
 $statusFilter = trim($_GET['status'] ?? '');
+
+// ── Period shortcut: daily / weekly / monthly ─────────────────
+$period = trim($_GET['period'] ?? '');
+if ($period === 'daily') {
+    $dateFrom = $today;
+    $dateTo   = $today;
+} elseif ($period === 'weekly') {
+    $dateFrom = date('Y-m-d', strtotime('monday this week'));
+    $dateTo   = $today;
+} elseif ($period === 'monthly') {
+    $dateFrom = date('Y-m-01');
+    $dateTo   = $today;
+}
 if ($dateFrom > $dateTo) $dateFrom = $dateTo;
 
 $dateFromSql = $conn->real_escape_string($dateFrom);
@@ -92,10 +105,11 @@ function orderStatusPill(string $s): string
 }
 
 // ── Print chrome ──────────────────────────────────────────────
+$periodLabel = $period === 'daily' ? 'Today' : ($period === 'weekly' ? 'This Week' : ($period === 'monthly' ? 'This Month' : 'Custom range'));
 $printTitle    = 'Orders Report';
-$printSubtitle = date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
+$printSubtitle = ($period ? $periodLabel . ' · ' : '') . date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
 $printMeta     = [
-    ['label' => 'Period',  'value' => date('M j, Y', strtotime($dateFrom)) . ' to ' . date('M j, Y', strtotime($dateTo))],
+    ['label' => 'Period',  'value' => $periodLabel . ' (' . date('M j', strtotime($dateFrom)) . ' – ' . date('M j', strtotime($dateTo)) . ')'],
     ['label' => 'Status',  'value' => $statusFilter ? ($statusLabelMap[$statusFilter] ?? ucfirst($statusFilter)) : 'All statuses'],
     ['label' => 'Total Orders', 'value' => number_format($totalOrders)],
 ];

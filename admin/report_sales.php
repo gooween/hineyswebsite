@@ -18,6 +18,19 @@ $today = date('Y-m-d');
 $dateFrom     = trim($_GET['from']   ?? date('Y-m-01'));
 $dateTo       = trim($_GET['to']     ?? $today);
 $statusFilter = trim($_GET['status'] ?? '');
+
+// Period shortcut: daily / weekly / monthly (overrides from/to)
+$period = trim($_GET['period'] ?? '');
+if ($period === 'daily') {
+    $dateFrom = date('Y-m-d');
+    $dateTo = date('Y-m-d');
+} elseif ($period === 'weekly') {
+    $dateFrom = date('Y-m-d', strtotime('monday this week'));
+    $dateTo = date('Y-m-d');
+} elseif ($period === 'monthly') {
+    $dateFrom = date('Y-m-01');
+    $dateTo = date('Y-m-d');
+}
 if ($dateFrom > $dateTo) $dateFrom = $dateTo;
 
 $dateFromSql = $conn->real_escape_string($dateFrom);
@@ -475,15 +488,16 @@ $activePage = 'report_sales';
                     <div class="quick-ranges">
                         <?php
                         $ranges = [
-                            'Today'      => [date('Y-m-d'), date('Y-m-d')],
-                            'This Week'  => [date('Y-m-d', strtotime('monday this week')), date('Y-m-d')],
-                            'This Month' => [date('Y-m-01'), date('Y-m-d')],
-                            'This Year'  => [date('Y-01-01'), date('Y-m-d')],
+                            'Today'      => ['daily',   [date('Y-m-d'), date('Y-m-d')]],
+                            'This Week'  => ['weekly',  [date('Y-m-d', strtotime('monday this week')), date('Y-m-d')]],
+                            'This Month' => ['monthly', [date('Y-m-01'), date('Y-m-d')]],
+                            'This Year'  => ['',        [date('Y-01-01'), date('Y-m-d')]],
                         ];
-                        foreach ($ranges as $lbl => [$f, $t]):
+                        foreach ($ranges as $lbl => [$per, $ft]):
+                            [$f, $t] = $ft;
                             $isActive = ($dateFrom === $f && $dateTo === $t && !$statusFilter);
                         ?>
-                            <a href="report_sales.php?from=<?= $f ?>&to=<?= $t ?>" class="qr-link <?= $isActive ? 'active' : '' ?>"><?= $lbl ?></a>
+                            <a href="report_sales.php?from=<?= $f ?>&to=<?= $t ?><?= $per ? '&period=' . $per : '' ?>" class="qr-link <?= $isActive ? 'active' : '' ?>"><?= $lbl ?></a>
                         <?php endforeach; ?>
                     </div>
 
@@ -749,11 +763,28 @@ $activePage = 'report_sales';
 
         // Open the print view carrying the current filters
         function printReport() {
-            const params = new URLSearchParams({
-                from: '<?= htmlspecialchars($dateFrom) ?>',
-                to: '<?= htmlspecialchars($dateTo) ?>',
-                status: '<?= htmlspecialchars($statusFilter) ?>'
-            });
+            const from = '<?= htmlspecialchars($dateFrom) ?>';
+            const to = '<?= htmlspecialchars($dateTo) ?>';
+            const status = '<?= htmlspecialchars($statusFilter) ?>';
+            const pad = n => String(n).padStart(2, '0');
+            const d = new Date();
+            const todayStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+            const mon = new Date(d);
+            mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+            const weekStr = mon.getFullYear() + '-' + pad(mon.getMonth() + 1) + '-' + pad(mon.getDate());
+            const monthStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-01';
+            let period = '';
+            if (from === todayStr && to === todayStr) period = 'daily';
+            else if (from === weekStr && to === todayStr) period = 'weekly';
+            else if (from === monthStr && to === todayStr) period = 'monthly';
+            const params = new URLSearchParams();
+            if (period) {
+                params.set('period', period);
+            } else {
+                params.set('from', from);
+                params.set('to', to);
+            }
+            if (status) params.set('status', status);
             window.open('report_sales_print.php?' + params.toString(), '_blank');
         }
 

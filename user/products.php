@@ -1378,4 +1378,4 @@ $totalFound = $products ? $products->num_rows : 0;
     </script>
 </body>
 
-</html>
+</html> 

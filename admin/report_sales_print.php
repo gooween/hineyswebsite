@@ -19,6 +19,20 @@ $today = date('Y-m-d');
 // ── Same date filter as report_sales.php ──────────────────────
 $dateFrom = trim($_GET['from'] ?? date('Y-m-01'));
 $dateTo   = trim($_GET['to']   ?? $today);
+
+// ── Period shortcut: daily / weekly / monthly ─────────────────
+// When ?period is given, it overrides from/to with a computed range.
+$period = trim($_GET['period'] ?? '');
+if ($period === 'daily') {
+    $dateFrom = $today;
+    $dateTo   = $today;
+} elseif ($period === 'weekly') {
+    $dateFrom = date('Y-m-d', strtotime('monday this week'));
+    $dateTo   = $today;
+} elseif ($period === 'monthly') {
+    $dateFrom = date('Y-m-01');
+    $dateTo   = $today;
+}
 if ($dateFrom > $dateTo) $dateFrom = $dateTo;
 
 $dateFromSql = $conn->real_escape_string($dateFrom);
@@ -87,10 +101,11 @@ $catPerf = $conn->query("
 ");
 
 // ── Print chrome ──────────────────────────────────────────────
+$periodLabel = $period === 'daily' ? 'Today' : ($period === 'weekly' ? 'This Week' : ($period === 'monthly' ? 'This Month' : 'Custom range'));
 $printTitle    = 'Sales Report';
-$printSubtitle = date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
+$printSubtitle = ($period ? $periodLabel . ' · ' : '') . date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
 $printMeta     = [
-    ['label' => 'Period',      'value' => date('M j, Y', strtotime($dateFrom)) . ' to ' . date('M j, Y', strtotime($dateTo))],
+    ['label' => 'Period',      'value' => $periodLabel . ' (' . date('M j', strtotime($dateFrom)) . ' – ' . date('M j', strtotime($dateTo)) . ')'],
     ['label' => 'Total Sales', 'value' => peso($totalRevenue)],
     ['label' => 'Paid Orders', 'value' => number_format($paidOrders)],
     ['label' => 'Basis',       'value' => 'Paid, non-cancelled orders'],
@@ -99,31 +114,29 @@ $printMeta     = [
 require '../admin/report_print_header.php';
 ?>
 
-<!-- Summary figures -->
-<table class="rp-summary">
-    <tr>
-        <td>
-            <div class="s-label">Total Sales</div>
-            <div class="s-value"><?= peso($totalRevenue) ?></div>
-            <div class="s-sub">Paid revenue in range</div>
-        </td>
-        <td>
-            <div class="s-label">Paid Orders</div>
-            <div class="s-value"><?= number_format($paidOrders) ?></div>
-            <div class="s-sub">Completed &amp; paid</div>
-        </td>
-        <td>
-            <div class="s-label">Avg Order Value</div>
-            <div class="s-value"><?= peso($avgOrder) ?></div>
-            <div class="s-sub">Revenue &divide; orders</div>
-        </td>
-        <td>
-            <div class="s-label">Units Sold</div>
-            <div class="s-value"><?= number_format($totalUnits) ?></div>
-            <div class="s-sub">Total items</div>
-        </td>
-    </tr>
-</table>
+<!-- KPI summary -->
+<div class="rp-kpis">
+    <div class="rp-kpi accent-green">
+        <div class="k-label">Total Sales</div>
+        <div class="k-value" style="font-size:1.05rem;"><?= peso($totalRevenue) ?></div>
+        <div class="k-sub">Paid revenue in range</div>
+    </div>
+    <div class="rp-kpi accent-blue">
+        <div class="k-label">Paid Orders</div>
+        <div class="k-value"><?= number_format($paidOrders) ?></div>
+        <div class="k-sub">Completed &amp; paid</div>
+    </div>
+    <div class="rp-kpi accent-amber">
+        <div class="k-label">Avg Order Value</div>
+        <div class="k-value" style="font-size:1.05rem;"><?= peso($avgOrder) ?></div>
+        <div class="k-sub">Revenue ÷ orders</div>
+    </div>
+    <div class="rp-kpi accent-blue">
+        <div class="k-label">Units Sold</div>
+        <div class="k-value"><?= number_format($totalUnits) ?></div>
+        <div class="k-sub">Total items</div>
+    </div>
+</div>
 
 <!-- Top products -->
 <div class="rp-section-title">Top Products by Revenue</div>
