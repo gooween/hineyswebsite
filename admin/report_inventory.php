@@ -53,7 +53,7 @@ $totalProducts = (int)($r->fetch_assoc()['cnt'] ?? 0);
 $r = $conn->query("
     SELECT COUNT(*) AS cnt FROM inventory i
     JOIN products p ON p.id = i.product_id
-    WHERE p.is_active = 1 AND i.quantity <= i.reorder_level AND i.quantity > 0
+    WHERE p.is_active = 1 AND (SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') <= i.reorder_level AND (SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') > 0
     {$catWhere}
 ");
 $lowStockCount = (int)($r->fetch_assoc()['cnt'] ?? 0);
@@ -62,14 +62,14 @@ $lowStockCount = (int)($r->fetch_assoc()['cnt'] ?? 0);
 $r = $conn->query("
     SELECT COUNT(*) AS cnt FROM inventory i
     JOIN products p ON p.id = i.product_id
-    WHERE p.is_active = 1 AND i.quantity = 0
+    WHERE p.is_active = 1 AND (SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') = 0
     {$catWhere}
 ");
 $outOfStockCount = (int)($r->fetch_assoc()['cnt'] ?? 0);
 
 // ── KPI 4: Total stock value (qty × price) ───────────────────
 $r = $conn->query("
-    SELECT COALESCE(SUM(i.quantity * p.price), 0) AS val
+    SELECT COALESCE(SUM((SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') * p.price), 0) AS val
     FROM inventory i
     JOIN products p ON p.id = i.product_id
     WHERE p.is_active = 1
@@ -82,12 +82,12 @@ $stockLabels = [];
 $stockQtys   = [];
 $stockColors = [];
 $r = $conn->query("
-    SELECT p.name, i.quantity, i.reorder_level
+    SELECT p.name, (SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') AS quantity, i.reorder_level
     FROM inventory i
     JOIN products p ON p.id = i.product_id
     WHERE p.is_active = 1
     {$catWhere}
-    ORDER BY i.quantity DESC
+    ORDER BY quantity DESC
     LIMIT 15
 ");
 while ($row = $r->fetch_assoc()) {
@@ -103,7 +103,7 @@ $distLabels = [];
 $distData   = [];
 $distColors = ['#e67e22', '#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
 $r = $conn->query("
-    SELECT c.name AS cname, COALESCE(SUM(i.quantity), 0) AS total_qty
+    SELECT c.name AS cname, COALESCE(SUM((SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active')), 0) AS total_qty
     FROM inventory i
     JOIN products p ON p.id = i.product_id
     JOIN categories c ON c.id = p.category_id
@@ -172,14 +172,14 @@ while ($row = $r->fetch_assoc()) {
 $inventoryTable = $conn->query("
     SELECT p.name, p.unit, p.price,
            c.name AS category,
-           i.quantity, i.reorder_level, i.last_updated,
-           (i.quantity * p.price) AS stock_value
+           (SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') AS quantity, i.reorder_level, i.last_updated,
+           ((SELECT COALESCE(SUM(sb.remaining),0) FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active') * p.price) AS stock_value
     FROM inventory i
     JOIN products p ON p.id = i.product_id
     JOIN categories c ON c.id = p.category_id
     WHERE p.is_active = 1
     {$catWhere}
-    ORDER BY i.quantity ASC, p.name ASC
+    ORDER BY quantity ASC, p.name ASC
 ");
 
 // JSON

@@ -19,20 +19,6 @@ $today = date('Y-m-d');
 // ── Same date filter as report_sales.php ──────────────────────
 $dateFrom = trim($_GET['from'] ?? date('Y-m-01'));
 $dateTo   = trim($_GET['to']   ?? $today);
-
-// ── Period shortcut: daily / weekly / monthly ─────────────────
-// When ?period is given, it overrides from/to with a computed range.
-$period = trim($_GET['period'] ?? '');
-if ($period === 'daily') {
-    $dateFrom = $today;
-    $dateTo   = $today;
-} elseif ($period === 'weekly') {
-    $dateFrom = date('Y-m-d', strtotime('monday this week'));
-    $dateTo   = $today;
-} elseif ($period === 'monthly') {
-    $dateFrom = date('Y-m-01');
-    $dateTo   = $today;
-}
 if ($dateFrom > $dateTo) $dateFrom = $dateTo;
 
 $dateFromSql = $conn->real_escape_string($dateFrom);
@@ -40,7 +26,7 @@ $dateToSql   = $conn->real_escape_string($dateTo);
 
 // Revenue basis: paid, non-cancelled orders in range
 $paidWhere = "WHERE DATE(o.created_at) BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
-              AND o.status <> 'cancelled' AND o.payment_status = 'paid'";
+              AND o.status = 'delivered' AND o.payment_status = 'paid'";
 
 // ── KPIs ──────────────────────────────────────────────────────
 $k = $conn->query("
@@ -101,11 +87,10 @@ $catPerf = $conn->query("
 ");
 
 // ── Print chrome ──────────────────────────────────────────────
-$periodLabel = $period === 'daily' ? 'Today' : ($period === 'weekly' ? 'This Week' : ($period === 'monthly' ? 'This Month' : 'Custom range'));
 $printTitle    = 'Sales Report';
-$printSubtitle = ($period ? $periodLabel . ' · ' : '') . date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
+$printSubtitle = date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
 $printMeta     = [
-    ['label' => 'Period',      'value' => $periodLabel . ' (' . date('M j', strtotime($dateFrom)) . ' – ' . date('M j', strtotime($dateTo)) . ')'],
+    ['label' => 'Period',      'value' => date('M j, Y', strtotime($dateFrom)) . ' to ' . date('M j, Y', strtotime($dateTo))],
     ['label' => 'Total Sales', 'value' => peso($totalRevenue)],
     ['label' => 'Paid Orders', 'value' => number_format($paidOrders)],
     ['label' => 'Basis',       'value' => 'Paid, non-cancelled orders'],

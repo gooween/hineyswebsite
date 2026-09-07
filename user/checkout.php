@@ -19,7 +19,8 @@ $gcashNumber   = getSetting($conn, 'gcash_number',   '0917-XXX-XXXX');
 $gcashName     = getSetting($conn, 'gcash_name',     "Hiney's Eggs & Live Chicken");
 $gcashQrPath   = getSetting($conn, 'gcash_qr_path',  '');
 $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto Cortes, Bohol");
-$deliveryFee   = (float)getSetting($conn, 'delivery_fee', '50.00'); // fallback flat fee
+// Delivery fees now come entirely from delivery_zones (per barangay).
+// No flat fallback fee — unmatched barangays are rejected at checkout.
 
 $stmt = $conn->prepare("SELECT full_name, email, phone, address, municipality, barangay, street_address FROM users WHERE id = ? LIMIT 1");
 $stmt->bind_param('i', $uid);
@@ -78,10 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($zrow = $zres->fetch_assoc()) {
                 $actualDeliveryFee = (float)$zrow['fee'];
             } else {
-                // Zone not found among active zones — do NOT silently charge a
-                // surprise flat fee. Ask the customer to reselect so the fee is
-                // always a real, matched zone fee.
-                $errors[] = 'We could not find a delivery fee for the selected barangay. Please reselect your municipality and barangay.';
+                // Barangay not in active delivery zones — no guessed fee.
+                // Ask the customer to reselect; admin should add this zone.
+                $errors[] = 'Sorry, we don\'t deliver to the selected barangay yet. Please choose a different barangay, or contact us so we can add your area.';
             }
             $zstmt->close();
         }
@@ -681,6 +681,22 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
             background: var(--primary-light)
         }
 
+        .payment-option.disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            background: var(--bg, #f7f6f3);
+            border-color: var(--border);
+        }
+
+        .payment-option.disabled:hover {
+            border-color: var(--border);
+            background: var(--bg, #f7f6f3);
+        }
+
+        .payment-option.disabled input[type="radio"] {
+            cursor: not-allowed;
+        }
+
         .payment-option input[type="radio"] {
             width: 18px;
             height: 18px;
@@ -1173,12 +1189,12 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                             </div>
                             <div class="form-card-body">
                                 <div class="payment-options">
-                                    <label class="payment-option <?= ($_POST['payment_method'] ?? 'cod') === 'cod' ? 'selected' : '' ?>">
-                                        <input type="radio" name="payment_method" value="cod" <?= ($_POST['payment_method'] ?? 'cod') === 'cod' ? 'checked' : '' ?> onchange="selectPayment('cod')">
+                                    <label class="payment-option <?= ($_POST['payment_method'] ?? 'cod') === 'cod' ? 'selected' : '' ?>" id="codOption">
+                                        <input type="radio" name="payment_method" value="cod" <?= ($_POST['payment_method'] ?? 'cod') === 'cod' ? 'checked' : '' ?> onchange="selectPayment('cod')" id="codRadio">
                                         <div class="payment-option-icon"><i class="fa-solid fa-money-bill"></i></div>
                                         <div>
-                                            <div class="payment-option-name">Cash on Delivery / Pickup (COD)</div>
-                                            <div class="payment-option-desc">Pay with cash when your order arrives or when you pick it up.</div>
+                                            <div class="payment-option-name">Cash upon Pickup</div>
+                                            <div class="payment-option-desc">Pay with cash when you pick up your order.</div>
                                         </div>
                                     </label>
                                     <label class="payment-option <?= ($_POST['payment_method'] ?? '') === 'gcash' ? 'selected' : '' ?>">
@@ -1258,7 +1274,6 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
     </div>
     <script>
         const CART_TOTAL = <?= $cartTotal ?>;
-        const FALLBACK_FEE = <?= $deliveryFee ?>;
         const SAVED_MUNI = <?= json_encode($savedMuni) ?>;
         const SAVED_BRGY = <?= json_encode($savedBrgy) ?>;
         let CURRENT_FEE = 0; // resolved once a zone is chosen

@@ -852,73 +852,81 @@ $activePage = 'orders';
         /* Status steps tracker */
         .status-steps {
             display: flex;
-            align-items: center;
-            gap: 0;
+            align-items: flex-start;
+            justify-content: space-between;
             margin-bottom: var(--s4);
+            padding: 4px 0;
         }
 
+        /* Each step: fixed-basis column so all are equal width regardless of label */
         .status-step {
-            flex: 1;
+            flex: 1 1 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
-            position: relative;
+            gap: 8px;
+            min-width: 0;
         }
 
-        .status-step:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            top: 13px;
-            left: 50%;
-            width: 100%;
-            height: 2px;
-            background: var(--line);
-            z-index: 0;
-        }
-
-        .status-step.done:not(:last-child)::after {
-            background: var(--brand);
-        }
-
-        .step-dot {
-            width: 26px;
-            height: 26px;
+        .status-step-dot {
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             background: var(--surface-2);
             border: 2px solid var(--line);
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             font-weight: var(--fw-bold);
             color: var(--ink-3);
+            flex-shrink: 0;
+            line-height: 1;
         }
 
-        .status-step.done .step-dot {
+        .status-step-dot.done {
             background: var(--brand);
             border-color: var(--brand);
             color: #fff;
         }
 
-        .status-step.current .step-dot {
-            border-color: var(--brand);
-            color: var(--brand);
+        .status-step-dot.current {
             background: var(--brand-tint);
+            border-color: var(--brand);
+            color: var(--brand-strong);
+            box-shadow: 0 0 0 4px var(--brand-ring);
         }
 
-        .step-label {
-            font-size: 0.66rem;
+        .status-step-label {
+            font-size: 0.64rem;
             color: var(--ink-3);
             text-align: center;
             font-weight: var(--fw-med);
+            line-height: 1.3;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            /* reserve two lines so wrapping labels don't shift the row */
+            min-height: 2.05em;
+            white-space: pre-line;
         }
 
-        .status-step.done .step-label,
-        .status-step.current .step-label {
+        .status-step-label.done,
+        .status-step-label.current {
             color: var(--ink);
             font-weight: var(--fw-semi);
+        }
+
+        /* Connector: aligns to the dot's vertical center (dot is 28px -> center 14px) */
+        .status-step-connector {
+            flex: 1 1 0;
+            height: 2px;
+            background: var(--line);
+            margin-top: 14px;
+            min-width: 12px;
+        }
+
+        .status-step-connector.done {
+            background: var(--brand);
         }
 
         /* Info notes */
@@ -1276,9 +1284,11 @@ $activePage = 'orders';
                                                             <line x1="18" y1="6" x2="6" y2="18" />
                                                             <line x1="6" y1="6" x2="18" y2="18" />
                                                         </svg><span class="act-label">Reject</span></button>
-                                                <?php elseif (!$isFinalised): ?>
+                                                <?php else: ?>
                                                     <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
-                                                    <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
+                                                    <?php if (!$isFinalised): ?>
+                                                        <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
                                         </td>

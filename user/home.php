@@ -14,18 +14,25 @@ $isLoggedIn = !empty($_SESSION['user_id']);
 $cartItems  = $isLoggedIn ? cartCount($conn) : 0;
 
 // ── Featured products (active, with stock) ───────────────────
+// Stock comes from stock_batches (active batches), same as the shop page.
 $featured = $conn->query("
     SELECT p.id, p.name, p.description, p.price, p.unit,
            p.image_url,
            c.name AS category,
-           COALESCE(i.quantity, 0) AS stock
+           COALESCE((
+               SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
+               FROM stock_batches sb WHERE sb.product_id = p.id AND sb.status = 'active'
+           ), 0) AS stock
     FROM products p
     JOIN categories c ON c.id = p.category_id
-    LEFT JOIN inventory i ON i.product_id = p.id
     WHERE p.is_active = 1
     ORDER BY p.created_at DESC
     LIMIT 8
 ");
+$featuredRows = [];
+if ($featured) {
+    while ($fr = $featured->fetch_assoc()) $featuredRows[] = $fr;
+}
 
 // ── Stats for the hero strip ──────────────────────────────────
 $r = $conn->query("SELECT COUNT(*) AS cnt FROM products WHERE is_active = 1");
@@ -1325,9 +1332,9 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                     <p class="section-sub">Handpicked from our farm — eggs in every size and fresh live chickens available daily.</p>
                 </div>
 
-                <?php if ($featured && $featured->num_rows > 0): ?>
+                <?php if (!empty($featuredRows)): ?>
                     <div class="products-grid">
-                        <?php while ($p = $featured->fetch_assoc()):
+                        <?php foreach ($featuredRows as $p):
                             $isEgg    = stripos($p['category'], 'egg') !== false;
                             $thumbCls = $isEgg ? 'product-thumb-egg' : 'product-thumb-chick';
                             $emoji    = $isEgg ? '<i class="fa-solid fa-egg"></i>' : '<i class="fa-solid fa-drumstick-bite"></i>';
@@ -1371,7 +1378,7 @@ $firstName = $isLoggedIn ? explode(' ', $_SESSION['full_name'] ?? 'there')[0] : 
                                     </div>
                                 </div>
                             </div>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     </div>
                 <?php else: ?>
                     <div style="text-align:center;padding:48px;color:var(--text-muted);">

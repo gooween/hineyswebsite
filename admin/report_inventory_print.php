@@ -3,13 +3,10 @@
 // Hiney's Eggs and Live Chicken Business
 // File: admin/report_inventory_print.php
 //
-// Clean print view of the Inventory report — same plain style
-// as report_sales_print.php (shared letterhead + tables, no
-// charts). Opened in a new tab from report_inventory.php.
-//
-// Current-stock figures are a live snapshot. ?period (daily /
-// weekly / monthly) scopes the date-based movement & restock
-// figures, matching the sales report's period behavior.
+// Clean print view of the Inventory report — plain tabular
+// style (shared letterhead + tables, no charts). Stock is read
+// from stock_batches (active batches) so it matches the shop.
+// ?period (daily/weekly/monthly) scopes the movement figures.
 // ============================================================
 
 session_start();
@@ -20,65 +17,66 @@ $today     = date('Y-m-d');
 $catFilter = (int)($_GET['cat'] ?? 0);
 $catWhere  = $catFilter ? "AND p.category_id = {$catFilter}" : '';
 
-// Period shortcut
+// Current stock from active batches (per-tray aware) — matches shop/home
+$BATCH = "(SELECT CASE WHEN p.unit='per tray' THEN COUNT(sb.id) ELSE COALESCE(SUM(sb.remaining),0) END FROM stock_batches sb WHERE sb.product_id=p.id AND sb.status='active')";
+
+// Period
 $period = trim($_GET['period'] ?? '');
 if ($period === 'daily') {
-    $periodFrom = $today;
-    $periodTo = $today;
-    $periodLabel = 'Today';
+    $pFrom = $today;
+    $pTo = $today;
+    $pLabel = 'Today';
 } elseif ($period === 'weekly') {
-    $periodFrom = date('Y-m-d', strtotime('monday this week'));
-    $periodTo = $today;
-    $periodLabel = 'This Week';
+    $pFrom = date('Y-m-d', strtotime('monday this week'));
+    $pTo = $today;
+    $pLabel = 'This Week';
 } elseif ($period === 'monthly') {
-    $periodFrom = date('Y-m-01');
-    $periodTo = $today;
-    $periodLabel = 'This Month';
+    $pFrom = date('Y-m-01');
+    $pTo = $today;
+    $pLabel = 'This Month';
 } else {
-    $periodFrom = date('Y-m-d', strtotime('-29 days'));
-    $periodTo = $today;
-    $periodLabel = 'Last 30 days';
+    $pFrom = date('Y-m-d', strtotime('-29 days'));
+    $pTo = $today;
+    $pLabel = 'Last 30 days';
 }
-$pFromSql = $conn->real_escape_string($periodFrom);
-$pToSql   = $conn->real_escape_string($periodTo);
+$pFromSql = $conn->real_escape_string($pFrom);
+$pToSql = $conn->real_escape_string($pTo);
 
-// ── KPIs (current snapshot) ───────────────────────────────────
-$totalProducts = (int)($conn->query("SELECT COUNT(*) AS c FROM products p WHERE p.is_active = 1 {$catWhere}")->fetch_assoc()['c'] ?? 0);
-$lowStockCount = (int)($conn->query("SELECT COUNT(*) AS c FROM inventory i JOIN products p ON p.id=i.product_id WHERE p.is_active=1 AND i.quantity<=i.reorder_level AND i.quantity>0 {$catWhere}")->fetch_assoc()['c'] ?? 0);
-$outOfStockCount = (int)($conn->query("SELECT COUNT(*) AS c FROM inventory i JOIN products p ON p.id=i.product_id WHERE p.is_active=1 AND i.quantity=0 {$catWhere}")->fetch_assoc()['c'] ?? 0);
-$totalStockValue = (float)($conn->query("SELECT COALESCE(SUM(i.quantity*p.price),0) AS v FROM inventory i JOIN products p ON p.id=i.product_id WHERE p.is_active=1 {$catWhere}")->fetch_assoc()['v'] ?? 0);
+// KPIs
+$totalProducts = (int)($conn->query("SELECT COUNT(*) c FROM products p WHERE p.is_active=1 {$catWhere}")->fetch_assoc()['c'] ?? 0);
+$lowStockCount = (int)($conn->query("SELECT COUNT(*) c FROM products p WHERE p.is_active=1 AND {$BATCH} <= (SELECT reorder_level FROM inventory WHERE product_id=p.id LIMIT 1) AND {$BATCH} > 0 {$catWhere}")->fetch_assoc()['c'] ?? 0);
+$outOfStockCount = (int)($conn->query("SELECT COUNT(*) c FROM products p WHERE p.is_active=1 AND {$BATCH} = 0 {$catWhere}")->fetch_assoc()['c'] ?? 0);
+$totalStockValue = (float)($conn->query("SELECT COALESCE(SUM({$BATCH} * p.price),0) v FROM products p WHERE p.is_active=1 {$catWhere}")->fetch_assoc()['v'] ?? 0);
 
-// ── Movement totals (period) ──────────────────────────────────
-$moveIn  = (int)($conn->query("SELECT COALESCE(SUM(il.quantity),0) AS s FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='in' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere}")->fetch_assoc()['s'] ?? 0);
-$moveOut = (int)($conn->query("SELECT COALESCE(SUM(il.quantity),0) AS s FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='out' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere}")->fetch_assoc()['s'] ?? 0);
+// Movement (period) — from inventory_logs
+$moveIn  = (int)($conn->query("SELECT COALESCE(SUM(il.quantity),0) s FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='in' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere}")->fetch_assoc()['s'] ?? 0);
+$moveOut = (int)($conn->query("SELECT COALESCE(SUM(il.quantity),0) s FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='out' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere}")->fetch_assoc()['s'] ?? 0);
 
-// ── Category stock (current) ──────────────────────────────────
+// Category stock (current, from batches)
 $catRows = [];
-$cq = $conn->query("SELECT c.name AS category, COUNT(p.id) AS products, COALESCE(SUM(i.quantity),0) AS units, COALESCE(SUM(i.quantity*p.price),0) AS value FROM products p JOIN categories c ON c.id=p.category_id LEFT JOIN inventory i ON i.product_id=p.id WHERE p.is_active=1 {$catWhere} GROUP BY c.id ORDER BY value DESC");
-if ($cq) while ($row = $cq->fetch_assoc()) $catRows[] = $row;
+$cq = $conn->query("SELECT c.name category, COUNT(p.id) products, COALESCE(SUM({$BATCH}),0) units, COALESCE(SUM({$BATCH}*p.price),0) value FROM products p JOIN categories c ON c.id=p.category_id WHERE p.is_active=1 {$catWhere} GROUP BY c.id ORDER BY value DESC");
+if ($cq) while ($r = $cq->fetch_assoc()) $catRows[] = $r;
 
-// ── Most restocked (period) ───────────────────────────────────
+// Most restocked (period)
 $restockRows = [];
-$rq = $conn->query("SELECT p.name, p.unit, COALESCE(SUM(il.quantity),0) AS total_in FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='in' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere} GROUP BY p.id ORDER BY total_in DESC LIMIT 10");
-if ($rq) while ($row = $rq->fetch_assoc()) $restockRows[] = $row;
+$rq = $conn->query("SELECT p.name, p.unit, COALESCE(SUM(il.quantity),0) total_in FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='in' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere} GROUP BY p.id ORDER BY total_in DESC LIMIT 10");
+if ($rq) while ($r = $rq->fetch_assoc()) $restockRows[] = $r;
 
-// ── Full inventory snapshot ───────────────────────────────────
-$inventoryTable = $conn->query("SELECT p.name, p.unit, p.price, c.name AS category, i.quantity, i.reorder_level FROM inventory i JOIN products p ON p.id=i.product_id JOIN categories c ON c.id=p.category_id WHERE p.is_active=1 {$catWhere} ORDER BY i.quantity ASC, p.name ASC");
+// Full snapshot (current, from batches)
+$inventoryTable = $conn->query("SELECT p.name, p.unit, p.price, c.name category, {$BATCH} quantity, (SELECT reorder_level FROM inventory WHERE product_id=p.id LIMIT 1) reorder_level FROM products p JOIN categories c ON c.id=p.category_id WHERE p.is_active=1 {$catWhere} ORDER BY quantity ASC, p.name ASC");
 
-// ── Print chrome (shared letterhead, like sales) ──────────────
+// Print chrome (shared plain letterhead)
 $printTitle    = 'Inventory Report';
-$printSubtitle = 'Stock snapshot as of ' . date('M j, Y') . ($period ? '  ·  Movement: ' . $periodLabel : '');
+$printSubtitle = 'Stock snapshot as of ' . date('M j, Y') . ($period ? '  ·  Movement: ' . $pLabel : '');
 $printMeta     = [
-    ['label' => 'Generated',       'value' => date('M j, Y g:i A')],
-    ['label' => 'Movement Period', 'value' => $periodLabel . ' (' . date('M j', strtotime($periodFrom)) . ' – ' . date('M j', strtotime($periodTo)) . ')'],
-    ['label' => 'Total Products',  'value' => number_format($totalProducts)],
-    ['label' => 'Stock Value',     'value' => peso($totalStockValue)],
+    ['label' => 'Generated', 'value' => date('M j, Y g:i A')],
+    ['label' => 'Movement Period', 'value' => $pLabel . ' (' . date('M j', strtotime($pFrom)) . ' – ' . date('M j', strtotime($pTo)) . ')'],
+    ['label' => 'Total Products', 'value' => number_format($totalProducts)],
+    ['label' => 'Stock Value', 'value' => peso($totalStockValue)],
 ];
-
 require '../admin/report_print_header.php';
 ?>
 
-<!-- KPI summary -->
 <div class="rp-kpis">
     <div class="rp-kpi accent-blue">
         <div class="k-label">Total Products</div>
@@ -102,8 +100,7 @@ require '../admin/report_print_header.php';
     </div>
 </div>
 
-<!-- Stock movement for period -->
-<div class="rp-section-title">Stock Movement <span class="count"><?= htmlspecialchars($periodLabel) ?></span></div>
+<div class="rp-section-title">Stock Movement <span class="count"><?= htmlspecialchars($pLabel) ?></span></div>
 <table class="rp-table">
     <thead>
         <tr>
@@ -116,17 +113,16 @@ require '../admin/report_print_header.php';
         <tr>
             <td style="font-weight:600;">Stock In (restocked)</td>
             <td class="num" style="font-weight:700;"><?= number_format($moveIn) ?></td>
-            <td class="muted"><?= date('M j, Y', strtotime($periodFrom)) ?> &ndash; <?= date('M j, Y', strtotime($periodTo)) ?></td>
+            <td class="muted"><?= date('M j, Y', strtotime($pFrom)) ?> &ndash; <?= date('M j, Y', strtotime($pTo)) ?></td>
         </tr>
         <tr>
             <td style="font-weight:600;">Stock Out (sold/consumed)</td>
             <td class="num" style="font-weight:700;"><?= number_format($moveOut) ?></td>
-            <td class="muted"><?= date('M j, Y', strtotime($periodFrom)) ?> &ndash; <?= date('M j, Y', strtotime($periodTo)) ?></td>
+            <td class="muted"><?= date('M j, Y', strtotime($pFrom)) ?> &ndash; <?= date('M j, Y', strtotime($pTo)) ?></td>
         </tr>
     </tbody>
 </table>
 
-<!-- Category stock -->
 <div class="rp-section-title">Stock by Category</div>
 <?php if (!empty($catRows)): ?>
     <table class="rp-table">
@@ -160,12 +156,9 @@ require '../admin/report_print_header.php';
             </tr>
         </tfoot>
     </table>
-<?php else: ?>
-    <div class="rp-empty">No category data.</div>
-<?php endif; ?>
+<?php else: ?><div class="rp-empty">No category data.</div><?php endif; ?>
 
-<!-- Most restocked -->
-<div class="rp-section-title">Most Restocked <span class="count"><?= htmlspecialchars($periodLabel) ?></span></div>
+<div class="rp-section-title">Most Restocked <span class="count"><?= htmlspecialchars($pLabel) ?></span></div>
 <?php if (!empty($restockRows)): ?>
     <table class="rp-table">
         <thead>
@@ -187,14 +180,11 @@ require '../admin/report_print_header.php';
             <?php endforeach; ?>
         </tbody>
     </table>
-<?php else: ?>
-    <div class="rp-empty">No restocking recorded in this period.</div>
-<?php endif; ?>
+<?php else: ?><div class="rp-empty">No restocking recorded in this period.</div><?php endif; ?>
 
-<!-- Full snapshot -->
 <?php
 $invRows = [];
-if ($inventoryTable && $inventoryTable->num_rows > 0) while ($row = $inventoryTable->fetch_assoc()) $invRows[] = $row;
+if ($inventoryTable && $inventoryTable->num_rows > 0) while ($r = $inventoryTable->fetch_assoc()) $invRows[] = $r;
 ?>
 <div class="rp-section-title">Full Inventory Snapshot <span class="count"><?= count($invRows) ?> product<?= count($invRows) !== 1 ? 's' : '' ?></span></div>
 <?php if (!empty($invRows)): ?>
@@ -218,14 +208,14 @@ if ($inventoryTable && $inventoryTable->num_rows > 0) while ($row = $inventoryTa
                 $rl = (int)$r['reorder_level'];
                 $val = $qty * (float)$r['price'];
                 if ($qty === 0) {
-                    $stCls = 'pill-red';
-                    $stTxt = 'Out of Stock';
+                    $c = 'pill-red';
+                    $t = 'Out of Stock';
                 } elseif ($qty <= $rl) {
-                    $stCls = 'pill-amber';
-                    $stTxt = 'Low Stock';
+                    $c = 'pill-amber';
+                    $t = 'Low Stock';
                 } else {
-                    $stCls = 'pill-green';
-                    $stTxt = 'OK';
+                    $c = 'pill-green';
+                    $t = 'OK';
                 }
             ?>
                 <tr>
@@ -236,7 +226,7 @@ if ($inventoryTable && $inventoryTable->num_rows > 0) while ($row = $inventoryTa
                     <td class="num"><?= peso((float)$r['price']) ?></td>
                     <td class="num" style="font-weight:700;"><?= number_format($qty) ?></td>
                     <td class="num"><?= number_format($rl) ?></td>
-                    <td><span class="rp-pill <?= $stCls ?>"><?= $stTxt ?></span></td>
+                    <td><span class="rp-pill <?= $c ?>"><?= $t ?></span></td>
                     <td class="num" style="font-weight:700;"><?= peso($val) ?></td>
                 </tr>
             <?php endforeach; ?>
@@ -248,9 +238,7 @@ if ($inventoryTable && $inventoryTable->num_rows > 0) while ($row = $inventoryTa
             </tr>
         </tfoot>
     </table>
-<?php else: ?>
-    <div class="rp-empty">No inventory data found.</div>
-<?php endif; ?>
+<?php else: ?><div class="rp-empty">No inventory data found.</div><?php endif; ?>
 
 <?php
 $signRolePrepared = 'Prepared by';
