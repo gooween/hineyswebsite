@@ -6,6 +6,7 @@
 // ============================================================
 session_start();
 require_once 'config/db.php';
+require_once 'admin/bohol_locations.php';   // defines $BOHOL_LOCATIONS (all Bohol muni -> barangays)
 
 if (!empty($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
@@ -21,10 +22,13 @@ $errors   = [];
 $formData = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $formData['full_name'] = trim($_POST['full_name'] ?? '');
-    $formData['email']     = trim($_POST['email']     ?? '');
-    $formData['phone']     = trim($_POST['phone']     ?? '');
-    $formData['address']   = trim($_POST['address']   ?? '');
+    $formData['full_name']    = trim($_POST['full_name'] ?? '');
+    $formData['email']        = trim($_POST['email']     ?? '');
+    $formData['phone']        = trim($_POST['phone']     ?? '');
+    $formData['municipality'] = trim($_POST['municipality'] ?? '');
+    $formData['barangay']     = trim($_POST['barangay']     ?? '');
+    $formData['street']       = trim($_POST['street']       ?? '');
+    $formData['landmark']     = trim($_POST['landmark']     ?? '');
     $password              = $_POST['password']         ?? '';
     $confirmPw             = $_POST['confirm_password'] ?? '';
 
@@ -53,6 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['phone'] = 'Please enter a valid phone number.';
     }
 
+    // Address: municipality + barangay are required (chosen from the dropdowns)
+    if (!$formData['municipality']) {
+        $errors['municipality'] = 'Please select your municipality.';
+    }
+    if (!$formData['barangay']) {
+        $errors['barangay'] = 'Please select your barangay.';
+    }
+
     if (!$password) {
         $errors['password'] = 'Password is required.';
     } elseif (strlen($password) < 6) {
@@ -67,11 +79,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         $hashedPw = password_hash($password, PASSWORD_BCRYPT);
+        // Combined address string kept for backward-compat (checkout reads it)
+        $fullAddress = implode(', ', array_filter([
+            $formData['street'],
+            $formData['barangay'],
+            $formData['municipality'],
+            'Bohol'
+        ], fn($p) => $p !== ''));
         $stmt = $conn->prepare(
-            "INSERT INTO users (full_name, email, password, role, phone, address, is_active)
-             VALUES (?, ?, ?, 'customer', ?, ?, 1)"
+            "INSERT INTO users (full_name, email, password, role, phone, address, municipality, barangay, street_address, landmark, is_active)
+             VALUES (?, ?, ?, 'customer', ?, ?, ?, ?, ?, ?, 1)"
         );
-        $stmt->bind_param('sssss', $formData['full_name'], $formData['email'], $hashedPw, $formData['phone'], $formData['address']);
+        $stmt->bind_param(
+            'sssssssss',
+            $formData['full_name'],
+            $formData['email'],
+            $hashedPw,
+            $formData['phone'],
+            $fullAddress,
+            $formData['municipality'],
+            $formData['barangay'],
+            $formData['street'],
+            $formData['landmark']
+        );
         if ($stmt->execute()) {
             $stmt->close();
             header('Location: index.php?msg=registered');
@@ -936,16 +966,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="form-group">
-                        <label class="label" for="address">Delivery Address</label>
-                        <div class="input-wrap textarea-wrap">
+                        <label class="label" for="municipality">Municipality / City <span class="req">*</span></label>
+                        <div class="input-wrap">
                             <span class="input-icon"><svg viewBox="0 0 24 24" stroke-width="1.8">
                                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                                     <circle cx="12" cy="10" r="3" />
                                 </svg></span>
-                            <textarea id="address" name="address"
-                                class="input"
-                                placeholder="House No., Street, Barangay, City"
-                                style="padding-left:40px;"><?= htmlspecialchars($formData['address'] ?? '') ?></textarea>
+                            <select id="municipality" name="municipality"
+                                class="input <?= isset($errors['municipality']) ? 'is-error' : '' ?>"
+                                style="padding-left:40px;appearance:none;" onchange="loadBarangays(this.value)">
+                                <option value="">— Select municipality —</option>
+                                <?php foreach (array_keys($BOHOL_LOCATIONS) as $m): ?>
+                                    <option value="<?= htmlspecialchars($m) ?>" <?= ($formData['municipality'] ?? '') === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <?php if (isset($errors['municipality'])): ?>
+                            <div class="field-err"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($errors['municipality']) ?></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="barangay">Barangay <span class="req">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><svg viewBox="0 0 24 24" stroke-width="1.8">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                    <circle cx="12" cy="10" r="3" />
+                                </svg></span>
+                            <select id="barangay" name="barangay"
+                                class="input <?= isset($errors['barangay']) ? 'is-error' : '' ?>"
+                                style="padding-left:40px;appearance:none;">
+                                <option value="">— Select municipality first —</option>
+                            </select>
+                        </div>
+                        <?php if (isset($errors['barangay'])): ?>
+                            <div class="field-err"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($errors['barangay']) ?></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="street">Street / Purok / House No. <span style="color:var(--muted, #6b7280);font-weight:400;">(optional)</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><svg viewBox="0 0 24 24" stroke-width="1.8">
+                                    <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" />
+                                </svg></span>
+                            <input type="text" id="street" name="street"
+                                class="input" placeholder="e.g. Purok 3, Blk 5 Lot 2"
+                                value="<?= htmlspecialchars($formData['street'] ?? '') ?>"
+                                style="padding-left:40px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="landmark">Landmark <span style="color:var(--muted, #6b7280);font-weight:400;">(optional)</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><svg viewBox="0 0 24 24" stroke-width="1.8">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                    <circle cx="12" cy="10" r="3" />
+                                </svg></span>
+                            <input type="text" id="landmark" name="landmark"
+                                class="input" placeholder="e.g. near the chapel, blue gate"
+                                value="<?= htmlspecialchars($formData['landmark'] ?? '') ?>"
+                                style="padding-left:40px;">
                         </div>
                     </div>
 
@@ -1035,6 +1117,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        // ── Bohol location data for cascading dropdowns ──────────
+        const BOHOL_LOCATIONS = <?= json_encode($BOHOL_LOCATIONS) ?>;
+        const SAVED_BARANGAY = <?= json_encode($formData['barangay'] ?? '') ?>;
+
+        function loadBarangays(muni, preselect) {
+            const brgySel = document.getElementById('barangay');
+            brgySel.innerHTML = '';
+            if (!muni || !BOHOL_LOCATIONS[muni]) {
+                brgySel.innerHTML = '<option value="">— Select municipality first —</option>';
+                return;
+            }
+            brgySel.innerHTML = '<option value="">— Select barangay —</option>';
+            BOHOL_LOCATIONS[muni].forEach(function(b) {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                if (preselect && preselect === b) opt.selected = true;
+                brgySel.appendChild(opt);
+            });
+        }
+
+        (function() {
+            const muni = document.getElementById('municipality');
+            if (muni && muni.value) loadBarangays(muni.value, SAVED_BARANGAY);
+        })();
+
         const eyeOpen = `<svg viewBox="0 0 24 24" stroke-width="1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
         const eyeClosed = `<svg viewBox="0 0 24 24" stroke-width="1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
