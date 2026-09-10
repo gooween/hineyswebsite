@@ -46,7 +46,7 @@ while ($row = $cr->fetch_assoc()) $categories[] = $row;
 $catWhere = $catFilter ? "AND p.category_id = {$catFilter}" : '';
 
 // ── KPI 1: Total active products ─────────────────────────────
-$r = $conn->query("SELECT COUNT(*) AS cnt FROM products WHERE is_active = 1 {$catWhere}");
+$r = $conn->query("SELECT COUNT(*) AS cnt FROM products p WHERE p.is_active = 1 {$catWhere}");
 $totalProducts = (int)($r->fetch_assoc()['cnt'] ?? 0);
 
 // ── KPI 2: Low stock items ────────────────────────────────────

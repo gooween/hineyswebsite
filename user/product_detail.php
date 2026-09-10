@@ -1088,7 +1088,7 @@ $thumbCls = $isEgg ? 'thumb-egg' : 'thumb-chick';
                             <div class="stock-divider"></div>
                             <div class="stock-info-item">
                                 <span class="stock-info-label">Available:</span>
-                                <span class="stock-info-value"><?= number_format($stock) ?> units</span>
+                                <span class="stock-info-value"><?= number_format($stock) ?> pieces</span>
                             </div>
                         </div>
 
