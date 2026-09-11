@@ -34,6 +34,10 @@ if ($period === 'daily') {
     $pFrom = date('Y-m-01');
     $pTo = $today;
     $pLabel = 'This Month';
+} elseif ($period === 'yearly') {
+    $pFrom = date('Y-01-01');
+    $pTo = $today;
+    $pLabel = 'This Year';
 } else {
     $pFrom = date('Y-m-d', strtotime('-29 days'));
     $pTo = $today;

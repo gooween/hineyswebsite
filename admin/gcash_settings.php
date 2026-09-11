@@ -45,9 +45,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // which would double-escape and store a literal backslash).
         $number  = trim($_POST['gcash_number'] ?? '');
         $name    = trim($_POST['gcash_name']   ?? '');
+        $pickup  = trim($_POST['pickup_address'] ?? '');
 
-        saveSetting($conn, 'gcash_number', $number);
-        saveSetting($conn, 'gcash_name',   $name);
+        saveSetting($conn, 'gcash_number',   $number);
+        saveSetting($conn, 'gcash_name',     $name);
+        saveSetting($conn, 'pickup_address', $pickup);
 
         redirect('gcash_settings.php', 'success', 'Settings saved successfully.');
     }
@@ -103,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $gcashNumber    = getSetting($conn, 'gcash_number',   '0917-XXX-XXXX');
 $gcashName      = getSetting($conn, 'gcash_name',     "Hiney's Eggs & Live Chicken");
 $gcashQrPath    = getSetting($conn, 'gcash_qr_path',  '');
+$pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cortes, Bohol");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -695,6 +698,17 @@ $gcashQrPath    = getSetting($conn, 'gcash_qr_path',  '');
                                     <input type="text" name="gcash_name" class="form-input"
                                         value="<?= htmlspecialchars($gcashName) ?>"
                                         placeholder="e.g. Hiney's Eggs & Live Chicken" required>
+                                </div>
+
+                                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--primary);margin:18px 0 12px;padding-bottom:6px;border-bottom:1px solid #fde9d0;">
+                                    Pickup
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Pickup Address</label>
+                                    <textarea name="pickup_address" class="form-textarea"
+                                        placeholder="Full address where customers can pick up their order..."><?= htmlspecialchars($pickupAddress) ?></textarea>
+                                    <span class="form-hint">Shown to customers who choose "Pick Up" at checkout</span>
                                 </div>
 
                             </div>

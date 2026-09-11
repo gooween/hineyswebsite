@@ -30,6 +30,10 @@ if ($period === 'daily') {
     $periodFrom = date('Y-m-01');
     $periodTo = $today;
     $periodLabel = 'This Month';
+} elseif ($period === 'yearly') {
+    $periodFrom = date('Y-01-01');
+    $periodTo = $today;
+    $periodLabel = 'This Year';
 } else {
     $periodFrom = date('Y-m-d', strtotime('-29 days'));
     $periodTo = $today;
@@ -601,6 +605,14 @@ $activePage = 'report_inventory';
                             <option value="<?= $cat['id'] ?>" <?= $catFilter == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <span class="filter-label" style="margin-left:8px;">Period:</span>
+                    <select name="period" class="filter-select" onchange="this.form.submit()">
+                        <option value="" <?= $period === '' ? 'selected' : '' ?>>Last 30 days</option>
+                        <option value="daily" <?= $period === 'daily' ? 'selected' : '' ?>>Daily (Today)</option>
+                        <option value="weekly" <?= $period === 'weekly' ? 'selected' : '' ?>>Weekly (This Week)</option>
+                        <option value="monthly" <?= $period === 'monthly' ? 'selected' : '' ?>>Monthly (This Month)</option>
+                        <option value="yearly" <?= $period === 'yearly' ? 'selected' : '' ?>>Yearly (This Year)</option>
+                    </select>
                     <button type="submit" class="btn-apply">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8" />
@@ -1119,9 +1131,11 @@ $activePage = 'report_inventory';
         })();
 
         function printReport() {
-            const params = new URLSearchParams({
-                cat: '<?= (int)$catFilter ?>'
-            });
+            const params = new URLSearchParams();
+            params.set('cat', '<?= (int)$catFilter ?>');
+            <?php if ($period): ?>
+                params.set('period', '<?= htmlspecialchars($period, ENT_QUOTES) ?>');
+            <?php endif; ?>
             window.open('report_inventory_print.php?' + params.toString(), '_blank');
         }
 

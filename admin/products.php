@@ -1389,7 +1389,7 @@ $activePage = 'products';
                                     }
                                 }
                                 if (str_contains($catName, 'egg')) $unitOptions = ['per tray' => 'Per Tray', 'per piece' => 'Per Piece'];
-                                if (str_contains($catName, 'chicken')) $unitOptions = ['alive' => 'Alive Chicken', 'processed' => 'Processed Chicken'];
+                                if (str_contains($catName, 'chicken')) $unitOptions = ['alive' => 'Live Chicken', 'processed' => 'Processed Chicken'];
                             }
                             foreach ($unitOptions as $val => $label): ?>
                                 <option value="<?= $val ?>" <?= $filterUnit === $val ? 'selected' : '' ?>><?= $label ?></option>
@@ -1790,7 +1790,7 @@ $activePage = 'products';
             }],
             chicken: [{
                 val: 'alive',
-                label: 'Alive Chicken'
+                label: 'Live Chicken'
             }, {
                 val: 'processed',
                 label: 'Processed Chicken'

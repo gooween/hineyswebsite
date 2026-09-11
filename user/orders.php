@@ -12,6 +12,20 @@ $activePage = 'orders';
 $uid        = (int)$_SESSION['user_id'];
 $cartItems  = cartCount($conn);
 
+// ── GCash payment details (for the pay + upload card) ─────────
+if (!function_exists('getSetting')) {
+    function getSetting(mysqli $conn, string $key, string $default = ''): string
+    {
+        $k = $conn->real_escape_string($key);
+        $r = $conn->query("SELECT setting_value FROM settings WHERE setting_key = '{$k}' LIMIT 1");
+        if ($r && $row = $r->fetch_assoc()) return $row['setting_value'] ?? $default;
+        return $default;
+    }
+}
+$gcashNumber = getSetting($conn, 'gcash_number', '');
+$gcashName   = getSetting($conn, 'gcash_name',   '');
+$gcashQrPath = getSetting($conn, 'gcash_qr_path', '');
+
 // ── Handle GCash proof upload ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_proof') {
     $orderId = (int)($_POST['order_id'] ?? 0);
@@ -780,19 +794,16 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             font-weight: 700
         }
 
-        .proof-upload-card {
-            border-top: 2px solid #3b82f6;
-            background: linear-gradient(to right, #f0f7ff, #fff)
-        }
+
 
         .proof-upload-section {
             padding: 16px 20px
         }
 
         .proof-upload-title {
-            font-size: 0.88rem;
+            font-size: 0.95rem;
             font-weight: 800;
-            color: #1e40af;
+            color: #d16b12;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -800,8 +811,8 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         }
 
         .proof-upload-desc {
-            font-size: 0.8rem;
-            color: #3b82f6;
+            font-size: 0.82rem;
+            color: #6f6a62;
             margin-bottom: 14px;
             line-height: 1.5
         }
@@ -860,7 +871,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             align-items: center;
             gap: 6px;
             padding: 9px 18px;
-            background: #3b82f6;
+            background: var(--primary, #e67e22);
             color: #fff;
             border: none;
             border-radius: 9px;
@@ -873,7 +884,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         }
 
         .btn-upload-proof:hover {
-            background: #2563eb
+            background: #d16b12
         }
 
         .proof-uploaded-section {
@@ -1273,6 +1284,204 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         .site-footer a {
             color: var(--primary)
         }
+
+        /* GCash pay + upload card */
+        .pay-step {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .pay-step-num {
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--primary, #e67e22);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pay-step-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .pay-step-head {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #23201c;
+            margin-bottom: 10px;
+        }
+
+        .gcash-pay-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            background: #fff;
+            border: 1px solid #ebe8e3;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .gcash-qr-box {
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .gcash-qr-img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            border: 1px solid #ebe8e3;
+            border-radius: 10px;
+            background: #fff;
+            cursor: zoom-in;
+            display: block;
+        }
+
+        .gcash-qr-hint {
+            font-size: 0.68rem;
+            color: #9c968c;
+            margin-top: 6px;
+        }
+
+        .gcash-details {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .gcash-detail-label {
+            font-size: 0.66rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9c968c;
+        }
+
+        .gcash-detail-value {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #23201c;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .gcash-detail-amount {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--primary, #e67e22);
+            margin-top: 2px;
+        }
+
+        .gcash-copy-btn {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 3px 9px;
+            border: 1px solid #ddd8d0;
+            background: #faf9f7;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #6f6a62;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .gcash-copy-btn:hover {
+            border-color: var(--primary, #e67e22);
+            color: var(--primary, #e67e22);
+        }
+
+        .gcash-copy-btn.copied {
+            background: #e6f4ec;
+            color: #1f7a48;
+            border-color: #a7dcbc;
+        }
+
+        .proof-dropzone {
+            display: block;
+            position: relative;
+            border: 2px dashed #d9b48a;
+            border-radius: 12px;
+            background: #fff8f1;
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            overflow: hidden;
+        }
+
+        .proof-dropzone:hover {
+            border-color: var(--primary, #e67e22);
+            background: #fef4ea;
+        }
+
+        .proof-dropzone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .proof-dropzone-icon {
+            font-size: 2rem;
+            color: var(--primary, #e67e22);
+            margin-bottom: 8px;
+        }
+
+        .proof-dropzone-text {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #23201c;
+        }
+
+        .proof-dropzone-sub {
+            font-size: 0.75rem;
+            color: #9c968c;
+            margin-top: 4px;
+        }
+
+        .proof-dropzone-preview {
+            display: none;
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin: 0 auto;
+        }
+
+        .proof-dropzone.has-file {
+            border-style: solid;
+            border-color: #2f9e60;
+            background: #f2faf5;
+            padding: 14px;
+        }
+
+        .proof-dropzone.has-file .proof-dropzone-inner {
+            display: none;
+        }
+
+        .proof-dropzone.has-file .proof-dropzone-preview {
+            display: block;
+        }
+
+        .btn-upload-proof-lg {
+            width: 100%;
+            margin-top: 12px;
+            padding: 13px;
+            font-size: 0.95rem;
+            justify-content: center;
+        }
     </style>
 </head>
 
@@ -1397,26 +1606,66 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                     <div class="proof-upload-card">
                                         <div class="proof-upload-section">
                                             <div class="proof-upload-title">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                     <rect x="2" y="5" width="20" height="14" rx="2" />
                                                     <line x1="2" y1="10" x2="22" y2="10" />
                                                 </svg>
-                                                Action Required: Upload GCash Payment Proof
+                                                Action Required: Pay via GCash &amp; Upload Proof
                                             </div>
-                                            <div class="proof-upload-desc">Your order has been approved! Please send your GCash payment and upload a screenshot of your receipt below.</div>
-                                            <form method="POST" action="orders.php" enctype="multipart/form-data">
-                                                <input type="hidden" name="action" value="upload_proof">
-                                                <input type="hidden" name="order_id" value="<?= $o['id'] ?>">
-                                                <div class="proof-upload-form">
-                                                    <div class="proof-file-input-wrap">
-                                                        <label class="proof-file-label" id="proof_label_<?= $o['id'] ?>">
-                                                            <i class="fa-solid fa-paperclip"></i> Choose screenshot (JPG, PNG)
-                                                        </label>
-                                                        <input type="file" name="gcash_proof" accept="image/*" onchange="updateProofLabel(this,<?= $o['id'] ?>)" required>
+                                            <div class="proof-upload-desc">Your order is approved. Send <strong><?= peso((float)$o['total_amount']) ?></strong> to the GCash account below, then upload your receipt screenshot.</div>
+
+                                            <!-- STEP 1: Pay -->
+                                            <div class="pay-step">
+                                                <div class="pay-step-num">1</div>
+                                                <div class="pay-step-body">
+                                                    <div class="pay-step-head">Send your payment</div>
+                                                    <div class="gcash-pay-grid">
+                                                        <?php if ($gcashQrPath): ?>
+                                                            <div class="gcash-qr-box">
+                                                                <img src="../<?= htmlspecialchars($gcashQrPath) ?>" alt="GCash QR" class="gcash-qr-img" onclick="viewProofImg('../<?= htmlspecialchars($gcashQrPath) ?>')">
+                                                                <div class="gcash-qr-hint">Tap to enlarge · Scan with GCash</div>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <div class="gcash-details">
+                                                            <?php if ($gcashNumber): ?>
+                                                                <div class="gcash-detail-label">GCash Number</div>
+                                                                <div class="gcash-detail-value">
+                                                                    <span id="gc_num_<?= $o['id'] ?>"><?= htmlspecialchars($gcashNumber) ?></span>
+                                                                    <button type="button" class="gcash-copy-btn" onclick="copyGcash('<?= htmlspecialchars($gcashNumber) ?>', this)"><i class="fa-solid fa-copy"></i> Copy</button>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                            <?php if ($gcashName): ?>
+                                                                <div class="gcash-detail-label" style="margin-top:10px;">Account Name</div>
+                                                                <div class="gcash-detail-value"><?= htmlspecialchars($gcashName) ?></div>
+                                                            <?php endif; ?>
+                                                            <div class="gcash-detail-label" style="margin-top:10px;">Amount to Send</div>
+                                                            <div class="gcash-detail-amount"><?= peso((float)$o['total_amount']) ?></div>
+                                                        </div>
                                                     </div>
-                                                    <button type="submit" class="btn-upload-proof"><i class="fa-solid fa-arrow-up"></i> Upload Proof</button>
                                                 </div>
-                                            </form>
+                                            </div>
+
+                                            <!-- STEP 2: Upload -->
+                                            <div class="pay-step">
+                                                <div class="pay-step-num">2</div>
+                                                <div class="pay-step-body">
+                                                    <div class="pay-step-head">Upload your receipt screenshot</div>
+                                                    <form method="POST" action="orders.php" enctype="multipart/form-data" id="proof_form_<?= $o['id'] ?>">
+                                                        <input type="hidden" name="action" value="upload_proof">
+                                                        <input type="hidden" name="order_id" value="<?= $o['id'] ?>">
+                                                        <label class="proof-dropzone" id="proof_zone_<?= $o['id'] ?>">
+                                                            <input type="file" name="gcash_proof" accept="image/*" onchange="proofDrop(this,<?= $o['id'] ?>)" required>
+                                                            <div class="proof-dropzone-inner" id="proof_inner_<?= $o['id'] ?>">
+                                                                <div class="proof-dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                                                <div class="proof-dropzone-text">Tap to choose your GCash receipt</div>
+                                                                <div class="proof-dropzone-sub">JPG, PNG, GIF or WEBP · Max 5MB</div>
+                                                            </div>
+                                                            <img class="proof-dropzone-preview" id="proof_preview_<?= $o['id'] ?>" alt="">
+                                                        </label>
+                                                        <button type="submit" class="btn-upload-proof btn-upload-proof-lg"><i class="fa-solid fa-paper-plane"></i> Submit Payment Proof</button>
+                                                    </form>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1671,10 +1920,37 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
 
         function updateProofLabel(input, orderId) {
             const label = document.getElementById('proof_label_' + orderId);
-            if (input.files && input.files[0]) {
+            if (label && input.files && input.files[0]) {
                 label.textContent = '✓ ' + input.files[0].name;
                 label.classList.add('has-file');
             }
+        }
+
+        // Big dropzone: show a preview of the chosen receipt
+        function proofDrop(input, orderId) {
+            const zone = document.getElementById('proof_zone_' + orderId);
+            const preview = document.getElementById('proof_preview_' + orderId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.src = e.target.result;
+                    zone.classList.add('has-file');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Copy the GCash number to clipboard
+        function copyGcash(number, btn) {
+            navigator.clipboard.writeText(number).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(() => {});
         }
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
