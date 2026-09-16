@@ -27,6 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $barangay     = trim($_POST['barangay']       ?? '');
         $street       = trim($_POST['street_address'] ?? '');
         $landmark     = trim($_POST['landmark']       ?? '');
+        // Alternative address (optional)
+        $altMuni      = trim($_POST['alt_municipality']   ?? '');
+        $altBrgy      = trim($_POST['alt_barangay']       ?? '');
+        $altStreet    = trim($_POST['alt_street_address'] ?? '');
+        $altLandmark  = trim($_POST['alt_landmark']       ?? '');
 
         // Build the combined free-text address (keeps checkout & old code working)
         $parts   = array_filter([$street, $barangay, $municipality, 'Bohol'], fn($p) => $p !== '');
@@ -58,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $chk->close();
 
-        $stmt = $conn->prepare("UPDATE users SET full_name=?, email=?, phone=?, address=?, municipality=?, barangay=?, street_address=?, landmark=? WHERE id=?");
-        $stmt->bind_param('ssssssssi', $fullName, $email, $phone, $address, $municipality, $barangay, $street, $landmark, $uid);
+        $stmt = $conn->prepare("UPDATE users SET full_name=?, email=?, phone=?, address=?, municipality=?, barangay=?, street_address=?, landmark=?, alt_municipality=?, alt_barangay=?, alt_street_address=?, alt_landmark=? WHERE id=?");
+        $stmt->bind_param('ssssssssssssi', $fullName, $email, $phone, $address, $municipality, $barangay, $street, $landmark, $altMuni, $altBrgy, $altStreet, $altLandmark, $uid);
         $stmt->execute();
         $stmt->close();
 
@@ -961,6 +966,34 @@ $recentOrders = $conn->query("
                                             value="<?= htmlspecialchars($user['landmark'] ?? '') ?>"
                                             placeholder="e.g. near the chapel">
                                     </div>
+
+                                    <div style="grid-column:1/-1;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--primary, #e67e22);margin:8px 0 4px;padding-bottom:6px;border-bottom:1px solid #f0e4d4;">
+                                        Alternative Address <span style="font-weight:500;text-transform:none;letter-spacing:0;color:#9c968c;">(optional — a second address you can pick at checkout)</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Municipality / City</label>
+                                        <select name="alt_municipality" id="profAltMuni" class="form-input" onchange="profLoadAltBrgy(this.value)">
+                                            <option value="">Select municipality…</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Barangay</label>
+                                        <select name="alt_barangay" id="profAltBrgy" class="form-input">
+                                            <option value="">Select barangay…</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Street / House No. / Purok</label>
+                                        <input type="text" name="alt_street_address" class="form-input"
+                                            value="<?= htmlspecialchars($user['alt_street_address'] ?? '') ?>"
+                                            placeholder="e.g. Purok 3, House No. 12">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Landmark (optional)</label>
+                                        <input type="text" name="alt_landmark" class="form-input"
+                                            value="<?= htmlspecialchars($user['alt_landmark'] ?? '') ?>"
+                                            placeholder="e.g. near the chapel">
+                                    </div>
                                 </div>
                                 <div class="form-actions">
                                     <button type="submit" class="btn btn-primary">
@@ -1261,6 +1294,46 @@ $recentOrders = $conn->query("
         // ── Profile delivery-zone selectors ────────────────────────────
         const PROF_SAVED_MUNI = <?= json_encode($user['municipality'] ?? '') ?>;
         const PROF_SAVED_BRGY = <?= json_encode($user['barangay'] ?? '') ?>;
+        const PROF_ALT_MUNI = <?= json_encode($user['alt_municipality'] ?? '') ?>;
+        const PROF_ALT_BRGY = <?= json_encode($user['alt_barangay'] ?? '') ?>;
+
+        // ── Alternative address dropdowns (same zone source) ──────
+        function profLoadAltMunis() {
+            fetch('get_delivery_zones.php?action=municipalities')
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.ok) return;
+                    const sel = document.getElementById('profAltMuni');
+                    d.municipalities.forEach(m => {
+                        const o = document.createElement('option');
+                        o.value = m;
+                        o.textContent = m;
+                        if (m === PROF_ALT_MUNI) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                    if (PROF_ALT_MUNI) profLoadAltBrgy(PROF_ALT_MUNI, PROF_ALT_BRGY);
+                })
+                .catch(() => {});
+        }
+
+        function profLoadAltBrgy(muni, preselect) {
+            const sel = document.getElementById('profAltBrgy');
+            sel.innerHTML = '<option value="">Select barangay…</option>';
+            if (!muni) return;
+            fetch('get_delivery_zones.php?action=barangays&m=' + encodeURIComponent(muni))
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.ok) return;
+                    d.barangays.forEach(b => {
+                        const o = document.createElement('option');
+                        o.value = b.barangay;
+                        o.textContent = b.barangay;
+                        if (b.barangay === preselect) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                })
+                .catch(() => {});
+        }
 
         function profLoadMunis() {
             fetch('get_delivery_zones.php?action=municipalities')
@@ -1313,6 +1386,7 @@ $recentOrders = $conn->query("
         }
         document.getElementById('profBrgy').addEventListener('change', profShowFee);
         profLoadMunis();
+        profLoadAltMunis();
     </script>
 </body>
 

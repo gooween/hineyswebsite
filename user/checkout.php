@@ -22,7 +22,7 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto Corte
 // Delivery fees now come entirely from delivery_zones (per barangay).
 // No flat fallback fee — unmatched barangays are rejected at checkout.
 
-$stmt = $conn->prepare("SELECT full_name, email, phone, address, municipality, barangay, street_address FROM users WHERE id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT full_name, email, phone, address, municipality, barangay, street_address, landmark, alt_municipality, alt_barangay, alt_street_address, alt_landmark FROM users WHERE id = ? LIMIT 1");
 $stmt->bind_param('i', $uid);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -160,6 +160,10 @@ $selectedDeliveryType = $_POST['delivery_type'] ?? 'delivery';
 $savedMuni   = $user['municipality'] ?? '';
 $savedBrgy   = $user['barangay'] ?? '';
 $savedStreet = $user['street_address'] ?? '';
+$altMuni     = $user['alt_municipality'] ?? '';
+$altBrgy     = $user['alt_barangay'] ?? '';
+$altStreet   = $user['alt_street_address'] ?? '';
+$hasAltAddr  = ($altMuni !== '' && $altBrgy !== '');
 // On first load the fee is unknown until a zone is chosen; JS fills it in.
 $displayDeliveryFee = 0.00;
 $grandTotal         = $cartTotal + $displayDeliveryFee;
@@ -1069,6 +1073,62 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
         .site-footer a {
             color: var(--primary)
         }
+
+        /* Address chooser (primary vs alternative) */
+        .addr-choice {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: stretch;
+            margin-bottom: 16px;
+        }
+
+        .addr-choice-label {
+            width: 100%;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #6f6a62;
+            margin-bottom: 2px;
+        }
+
+        .addr-choice-btn {
+            flex: 1;
+            min-width: 200px;
+            text-align: left;
+            cursor: pointer;
+            border: 2px solid #ebe8e3;
+            border-radius: 10px;
+            background: #fff;
+            padding: 12px 14px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #23201c;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .addr-choice-btn:hover {
+            border-color: #d9b48a;
+        }
+
+        .addr-choice-btn.active {
+            border-color: var(--primary, #e67e22);
+            background: #fef4ea;
+        }
+
+        .addr-choice-btn i {
+            color: var(--primary, #e67e22);
+            margin-right: 4px;
+        }
+
+        .addr-choice-sub {
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: #9c968c;
+        }
     </style>
 </head>
 
@@ -1148,6 +1208,19 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                     </label>
                                 </div>
                                 <div id="deliveryAddressWrap">
+                                    <?php if ($hasAltAddr): ?>
+                                        <div class="addr-choice" id="addrChoice">
+                                            <div class="addr-choice-label">Deliver to:</div>
+                                            <button type="button" class="addr-choice-btn active" id="addrBtnPrimary" onclick="useAddress('primary')">
+                                                <i class="fa-solid fa-house"></i> Primary Address
+                                                <span class="addr-choice-sub"><?= htmlspecialchars(trim(($savedStreet ? $savedStreet . ', ' : '') . $savedBrgy . ', ' . $savedMuni, ', ')) ?></span>
+                                            </button>
+                                            <button type="button" class="addr-choice-btn" id="addrBtnAlt" onclick="useAddress('alt')">
+                                                <i class="fa-solid fa-location-dot"></i> Alternative Address
+                                                <span class="addr-choice-sub"><?= htmlspecialchars(trim(($altStreet ? $altStreet . ', ' : '') . $altBrgy . ', ' . $altMuni, ', ')) ?></span>
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="form-row">
                                         <div class="form-group">
                                             <label class="form-label">Municipality / City <span class="req">*</span></label>
@@ -1276,7 +1349,29 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
         const CART_TOTAL = <?= $cartTotal ?>;
         const SAVED_MUNI = <?= json_encode($savedMuni) ?>;
         const SAVED_BRGY = <?= json_encode($savedBrgy) ?>;
+        const SAVED_STREET = <?= json_encode($savedStreet) ?>;
+        const ALT_MUNI = <?= json_encode($altMuni) ?>;
+        const ALT_BRGY = <?= json_encode($altBrgy) ?>;
+        const ALT_STREET = <?= json_encode($altStreet) ?>;
         let CURRENT_FEE = 0; // resolved once a zone is chosen
+
+        // Fill the delivery dropdowns with a saved address (primary or alternative)
+        function useAddress(which) {
+            const muni = which === 'alt' ? ALT_MUNI : SAVED_MUNI;
+            const brgy = which === 'alt' ? ALT_BRGY : SAVED_BRGY;
+            const street = which === 'alt' ? ALT_STREET : SAVED_STREET;
+            const muniSel = document.getElementById('coMuni');
+            muniSel.value = muni;
+            document.getElementById('coStreet').value = street || '';
+            coLoadBrgy(muni, brgy); // loads barangays and preselects, then updates fee
+            // toggle active button
+            const bp = document.getElementById('addrBtnPrimary');
+            const ba = document.getElementById('addrBtnAlt');
+            if (bp && ba) {
+                bp.classList.toggle('active', which !== 'alt');
+                ba.classList.toggle('active', which === 'alt');
+            }
+        }
 
         const fmtPeso = v => '₱' + v.toLocaleString('en-PH', {
             minimumFractionDigits: 2
