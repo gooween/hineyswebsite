@@ -12,7 +12,7 @@ if (!$id) {
 $stmt = $conn->prepare("
     SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method,
            o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
-           o.created_at, o.updated_at,
+           o.created_at, o.updated_at, o.cancel_reason, o.cancelled_by,
            u.id AS user_id, u.full_name, u.email, u.phone, u.address AS customer_address
     FROM orders o
     JOIN users u ON u.id = o.user_id
@@ -120,14 +120,45 @@ $statusMap = [
         background: currentColor;
     }
 
-    .od-st-pill.st-pending          { background: #fbf1de; color: #8a5a0c; }
-    .od-st-pill.st-approved         { background: #e8f0fb; color: #2b62ad; }
-    .od-st-pill.st-processing       { background: #f0ecfa; color: #6a4bc0; }
-    .od-st-pill.st-out_for_delivery { background: #fde8d4; color: #a4680c; }
-    .od-st-pill.st-delivered        { background: #e6f4ec; color: #1f7a48; }
-    .od-st-pill.st-cancelled        { background: #fbeae9; color: #b23c34; }
-    .od-st-pill.pay-paid            { background: #e6f4ec; color: #1f7a48; }
-    .od-st-pill.pay-unpaid          { background: #fbeae9; color: #b23c34; }
+    .od-st-pill.st-pending {
+        background: #fbf1de;
+        color: #8a5a0c;
+    }
+
+    .od-st-pill.st-approved {
+        background: #e8f0fb;
+        color: #2b62ad;
+    }
+
+    .od-st-pill.st-processing {
+        background: #f0ecfa;
+        color: #6a4bc0;
+    }
+
+    .od-st-pill.st-out_for_delivery {
+        background: #fde8d4;
+        color: #a4680c;
+    }
+
+    .od-st-pill.st-delivered {
+        background: #e6f4ec;
+        color: #1f7a48;
+    }
+
+    .od-st-pill.st-cancelled {
+        background: #fbeae9;
+        color: #b23c34;
+    }
+
+    .od-st-pill.pay-paid {
+        background: #e6f4ec;
+        color: #1f7a48;
+    }
+
+    .od-st-pill.pay-unpaid {
+        background: #fbeae9;
+        color: #b23c34;
+    }
 
     /* Quick chips */
     .od-chips {
@@ -388,7 +419,7 @@ $statusMap = [
         width: 100%;
         border-radius: 10px;
         border: 1px solid #ebe8e3;
-        box-shadow: 0 2px 12px rgba(35,32,28,0.08);
+        box-shadow: 0 2px 12px rgba(35, 32, 28, 0.08);
         cursor: pointer;
         transition: transform 0.15s;
     }
@@ -479,6 +510,17 @@ $statusMap = [
             <span class="od-st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span>
         </div>
     </div>
+
+    <?php if ($o['status'] === 'cancelled'): ?>
+        <div style="background:#fbeae9;border:1px solid #f0c4c0;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+            <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:#b23c34;margin-bottom:6px;">
+                <i class="fa-solid fa-ban"></i> Order Cancelled<?php if (!empty($o['cancelled_by'])): ?> · by <?= $o['cancelled_by'] === 'admin' ? 'Admin' : 'Customer' ?><?php endif; ?>
+            </div>
+            <div style="font-size:0.9rem;color:#23201c;line-height:1.6;">
+                <?= !empty($o['cancel_reason']) ? nl2br(htmlspecialchars($o['cancel_reason'])) : '<span style="color:#9c968c;">No reason provided.</span>' ?>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Quick chips -->
     <div class="od-chips">

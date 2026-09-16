@@ -145,8 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'cancel') {
         $id = (int)($_POST['id'] ?? 0);
+        $reason = trim($_POST['cancel_reason'] ?? '');
         if ($id) {
-            $conn->query("UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id={$id}");
+            $rEsc = $conn->real_escape_string($reason);
+            $conn->query("UPDATE orders SET status='cancelled', cancel_reason='{$rEsc}', cancelled_by='admin', updated_at=NOW() WHERE id={$id}");
             // ── Restore stock only if it was previously approved ──
             restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Returned from cancelled');
             redirect('orders.php', 'success', 'Order cancelled and stock restored.');
@@ -1485,7 +1487,11 @@ $activePage = 'orders';
                 <div class="modal-body modal-body-pad" style="text-align:center;padding:28px 24px;">
                     <div style="font-size:3rem;margin-bottom:14px;"><i class="fa-solid fa-ban"></i></div>
                     <div style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:8px;">Cancel this order?</div>
-                    <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Order <strong id="cancel_order_label">#0000</strong> from <strong id="cancel_customer_label"></strong> will be cancelled.<br><br><span style="color:#10b981;font-weight:600;"><i class="fa-solid fa-check"></i> Stock restored only if previously approved</span></div>
+                    <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Order <strong id="cancel_order_label">#0000</strong> from <strong id="cancel_customer_label"></strong> will be cancelled.<br><span style="color:#10b981;font-weight:600;"><i class="fa-solid fa-check"></i> Stock restored only if previously approved</span></div>
+                    <div style="text-align:left;margin-top:16px;">
+                        <label style="font-size:0.82rem;font-weight:700;color:var(--dark);display:block;margin-bottom:6px;">Reason for cancellation <span style="color:#ef4444;">*</span></label>
+                        <textarea name="cancel_reason" required rows="3" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--card-border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.88rem;resize:vertical;" placeholder="e.g. Out of stock, customer requested, wrong order…"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('cancelModal')">Keep Order</button><button type="submit" class="btn btn-danger">Yes, Cancel</button></div>
             </form>

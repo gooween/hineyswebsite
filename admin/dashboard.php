@@ -137,6 +137,19 @@ function orderPill(string $s): array
             text-align: right;
             white-space: nowrap;
         }
+
+        .stat-link {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            display: block;
+            transition: transform 0.14s ease, box-shadow 0.14s ease;
+        }
+
+        .stat-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 28px -10px rgba(35, 32, 28, 0.22);
+        }
     </style>
 </head>
 
@@ -184,34 +197,34 @@ function orderPill(string $s): array
             <!-- Stat cards -->
             <div class="grid cols-3 mb-6">
 
-                <div class="stat-card tone-brand">
+                <a href="products.php" class="stat-card tone-brand stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Active Products</span>
                         <div class="stat-icon"><i class="fa-solid fa-box-open"></i></div>
                     </div>
                     <div class="stat-value"><?= number_format($totalProducts) ?></div>
                     <div class="stat-foot">All listed products</div>
-                </div>
+                </a>
 
-                <div class="stat-card tone-blue">
+                <a href="orders.php" class="stat-card tone-blue stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Orders Today</span>
                         <div class="stat-icon"><i class="fa-solid fa-receipt"></i></div>
                     </div>
                     <div class="stat-value"><?= number_format($ordersToday) ?></div>
                     <div class="stat-foot"><?= date('F j') ?></div>
-                </div>
+                </a>
 
-                <div class="stat-card tone-green">
+                <a href="report_sales.php" class="stat-card tone-green stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Sales Today</span>
                         <div class="stat-icon"><i class="fa-solid fa-money-bill"></i></div>
                     </div>
                     <div class="stat-value money"><?= peso($salesToday) ?></div>
                     <div class="stat-foot">Approved orders only</div>
-                </div>
+                </a>
 
-                <div class="stat-card tone-red">
+                <a href="inventory.php" class="stat-card tone-red stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Low Stock</span>
                         <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -220,9 +233,9 @@ function orderPill(string $s): array
                         <?php if ($lowStock > 0): ?><span class="pulse"><span class="pulse-dot"></span><?= number_format($lowStock) ?></span><?php else: ?><?= number_format($lowStock) ?><?php endif; ?>
                     </div>
                     <div class="stat-foot">At or below reorder level</div>
-                </div>
+                </a>
 
-                <div class="stat-card tone-amber">
+                <a href="orders.php?status=pending" class="stat-card tone-amber stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Pending Orders</span>
                         <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
@@ -231,16 +244,16 @@ function orderPill(string $s): array
                         <?php if ($pendingOrders > 0): ?><span class="pulse"><span class="pulse-dot amber"></span><?= number_format($pendingOrders) ?></span><?php else: ?><?= number_format($pendingOrders) ?><?php endif; ?>
                     </div>
                     <div class="stat-foot">Awaiting approval</div>
-                </div>
+                </a>
 
-                <div class="stat-card tone-violet">
+                <a href="customers.php" class="stat-card tone-violet stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Customers</span>
                         <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
                     </div>
                     <div class="stat-value"><?= number_format($totalCustomers) ?></div>
                     <div class="stat-foot">Registered accounts</div>
-                </div>
+                </a>
 
             </div>
 

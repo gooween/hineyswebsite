@@ -84,6 +84,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($uploadError) redirect('orders.php', 'error', $uploadError);
 }
 
+// ── Customer: cancel own order (with reason) ──────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
+    $oid    = (int)($_POST['order_id'] ?? 0);
+    $reason = trim($_POST['cancel_reason'] ?? '');
+
+    if (!$oid || $reason === '') {
+        redirect('orders.php', 'error', 'Please provide a reason for cancellation.');
+    }
+
+    // Order must belong to this customer and be cancellable (pending or approved)
+    $chk = $conn->prepare("SELECT status FROM orders WHERE id=? AND user_id=? LIMIT 1");
+    $chk->bind_param('ii', $oid, $uid);
+    $chk->execute();
+    $chkRes = $chk->get_result();
+    $row = $chkRes ? $chkRes->fetch_assoc() : null;
+
+    if (!$row) {
+        redirect('orders.php', 'error', 'Order not found.');
+    }
+    if (!in_array($row['status'], ['pending', 'approved'], true)) {
+        redirect('orders.php', 'error', 'This order can no longer be cancelled.');
+    }
+
+    // Restore stock (only if it was approved/deducted — mirrors admin logic)
+    $bc = $conn->query("SELECT COUNT(*) AS cnt FROM batch_consumption WHERE order_id={$oid}");
+    if ($bc && (int)$bc->fetch_assoc()['cnt'] > 0) {
+        $items = $conn->query("SELECT product_id, quantity FROM order_items WHERE order_id={$oid}");
+        while ($items && $item = $items->fetch_assoc()) {
+            $pid = (int)$item['product_id'];
+            $qty = (int)$item['quantity'];
+            $toRestore = $qty;
+            $consumed = $conn->query("SELECT bc.id AS cid, bc.batch_id, bc.quantity, sb.remaining FROM batch_consumption bc JOIN stock_batches sb ON sb.id=bc.batch_id WHERE bc.order_id={$oid} AND sb.product_id={$pid} ORDER BY bc.id DESC");
+            while ($toRestore > 0 && $consumed && $con = $consumed->fetch_assoc()) {
+                $restore = min($toRestore, (int)$con['quantity']);
+                $newRemain = (int)$con['remaining'] + $restore;
+                $conn->query("UPDATE stock_batches SET remaining={$newRemain}, status='active' WHERE id={$con['batch_id']}");
+                $conn->query("DELETE FROM batch_consumption WHERE id={$con['cid']}");
+                $toRestore -= $restore;
+            }
+            $lbl = $conn->real_escape_string("Cancelled by customer order #" . str_pad($oid, 4, '0', STR_PAD_LEFT));
+            $conn->query("UPDATE inventory SET quantity=quantity+{$qty}, last_updated=NOW() WHERE product_id={$pid}");
+            $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$pid},'in',{$qty},'{$lbl}',{$uid},NOW())");
+        }
+    }
+
+    $rEsc = $conn->real_escape_string($reason);
+    $conn->query("UPDATE orders SET status='cancelled', cancel_reason='{$rEsc}', cancelled_by='customer', updated_at=NOW() WHERE id={$oid} AND user_id={$uid}");
+    redirect('orders.php', 'success', 'Your order has been cancelled.');
+}
+
 // ── Filter ────────────────────────────────────────────────────
 $filterStatus  = trim($_GET['status'] ?? '');
 $validStatuses = ['pending', 'approved', 'processing', 'out_for_delivery', 'delivered', 'cancelled'];
@@ -1482,6 +1532,26 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             font-size: 0.95rem;
             justify-content: center;
         }
+
+        .btn-cancel-order {
+            background: #fff;
+            color: #d94f46;
+            border: 1px solid #f0c4c0;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-cancel-order:hover {
+            background: #d94f46;
+            color: #fff;
+            border-color: #d94f46;
+        }
     </style>
 </head>
 
@@ -1694,7 +1764,12 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                         <span><i class="fa-solid fa-location-dot"></i></span>
                                         <span class="order-address-text"><?= htmlspecialchars($o['delivery_address']) ?></span>
                                     </div>
-                                    <button class="btn-view-order" onclick="viewOrder(<?= $o['id'] ?>)">View Details →</button>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <?php if (in_array($sid, ['pending', 'approved'], true)): ?>
+                                            <button class="btn-cancel-order" onclick="openCancelOrder(<?= $o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')">Cancel Order</button>
+                                        <?php endif; ?>
+                                        <button class="btn-view-order" onclick="viewOrder(<?= $o['id'] ?>)">View Details →</button>
+                                    </div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -1745,6 +1820,31 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                 <button onclick="closeLightbox()" style="background:#fff;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1.2rem;display:flex;align-items:center;justify-content:center;">✕</button>
             </div>
             <img id="lightbox_img" src="" alt="Proof" style="max-width:100%;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+        </div>
+    </div>
+
+    <!-- CANCEL ORDER MODAL -->
+    <div class="modal-backdrop" id="cancelOrderModal" onclick="if(event.target===this)closeCancelOrder()">
+        <div class="modal" style="max-width:440px;">
+            <div class="modal-header">
+                <div class="modal-title" style="color:#d94f46;"><i class="fa-solid fa-triangle-exclamation"></i> Cancel Order</div>
+                <button class="modal-close" onclick="closeCancelOrder()">✕</button>
+            </div>
+            <form method="POST" action="orders.php">
+                <input type="hidden" name="action" value="cancel_order">
+                <input type="hidden" name="order_id" id="cancel_order_id">
+                <div style="padding:22px 24px;">
+                    <p style="font-size:0.9rem;color:#6f6a62;line-height:1.6;margin:0 0 16px;">
+                        Are you sure you want to cancel order <strong id="cancel_order_num" style="color:#23201c;">#0000</strong>? This can't be undone.
+                    </p>
+                    <label style="font-size:0.82rem;font-weight:700;color:#23201c;display:block;margin-bottom:6px;">Reason for cancellation <span style="color:#d94f46;">*</span></label>
+                    <textarea name="cancel_reason" required rows="3" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ddd8d0;border-radius:8px;font-family:inherit;font-size:0.88rem;resize:vertical;" placeholder="e.g. Changed my mind, ordered by mistake, wrong item…"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;padding:0 24px 22px;">
+                    <button type="button" class="btn-view-order" onclick="closeCancelOrder()" style="background:#f0eee9;color:#6f6a62;">Keep Order</button>
+                    <button type="submit" style="background:#d94f46;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-family:inherit;">Yes, Cancel Order</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1900,6 +2000,16 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         ${proofHtml}
         ${txnHtml}
     `;
+        }
+
+        function openCancelOrder(id, num) {
+            document.getElementById('cancel_order_id').value = id;
+            document.getElementById('cancel_order_num').textContent = num;
+            document.getElementById('cancelOrderModal').classList.add('show');
+        }
+
+        function closeCancelOrder() {
+            document.getElementById('cancelOrderModal').classList.remove('show');
         }
 
         function closeModal() {
