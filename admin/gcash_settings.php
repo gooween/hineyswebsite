@@ -7,6 +7,7 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../config/cloudinary.php';
 requireAdmin();
 
 $activePage = 'gcash_settings';
@@ -43,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'save_gcash_info') {
         // saveSetting() already escapes — pass raw trimmed values (no clean(),
         // which would double-escape and store a literal backslash).
-        $number  = trim($_POST['gcash_number'] ?? '');
-        $name    = trim($_POST['gcash_name']   ?? '');
+        $number  = trim($_POST['gcash_number']   ?? '');
+        $name    = trim($_POST['gcash_name']     ?? '');
         $pickup  = trim($_POST['pickup_address'] ?? '');
 
         saveSetting($conn, 'gcash_number',   $number);
@@ -78,15 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unlink('../' . $oldPath);
         }
 
-        $filename   = 'gcash_qr_' . time() . '.' . $ext;
-        $destPath   = $uploadDir . $filename;
-        $publicPath = 'uploads/gcash/' . $filename;
-
-        if (move_uploaded_file($file['tmp_name'], $destPath)) {
-            saveSetting($conn, 'gcash_qr_path', $publicPath);
+        $cloudUrl = cloudinaryUpload($file['tmp_name'], 'gcash_qr');
+        if ($cloudUrl) {
+            saveSetting($conn, 'gcash_qr_path', $cloudUrl);
             redirect('gcash_settings.php', 'success', 'GCash QR image uploaded successfully.');
         } else {
-            redirect('gcash_settings.php', 'error', 'Failed to save file. Check folder permissions.');
+            redirect('gcash_settings.php', 'error', 'QR upload failed: ' . ($GLOBALS['cloudinary_last_error'] ?? 'unknown error'));
         }
     }
 
@@ -105,6 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $gcashNumber    = getSetting($conn, 'gcash_number',   '0917-XXX-XXXX');
 $gcashName      = getSetting($conn, 'gcash_name',     "Hiney's Eggs & Live Chicken");
 $gcashQrPath    = getSetting($conn, 'gcash_qr_path',  '');
+// QR may be a full Cloudinary URL (new) or a local path (legacy).
+$qrIsUrl  = $gcashQrPath !== '' && preg_match('#^https?://#', $gcashQrPath);
+$qrExists = $gcashQrPath !== '' && ($qrIsUrl || file_exists('../' . $gcashQrPath));
+$qrSrc    = $qrIsUrl ? $gcashQrPath : '../' . $gcashQrPath;
 $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cortes, Bohol");
 ?>
 <!DOCTYPE html>
@@ -611,8 +613,8 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
 
                             <!-- Current QR -->
                             <div class="qr-current">
-                                <?php if ($gcashQrPath && file_exists('../' . $gcashQrPath)): ?>
-                                    <img src="../<?= htmlspecialchars($gcashQrPath) ?>?v=<?= time() ?>"
+                                <?php if ($qrExists): ?>
+                                    <img src="<?= htmlspecialchars($qrSrc) ?><?= $qrIsUrl ? '' : '?v=' . time() ?>"
                                         alt="GCash QR Code" class="qr-img" id="currentQrImg">
                                     <div style="font-size:0.82rem;color:#065f46;font-weight:600;">✓ QR Code is active</div>
                                 <?php else: ?>
@@ -654,7 +656,7 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
                     </div>
 
                     <!-- Delete QR -->
-                    <?php if ($gcashQrPath && file_exists('../' . $gcashQrPath)): ?>
+                    <?php if ($qrExists): ?>
                         <div class="card">
                             <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                                 <div>
@@ -707,8 +709,8 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
                                 <div class="form-group">
                                     <label class="form-label">Pickup Address</label>
                                     <textarea name="pickup_address" class="form-textarea"
-                                        placeholder="Full address where customers can pick up their order..."><?= htmlspecialchars($pickupAddress) ?></textarea>
-                                    <span class="form-hint">Shown to customers who choose "Pick Up" at checkout</span>
+                                        placeholder="Enter full address where customers can pick up..."><?= htmlspecialchars($pickupAddress) ?></textarea>
+                                    <span class="form-hint">Shown to customers who choose "Pick Up" as delivery option</span>
                                 </div>
 
                             </div>
@@ -736,9 +738,9 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
                                 <div style="font-size:0.82rem;font-weight:700;color:#1e40af;margin-bottom:10px;">
                                     <i class="fa-solid fa-mobile-screen"></i> Send GCash Payment To:
                                 </div>
-                                <?php if ($gcashQrPath && file_exists('../' . $gcashQrPath)): ?>
+                                <?php if ($qrExists): ?>
                                     <div style="text-align:center;margin-bottom:10px;">
-                                        <img src="../<?= htmlspecialchars($gcashQrPath) ?>?v=<?= time() ?>"
+                                        <img src="<?= htmlspecialchars($qrSrc) ?><?= $qrIsUrl ? '' : '?v=' . time() ?>"
                                             style="max-width:120px;border-radius:8px;border:1px solid #bfdbfe;"
                                             alt="QR Preview">
                                     </div>

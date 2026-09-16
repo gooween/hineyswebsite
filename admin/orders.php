@@ -1687,7 +1687,7 @@ $activePage = 'orders';
 
         function viewProof(path, orderNum) {
             document.getElementById('proof_order_label').textContent = 'Order #' + orderNum + ' — GCash Payment Screenshot';
-            document.getElementById('proof_img_el').src = '../' + path + '?v=' + Date.now();
+            document.getElementById('proof_img_el').src = /^https?:\/\//.test(path) ? path : '../' + path + '?v=' + Date.now();
             openModal('proofModal');
         }
     </script>

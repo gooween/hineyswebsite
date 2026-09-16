@@ -1,4 +1,10 @@
 <?php
+if (!function_exists('mediaSrc')) {
+    function mediaSrc(string $p): string
+    {
+        return $p === '' ? '' : (preg_match('#^https?://#', $p) ? $p : '../' . $p);
+    }
+}
 session_start();
 require_once '../config/db.php';
 requireAdmin();
@@ -640,7 +646,7 @@ $statusMap = [
             <div class="od-section-head"><i class="fa-solid fa-paperclip"></i> GCash Payment Proof</div>
             <div class="od-section-body">
                 <?php if (!empty($o['gcash_proof'])): ?>
-                    <img src="../<?= htmlspecialchars($o['gcash_proof']) ?>?v=<?= time() ?>"
+                    <img src="<?= htmlspecialchars(mediaSrc($o['gcash_proof'])) ?>"
                         class="od-proof-img"
                         alt="GCash Payment Proof"
                         onclick="viewProof('<?= htmlspecialchars(addslashes($o['gcash_proof'])) ?>', '<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')">

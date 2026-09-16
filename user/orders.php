@@ -6,6 +6,15 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../config/cloudinary.php';
+// Media may be a full Cloudinary URL (new) or a local path (legacy).
+if (!function_exists('mediaSrc')) {
+    function mediaSrc(string $path): string
+    {
+        if ($path === '') return '';
+        return preg_match('#^https?://#', $path) ? $path : '../' . $path;
+    }
+}
 requireCustomer();
 
 $activePage = 'orders';
@@ -57,26 +66,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         } elseif ($file['size'] > 5 * 1024 * 1024) {
             $uploadError = 'File too large. Max 5MB.';
         } else {
-            $uploadDir = '../uploads/gcash_proofs/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-
-            $old = $conn->query("SELECT gcash_proof FROM orders WHERE id={$orderId} LIMIT 1");
-            if ($old && $oldRow = $old->fetch_assoc()) {
-                if (!empty($oldRow['gcash_proof']) && file_exists('../' . $oldRow['gcash_proof'])) {
-                    unlink('../' . $oldRow['gcash_proof']);
-                }
-            }
-
-            $filename   = 'proof_' . $orderId . '_' . time() . '.' . $ext;
-            $destPath   = $uploadDir . $filename;
-            $publicPath = 'uploads/gcash_proofs/' . $filename;
-
-            if (move_uploaded_file($file['tmp_name'], $destPath)) {
-                $safePath = $conn->real_escape_string($publicPath);
+            $cloudUrl = cloudinaryUpload($file['tmp_name'], 'gcash_proofs');
+            if ($cloudUrl) {
+                $safePath = $conn->real_escape_string($cloudUrl);
                 $conn->query("UPDATE orders SET gcash_proof='{$safePath}', updated_at=NOW() WHERE id={$orderId}");
                 redirect('orders.php', 'success', '✓ Payment proof uploaded! The admin will verify it shortly.');
             } else {
-                $uploadError = 'Failed to save file. Please try again.';
+                $uploadError = 'Failed to upload the image. Please try again.';
             }
         }
     }
@@ -1692,7 +1688,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                                     <div class="gcash-pay-grid">
                                                         <?php if ($gcashQrPath): ?>
                                                             <div class="gcash-qr-box">
-                                                                <img src="../<?= htmlspecialchars($gcashQrPath) ?>" alt="GCash QR" class="gcash-qr-img" onclick="viewProofImg('../<?= htmlspecialchars($gcashQrPath) ?>')">
+                                                                <img src="<?= htmlspecialchars(mediaSrc($gcashQrPath)) ?>" alt="GCash QR" class="gcash-qr-img" onclick="viewProofImg(<?= htmlspecialchars(json_encode(mediaSrc($gcashQrPath))) ?>)">
                                                                 <div class="gcash-qr-hint">Tap to enlarge · Scan with GCash</div>
                                                             </div>
                                                         <?php endif; ?>
@@ -1741,7 +1737,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
 
                                 <?php elseif ($proofUploaded): ?>
                                     <div class="proof-uploaded-section">
-                                        <img src="../<?= htmlspecialchars($o['gcash_proof']) ?>?v=<?= time() ?>" class="proof-thumb" alt="Payment Proof" onclick="viewProofImg('../<?= htmlspecialchars($o['gcash_proof']) ?>')">
+                                        <img src="<?= htmlspecialchars(mediaSrc($o['gcash_proof'])) ?>" class="proof-thumb" alt="Payment Proof" onclick="viewProofImg(<?= htmlspecialchars(json_encode(mediaSrc($o['gcash_proof']))) ?>)">
                                         <div class="proof-uploaded-info">
                                             <div class="proof-uploaded-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#065f46" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                     <polyline points="20 6 9 17 4 12" />
@@ -1952,7 +1948,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             let proofHtml = '';
             if (o.payment_method === 'gcash' && o.gcash_proof) {
                 proofHtml = `<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-paperclip"></i> Payment Proof</div>
-            <div class="modal-proof-wrap"><img src="../${esc(o.gcash_proof)}?v=${Date.now()}" alt="GCash Payment Proof" style="max-width:100%;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="viewProofImg('../${esc(o.gcash_proof)}')"></div></div>`;
+            <div class="modal-proof-wrap"><img src="${mSrc(o.gcash_proof)}" alt="GCash Payment Proof" style="max-width:100%;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="viewProofImg(mSrc(o.gcash_proof))"></div></div>`;
             } else if (o.payment_method === 'gcash' && o.status === 'approved') {
                 proofHtml = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:0.82rem;color:#1e40af;margin-top:10px;"><i class="fa-solid fa-paperclip"></i> No payment proof uploaded yet. Please upload it from the order list.</div>`;
             }
@@ -2015,6 +2011,10 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         function closeModal() {
             document.getElementById('orderModal').classList.remove('show');
             document.body.style.overflow = '';
+        }
+
+        function mSrc(p) {
+            return /^https?:\/\//.test(p) ? p : '../' + p;
         }
 
         function viewProofImg(src) {
