@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $grandTotal = $cartTotal + $actualDeliveryFee;
 
-    if (!in_array($paymentMethod, ['cod', 'gcash']))
+    if (!in_array($paymentMethod, ['cod', 'paymongo']))
         $errors[] = 'Please select a payment method.';
 
     foreach ($cartData as $item) {
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
         try {
             $finalAddress = $deliveryType === 'pickup' ? 'PICKUP — ' . $pickupAddress : $deliveryAddress;
-            $pmFull = $paymentMethod === 'gcash' ? 'gcash' : 'cod';
+            $pmFull = $paymentMethod === 'paymongo' ? 'paymongo' : 'cod';
             $oMuni  = $deliveryType === 'pickup' ? null : $deliveryMuni;
             $oBrgy  = $deliveryType === 'pickup' ? null : $deliveryBrgy;
 
@@ -144,8 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->commit();
 
             $orderNum = str_pad($orderId, 4, '0', STR_PAD_LEFT);
-            if ($paymentMethod === 'gcash') {
-                redirect('orders.php', 'success', "Order #{$orderNum} placed! Once admin approves, you'll be asked to upload your GCash payment proof.");
+            if ($paymentMethod === 'paymongo') {
+                // Off to PayMongo hosted checkout (GCash / QR Ph)
+                header('Location: ../payment/create_session.php?order_id=' . $orderId);
+                exit;
             } else {
                 redirect('orders.php', 'success', "Order #{$orderNum} placed successfully! We'll confirm it shortly.");
             }
@@ -1270,34 +1272,34 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                             <div class="payment-option-desc">Pay with cash when you pick up your order.</div>
                                         </div>
                                     </label>
-                                    <label class="payment-option <?= ($_POST['payment_method'] ?? '') === 'gcash' ? 'selected' : '' ?>">
-                                        <input type="radio" name="payment_method" value="gcash" <?= ($_POST['payment_method'] ?? '') === 'gcash' ? 'checked' : '' ?> onchange="selectPayment('gcash')">
+                                    <label class="payment-option <?= ($_POST['payment_method'] ?? '') === 'paymongo' ? 'selected' : '' ?>">
+                                        <input type="radio" name="payment_method" value="paymongo" <?= ($_POST['payment_method'] ?? '') === 'paymongo' ? 'checked' : '' ?> onchange="selectPayment('paymongo')">
                                         <div class="payment-option-icon"><i class="fa-solid fa-mobile-screen"></i></div>
                                         <div>
-                                            <div class="payment-option-name">GCash</div>
-                                            <div class="payment-option-desc">Place order now — upload payment proof after admin approval.</div>
+                                            <div class="payment-option-name">GCash / Maya / QR Ph</div>
+                                            <div class="payment-option-desc">Pay securely online — you'll be redirected to complete payment now.</div>
                                         </div>
                                     </label>
                                 </div>
-                                <div class="gcash-info <?= ($_POST['payment_method'] ?? '') === 'gcash' ? 'show' : '' ?>" id="gcashInfo">
+                                <div class="gcash-info <?= ($_POST['payment_method'] ?? '') === 'paymongo' ? 'show' : '' ?>" id="gcashInfo">
                                     <div class="gcash-info-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                             <circle cx="12" cy="12" r="10" />
                                             <line x1="12" y1="8" x2="12" y2="12" />
                                             <line x1="12" y1="16" x2="12.01" y2="16" />
-                                        </svg> How GCash Payment Works</div>
-                                    <div class="gcash-info-note">No need to pay yet! Here's the process:</div>
+                                        </svg> How Online Payment Works</div>
+                                    <div class="gcash-info-note">Fast & secure — pay right after placing your order:</div>
                                     <div class="gcash-steps">
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">1</div><span>Place your order — submitted as pending.</span>
+                                            <div class="gcash-step-num">1</div><span>Place your order — you'll be taken to a secure payment page.</span>
                                         </div>
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">2</div><span>Admin reviews and <strong>approves</strong> your order.</span>
+                                            <div class="gcash-step-num">2</div><span>Pay with <strong>GCash</strong>, <strong>Maya</strong>, or <strong>QR Ph</strong> on PayMongo's checkout.</span>
                                         </div>
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">3</div><span>Send payment to <strong><?= htmlspecialchars($gcashNumber) ?></strong> (<?= htmlspecialchars($gcashName) ?>) and upload screenshot in My Orders.</span>
+                                            <div class="gcash-step-num">3</div><span>Payment is confirmed automatically — your order is marked <strong>Paid</strong>.</span>
                                         </div>
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">4</div><span>Admin verifies and marks as paid.</span>
+                                            <div class="gcash-step-num">4</div><span>We prepare and deliver your order.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1488,7 +1490,7 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                 radio.checked = true;
                 radio.closest('.payment-option').classList.add('selected');
             }
-            document.getElementById('gcashInfo').classList.toggle('show', method === 'gcash');
+            document.getElementById('gcashInfo').classList.toggle('show', method === 'paymongo');
         }
 
         function submitOrder() {
