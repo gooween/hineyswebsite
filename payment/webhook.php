@@ -34,8 +34,13 @@ if (PAYMONGO_WEBHOOK_SECRET !== '' && $sigHeader !== '') {
     $providedSig = $parts['te'] ?? ($parts['li'] ?? '');
     $expected = hash_hmac('sha256', $timestamp . '.' . $payload, PAYMONGO_WEBHOOK_SECRET);
     if (!hash_equals($expected, $providedSig)) {
-        // Signature mismatch — ignore (do not mark paid)
-        file_put_contents(__DIR__ . '/webhook_log.txt', date('c') . " SIGNATURE MISMATCH\n", FILE_APPEND);
+        // Log details so we can diagnose (does NOT log the full secret)
+        $dbg = date('c') . " SIGNATURE MISMATCH\n"
+            . "  raw header: {$sigHeader}\n"
+            . "  provided:   {$providedSig}\n"
+            . "  expected:   {$expected}\n"
+            . "  secret len: " . strlen(PAYMONGO_WEBHOOK_SECRET) . " starts: " . substr(PAYMONGO_WEBHOOK_SECRET, 0, 6) . "\n";
+        file_put_contents(__DIR__ . '/webhook_log.txt', $dbg, FILE_APPEND);
         exit;
     }
 }
@@ -55,6 +60,23 @@ if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
     // payment.paid events may not carry the reference; fall back to checkout id
     $checkoutId = $event['data']['attributes']['data']['id'] ?? '';
 
+    // Which method did PayMongo actually charge? (gcash / paymaya / qrph)
+    // For a checkout session, it's in the payments array's source type.
+    $method = '';
+    $payments = $attr['payments'] ?? [];
+    if (!empty($payments[0]['attributes'])) {
+        $pa = $payments[0]['attributes'];
+        $method = $pa['source']['type']
+            ?? ($pa['payment_method_used'] ?? ($pa['method'] ?? ''));
+    }
+    // Fallback: some payloads expose it directly
+    if ($method === '') {
+        $method = $attr['payment_method_used'] ?? '';
+    }
+    // Normalize to a friendly label
+    $methodMap = ['gcash' => 'GCash', 'paymaya' => 'Maya', 'qrph' => 'QR Ph'];
+    $methodLabel = $methodMap[strtolower($method)] ?? ($method !== '' ? ucfirst($method) : 'PayMongo');
+
     $order = null;
     if ($reference !== '') {
         $rEsc = $conn->real_escape_string($reference);
@@ -69,7 +91,8 @@ if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
 
     if ($order && $order['payment_status'] !== 'paid') {
         $oid = (int)$order['id'];
-        $conn->query("UPDATE orders SET payment_status='paid', paid_at=NOW(), updated_at=NOW() WHERE id={$oid}");
+        $mEsc = $conn->real_escape_string($methodLabel);
+        $conn->query("UPDATE orders SET payment_status='paid', paid_at=NOW(), paymongo_method='{$mEsc}', updated_at=NOW() WHERE id={$oid}");
 
         // Create a transaction record if none exists (mirrors admin mark-paid)
         $chk = $conn->query("SELECT COUNT(*) AS c FROM transactions WHERE order_id={$oid}");
@@ -77,8 +100,9 @@ if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
             $amtRes = $conn->query("SELECT total_amount FROM orders WHERE id={$oid}");
             $amt = (float)($amtRes->fetch_assoc()['total_amount'] ?? 0);
             $refEsc = $conn->real_escape_string($reference ?: $checkoutId);
+            $txnMethod = $conn->real_escape_string(strtolower($method) ?: 'paymongo');
             $conn->query("INSERT INTO transactions (order_id, amount, payment_method, reference_no, transaction_date)
-                          VALUES ({$oid}, {$amt}, 'gcash', '{$refEsc}', NOW())");
+                          VALUES ({$oid}, {$amt}, '{$txnMethod}', '{$refEsc}', NOW())");
         }
     }
 }

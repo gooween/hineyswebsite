@@ -178,7 +178,7 @@ $totalCount  = (int)($countResult->fetch_assoc()['cnt'] ?? 0);
 $totalPages  = max(1, (int)ceil($totalCount / $perPage));
 
 $orders = $conn->query("
-    SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method,
+    SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
            o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
            o.created_at, o.updated_at,
            u.full_name, u.email, u.phone,
@@ -187,7 +187,7 @@ $orders = $conn->query("
     FROM orders o JOIN users u ON u.id=o.user_id
     LEFT JOIN order_items oi ON oi.order_id=o.id
     {$where}
-    GROUP BY o.id,o.status,o.total_amount,o.delivery_fee,o.payment_method,
+    GROUP BY o.id,o.status,o.total_amount,o.delivery_fee,o.payment_method,o.paymongo_method,
              o.payment_status,o.delivery_address,o.notes,o.gcash_proof,
              o.created_at,o.updated_at,u.full_name,u.email,u.phone
     ORDER BY o.created_at DESC LIMIT {$perPage} OFFSET {$offset}
@@ -1205,9 +1205,8 @@ $activePage = 'orders';
                         </select>
                         <select name="method" class="filter-select" onchange="this.form.submit()">
                             <option value="">All Methods</option>
-                            <option value="cash" <?= $filterMethod === 'cash' ? 'selected' : '' ?>>Cash</option>
-                            <option value="gcash" <?= $filterMethod === 'gcash' ? 'selected' : '' ?>>GCash</option>
                             <option value="cod" <?= $filterMethod === 'cod' ? 'selected' : '' ?>>COD</option>
+                            <option value="paymongo" <?= $filterMethod === 'paymongo' ? 'selected' : '' ?>>Online (GCash/Maya/QR Ph)</option>
                         </select>
                         <?php if ($search || $filterPayment || $filterMethod): ?><a href="orders.php?status=<?= urlencode($filterStatus) ?>" class="clear-link">✕ Clear</a><?php endif; ?>
                     </form>
@@ -1244,7 +1243,12 @@ $activePage = 'orders';
                                     $isCancelled = ($o['status'] === 'cancelled');
                                     $isDelivered = ($o['status'] === 'delivered');
                                     $isFinalised = ($isCancelled || $isDelivered);
-                                    $methodIcon = $o['payment_method'] === 'gcash' ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
+                                    $isPaymongo = $o['payment_method'] === 'paymongo';
+                                    $methodIcon = ($isPaymongo || $o['payment_method'] === 'gcash') ? '<i class="fa-solid fa-mobile-screen"></i>' : '<i class="fa-solid fa-money-bill"></i>';
+                                    // Show the real method for PayMongo orders (GCash/Maya/QR Ph), else the method name
+                                    $methodText = $isPaymongo
+                                        ? (!empty($o['paymongo_method']) ? $o['paymongo_method'] : 'PayMongo')
+                                        : strtoupper($o['payment_method']);
                                     $feeIsSet = $o['delivery_fee'] !== null;
                                     $itemsSubtotal = (float)$o['items_subtotal'];
                                     $hasProof = !empty($o['gcash_proof']);
@@ -1268,7 +1272,7 @@ $activePage = 'orders';
                                         <td>
                                             <div class="total-main">₱<?= number_format((float)$o['total_amount'], 2) ?></div><?php if (!$isCancelled): ?><?php if ($feeIsSet): ?><div class="total-fee-set"><?= $o['delivery_fee'] > 0 ? 'incl. ₱' . number_format((float)$o['delivery_fee'], 2) . ' delivery' : 'free delivery' ?></div><?php else: ?><div class="total-fee-unset">Fee not set <i class="fa-solid fa-triangle-exclamation"></i></div><?php endif; ?><?php endif; ?>
                                         </td>
-                                        <td><span class="method-badge"><?= $methodIcon ?> <?= strtoupper($o['payment_method']) ?></span></td>
+                                        <td><span class="method-badge"><?= $methodIcon ?> <?= htmlspecialchars($methodText) ?></span></td>
                                         <td><span class="st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span></td>
                                         <td><?php if ($o['payment_method'] === 'gcash'): ?><?php if ($hasProof): ?><span class="proof-badge proof-yes" onclick="viewProof('<?= htmlspecialchars(addslashes($o['gcash_proof'])) ?>','<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-paperclip"></i> View</span><?php else: ?><span class="proof-badge proof-no"><i class="fa-solid fa-clock"></i> None</span><?php endif; ?><?php else: ?><span style="font-size:var(--fs-xs);color:var(--ink-3);">N/A</span><?php endif; ?></td>
                                         <td><span class="st-pill <?= $statusClass ?>"><?= $statusLabel ?></span></td>

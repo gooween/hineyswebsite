@@ -1,113 +1,47 @@
 <?php
 // ============================================================
-// Hiney's Eggs and Live Chicken Business
+// HATCH — Pickup Settings (payment is handled by PayMongo)
 // File: admin/gcash_settings.php
-// Purpose: Upload GCash QR image + manage payment settings
+// Purpose: Manage the store pickup address shown at checkout.
+// (GCash QR / number / name removed — payments now go through
+//  PayMongo hosted checkout, so no manual GCash details needed.)
 // ============================================================
 
 session_start();
 require_once '../config/db.php';
-require_once '../config/cloudinary.php';
 requireAdmin();
 
 $activePage = 'gcash_settings';
 
-// ── Ensure upload directory exists ───────────────────────────
-$uploadDir = '../uploads/gcash/';
-if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0755, true);
-}
-
-// ── Fetch current settings ────────────────────────────────────
-function getSetting(mysqli $conn, string $key, string $default = ''): string
-{
-    $k = $conn->real_escape_string($key);
-    $r = $conn->query("SELECT setting_value FROM settings WHERE setting_key = '{$k}' LIMIT 1");
-    if ($r && $row = $r->fetch_assoc()) return $row['setting_value'] ?? $default;
-    return $default;
-}
-
-function saveSetting(mysqli $conn, string $key, string $value): void
-{
-    $k = $conn->real_escape_string($key);
-    $v = $conn->real_escape_string($value);
-    $conn->query("INSERT INTO settings (setting_key, setting_value)
-                  VALUES ('{$k}', '{$v}')
-                  ON DUPLICATE KEY UPDATE setting_value = '{$v}', updated_at = NOW()");
-}
-
-// ── Handle POST ───────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = trim($_POST['action'] ?? '');
-
-    // Save GCash info
-    if ($action === 'save_gcash_info') {
-        // saveSetting() already escapes — pass raw trimmed values (no clean(),
-        // which would double-escape and store a literal backslash).
-        $number  = trim($_POST['gcash_number']   ?? '');
-        $name    = trim($_POST['gcash_name']     ?? '');
-        $pickup  = trim($_POST['pickup_address'] ?? '');
-
-        saveSetting($conn, 'gcash_number',   $number);
-        saveSetting($conn, 'gcash_name',     $name);
-        saveSetting($conn, 'pickup_address', $pickup);
-
-        redirect('gcash_settings.php', 'success', 'Settings saved successfully.');
+// ── Local settings helpers ────────────────────────────────────
+if (!function_exists('getSetting')) {
+    function getSetting(mysqli $conn, string $key, string $default = ''): string
+    {
+        $k = $conn->real_escape_string($key);
+        $r = $conn->query("SELECT setting_value FROM settings WHERE setting_key = '{$k}' LIMIT 1");
+        if ($r && $row = $r->fetch_assoc()) return $row['setting_value'] ?? $default;
+        return $default;
     }
-
-    // Upload QR image
-    if ($action === 'upload_qr') {
-        if (!isset($_FILES['qr_image']) || $_FILES['qr_image']['error'] !== UPLOAD_ERR_OK) {
-            redirect('gcash_settings.php', 'error', 'No file uploaded or upload error.');
-        }
-
-        $file     = $_FILES['qr_image'];
-        $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed  = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-        if (!in_array($ext, $allowed)) {
-            redirect('gcash_settings.php', 'error', 'Invalid file type. Use JPG, PNG, GIF or WEBP.');
-        }
-
-        if ($file['size'] > 5 * 1024 * 1024) {
-            redirect('gcash_settings.php', 'error', 'File too large. Max 5MB.');
-        }
-
-        // Delete old QR if exists
-        $oldPath = getSetting($conn, 'gcash_qr_path');
-        if ($oldPath && file_exists('../' . $oldPath)) {
-            unlink('../' . $oldPath);
-        }
-
-        $cloudUrl = cloudinaryUpload($file['tmp_name'], 'gcash_qr');
-        if ($cloudUrl) {
-            saveSetting($conn, 'gcash_qr_path', $cloudUrl);
-            redirect('gcash_settings.php', 'success', 'GCash QR image uploaded successfully.');
-        } else {
-            redirect('gcash_settings.php', 'error', 'QR upload failed: ' . ($GLOBALS['cloudinary_last_error'] ?? 'unknown error'));
-        }
-    }
-
-    // Delete QR
-    if ($action === 'delete_qr') {
-        $oldPath = getSetting($conn, 'gcash_qr_path');
-        if ($oldPath && file_exists('../' . $oldPath)) {
-            unlink('../' . $oldPath);
-        }
-        saveSetting($conn, 'gcash_qr_path', '');
-        redirect('gcash_settings.php', 'success', 'QR image removed.');
+}
+if (!function_exists('saveSetting')) {
+    function saveSetting(mysqli $conn, string $key, string $value): void
+    {
+        $k = $conn->real_escape_string($key);
+        $v = $conn->real_escape_string($value);
+        $conn->query("INSERT INTO settings (setting_key, setting_value)
+                      VALUES ('{$k}', '{$v}')
+                      ON DUPLICATE KEY UPDATE setting_value = '{$v}', updated_at = NOW()");
     }
 }
 
-// ── Load settings ─────────────────────────────────────────────
-$gcashNumber    = getSetting($conn, 'gcash_number',   '0917-XXX-XXXX');
-$gcashName      = getSetting($conn, 'gcash_name',     "Hiney's Eggs & Live Chicken");
-$gcashQrPath    = getSetting($conn, 'gcash_qr_path',  '');
-// QR may be a full Cloudinary URL (new) or a local path (legacy).
-$qrIsUrl  = $gcashQrPath !== '' && preg_match('#^https?://#', $gcashQrPath);
-$qrExists = $gcashQrPath !== '' && ($qrIsUrl || file_exists('../' . $gcashQrPath));
-$qrSrc    = $qrIsUrl ? $gcashQrPath : '../' . $gcashQrPath;
-$pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cortes, Bohol");
+// ── Save pickup address ───────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_pickup') {
+    $pickup = trim($_POST['pickup_address'] ?? '');
+    saveSetting($conn, 'pickup_address', $pickup);
+    redirect('gcash_settings.php', 'success', 'Pickup address saved.');
+}
+
+$pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cortes, Bohol");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -115,7 +49,10 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickup Settings — HATCH Admin</title>
+    <link rel="stylesheet" href="assets/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style id="hineys-icon-colors">
         /* === Hiney's icon colors === */
         /* Icons inside dark/colored or interactive areas keep their inherited color */
@@ -238,7 +175,6 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
             color: #f59e0b;
         }
     </style>
-    <title>Payment Settings — Hiney's Admin</title>
     <style>
         :root {
             --card-border: #e9e8e4;
@@ -565,232 +501,40 @@ $pickupAddress  = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cor
 </head>
 
 <body>
-    <div class="admin-layout">
-        <?php include '../includes/sidebar.php'; ?>
+    <?php include '../includes/sidebar.php'; ?>
+    <div class="main-content">
+        <div class="page-header">
+            <h1 class="page-title"><i class="fa-solid fa-store"></i> Pickup Settings</h1>
+            <div class="page-title-sub">Manage the pickup address shown to customers who choose Pick Up at checkout.</div>
+        </div>
 
-        <div class="main-content">
+        <?= flash() ?>
 
-            <div class="page-header">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                    <button class="mobile-menu-btn" onclick="openSidebar()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="3" y1="6" x2="21" y2="6" />
-                            <line x1="3" y1="12" x2="21" y2="12" />
-                            <line x1="3" y1="18" x2="21" y2="18" />
-                        </svg>
-                    </button>
-                    <h1 class="page-title">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="5" width="20" height="14" rx="2" />
-                            <line x1="2" y1="10" x2="22" y2="10" />
-                        </svg>
-                        Payment Settings
-                    </h1>
+        <div style="max-width:640px;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fa-solid fa-location-dot"></i> Pickup Address</div>
                 </div>
-                <div class="page-title-sub">Manage GCash QR code, pickup address, and delivery fee</div>
+                <form method="POST" action="gcash_settings.php">
+                    <input type="hidden" name="action" value="save_pickup">
+                    <div style="padding:22px 24px;">
+                        <div class="form-group">
+                            <label class="form-label">Pickup Address</label>
+                            <textarea name="pickup_address" class="form-textarea" rows="3"
+                                placeholder="Full address where customers can pick up their order..."><?= htmlspecialchars($pickupAddress) ?></textarea>
+                            <span class="form-hint">Shown to customers who choose "Pick Up" as their delivery option.</span>
+                        </div>
+                        <div style="background:#eef6ff;border:1px solid #cfe3fb;border-radius:8px;padding:12px 14px;font-size:0.82rem;color:#2c5b8f;line-height:1.6;margin-top:6px;">
+                            <i class="fa-solid fa-circle-info"></i> Online payments (GCash, Maya, QR Ph) are now processed automatically through PayMongo at checkout — no GCash QR or account details need to be managed here anymore.
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save Pickup Address</button>
+                    </div>
+                </form>
             </div>
-
-            <?= flash() ?>
-
-            <div class="settings-grid">
-
-                <!-- ── LEFT: GCash QR Upload ── -->
-                <div>
-                    <div class="card" style="margin-bottom:20px;">
-                        <div class="card-header">
-                            <div class="card-title"><i class="fa-solid fa-mobile-screen"></i> GCash QR Code</div>
-                        </div>
-                        <div class="card-body">
-
-                            <div class="info-badge">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
-                                <span>This QR code will be shown to customers who select <strong>GCash</strong> as their payment method during checkout.</span>
-                            </div>
-
-                            <!-- Current QR -->
-                            <div class="qr-current">
-                                <?php if ($qrExists): ?>
-                                    <img src="<?= htmlspecialchars($qrSrc) ?><?= $qrIsUrl ? '' : '?v=' . time() ?>"
-                                        alt="GCash QR Code" class="qr-img" id="currentQrImg">
-                                    <div style="font-size:0.82rem;color:#065f46;font-weight:600;">✓ QR Code is active</div>
-                                <?php else: ?>
-                                    <span class="qr-none-icon"><i class="fa-solid fa-camera"></i></span>
-                                    <div class="qr-none-text">No QR code uploaded yet</div>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Upload form -->
-                            <form method="POST" action="gcash_settings.php" enctype="multipart/form-data">
-                                <input type="hidden" name="action" value="upload_qr">
-
-                                <div class="drop-zone" id="dropZone">
-                                    <input type="file" name="qr_image" id="qrFileInput"
-                                        accept="image/jpeg,image/png,image/gif,image/webp"
-                                        onchange="previewFile(this)">
-                                    <span class="drop-zone-icon"><i class="fa-solid fa-upload"></i></span>
-                                    <div class="drop-zone-text">
-                                        <strong>Click to upload</strong> or drag & drop
-                                    </div>
-                                    <div class="drop-zone-hint">JPG, PNG, GIF, WEBP — Max 5MB</div>
-                                </div>
-
-                                <div class="preview-strip" id="previewStrip">
-                                    <img id="previewImg" src="" alt="Preview">
-                                    <div>
-                                        <div style="font-weight:600;" id="previewName">filename.png</div>
-                                        <div style="font-size:0.72rem;color:#065f46;">Ready to upload</div>
-                                    </div>
-                                </div>
-
-                                <div class="card-footer" style="margin: 16px -22px -22px; border-radius:0 0 var(--radius) var(--radius);">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fa-solid fa-upload"></i> Upload QR Image
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Delete QR -->
-                    <?php if ($qrExists): ?>
-                        <div class="card">
-                            <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                                <div>
-                                    <div style="font-size:0.88rem;font-weight:600;color:var(--dark);">Remove QR Code</div>
-                                    <div style="font-size:0.78rem;color:var(--text-muted);">This will remove the QR image from the checkout page.</div>
-                                </div>
-                                <form method="POST" action="gcash_settings.php"
-                                    onsubmit="return confirm('Remove the GCash QR image?')">
-                                    <input type="hidden" name="action" value="delete_qr">
-                                    <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Remove</button>
-                                </form>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- ── RIGHT: Business Settings ── -->
-                <div>
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title"><i class="fa-solid fa-gear"></i> Payment & Delivery Settings</div>
-                        </div>
-                        <form method="POST" action="gcash_settings.php">
-                            <input type="hidden" name="action" value="save_gcash_info">
-                            <div class="card-body">
-
-                                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--primary);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #fde9d0;">
-                                    GCash Account Info
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">GCash Number <span class="req">*</span></label>
-                                    <input type="text" name="gcash_number" class="form-input"
-                                        value="<?= htmlspecialchars($gcashNumber) ?>"
-                                        placeholder="e.g. 0917-123-4567" required>
-                                    <span class="form-hint">Displayed to customers on the checkout page</span>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">GCash Account Name <span class="req">*</span></label>
-                                    <input type="text" name="gcash_name" class="form-input"
-                                        value="<?= htmlspecialchars($gcashName) ?>"
-                                        placeholder="e.g. Hiney's Eggs & Live Chicken" required>
-                                </div>
-
-                                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--primary);margin:18px 0 12px;padding-bottom:6px;border-bottom:1px solid #fde9d0;">
-                                    Pickup
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Pickup Address</label>
-                                    <textarea name="pickup_address" class="form-textarea"
-                                        placeholder="Enter full address where customers can pick up..."><?= htmlspecialchars($pickupAddress) ?></textarea>
-                                    <span class="form-hint">Shown to customers who choose "Pick Up" as delivery option</span>
-                                </div>
-
-                            </div>
-                            <div class="card-footer">
-                                <button type="submit" class="btn btn-primary">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                    Save Settings
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Preview box -->
-                    <div class="card" style="margin-top:20px;">
-                        <div class="card-header">
-                            <div class="card-title"><i class="fa-solid fa-eye"></i> Customer Preview</div>
-                        </div>
-                        <div class="card-body">
-                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">
-                                This is what customers will see when they select GCash:
-                            </div>
-                            <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:16px;">
-                                <div style="font-size:0.82rem;font-weight:700;color:#1e40af;margin-bottom:10px;">
-                                    <i class="fa-solid fa-mobile-screen"></i> Send GCash Payment To:
-                                </div>
-                                <?php if ($qrExists): ?>
-                                    <div style="text-align:center;margin-bottom:10px;">
-                                        <img src="<?= htmlspecialchars($qrSrc) ?><?= $qrIsUrl ? '' : '?v=' . time() ?>"
-                                            style="max-width:120px;border-radius:8px;border:1px solid #bfdbfe;"
-                                            alt="QR Preview">
-                                    </div>
-                                <?php endif; ?>
-                                <div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:1rem;font-weight:800;color:#1e40af;letter-spacing:0.06em;text-align:center;margin-bottom:8px;">
-                                    <?= htmlspecialchars($gcashNumber) ?>
-                                </div>
-                                <div style="font-size:0.78rem;color:#1e40af;text-align:center;">
-                                    Account Name: <strong><?= htmlspecialchars($gcashName) ?></strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div><!-- /.settings-grid -->
-        </div><!-- /.main-content -->
-    </div><!-- /.admin-layout -->
-
-    <script>
-        // ── File preview ───────────────────────────────────────────────
-        function previewFile(input) {
-            const strip = document.getElementById('previewStrip');
-            const img = document.getElementById('previewImg');
-            const name = document.getElementById('previewName');
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    img.src = e.target.result;
-                    name.textContent = input.files[0].name;
-                    strip.style.display = 'flex';
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        // ── Drag & drop highlight ──────────────────────────────────────
-        const dz = document.getElementById('dropZone');
-        if (dz) {
-            dz.addEventListener('dragover', e => {
-                e.preventDefault();
-                dz.classList.add('dragover');
-            });
-            dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-            dz.addEventListener('drop', e => {
-                e.preventDefault();
-                dz.classList.remove('dragover');
-            });
-        }
-    </script>
+        </div>
+    </div>
 </body>
 
 </html>
