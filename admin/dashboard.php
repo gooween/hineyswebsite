@@ -188,9 +188,26 @@ function orderPill(string $s): array
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
-                    <?= date('l, F j, Y') ?> &nbsp;·&nbsp; <?= date('g:i A') ?>
+                    <span id="liveDateTime"><?= date('l, F j, Y') ?> &nbsp;·&nbsp; <?= date('g:i A') ?></span>
                 </div>
             </div>
+
+            <script>
+                // Live-updating clock (Philippine time)
+                (function () {
+                    var el = document.getElementById('liveDateTime');
+                    if (!el) return;
+                    function tick() {
+                        var now = new Date();
+                        var opts = { timeZone: 'Asia/Manila', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                        var dateStr = now.toLocaleDateString('en-US', opts);
+                        var timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true });
+                        el.innerHTML = dateStr + ' \u00A0\u00B7\u00A0 ' + timeStr;
+                    }
+                    tick();
+                    setInterval(tick, 1000);
+                })();
+            </script>
 
             <?= flash() ?>
 
