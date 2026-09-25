@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once __DIR__ . '/../includes/address_helpers.php';
 requireCustomer();
 
 $activePage = 'checkout';
@@ -22,11 +23,15 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto Corte
 // Delivery fees now come entirely from delivery_zones (per barangay).
 // No flat fallback fee — unmatched barangays are rejected at checkout.
 
-$stmt = $conn->prepare("SELECT full_name, email, phone, address, municipality, barangay, street_address, landmark, alt_municipality, alt_barangay, alt_street_address, alt_landmark FROM users WHERE id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT full_name, email, phone FROM users WHERE id = ? LIMIT 1");
 $stmt->bind_param('i', $uid);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
+
+// Shopee-style saved addresses (default first)
+$userAddresses = getUserAddresses($conn, $uid);
+$defaultAddress = $userAddresses[0] ?? null;
 
 $cartRows = $conn->query("
     SELECT c.id AS cart_id, c.quantity,
@@ -65,6 +70,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deliveryStreet  = trim($_POST['delivery_street']       ?? '');
     $paymentMethod   = trim($_POST['payment_method']        ?? '');
     $notes           = trim($_POST['notes']                 ?? '');
+
+    // If a saved address was picked (not "new"), pull muni/brgy/street from it.
+    $savedAddrId = trim($_POST['saved_address_id'] ?? '');
+    if ($deliveryType === 'delivery' && $savedAddrId !== '' && $savedAddrId !== 'new') {
+        foreach ($userAddresses as $ad) {
+            if ((string)$ad['id'] === $savedAddrId) {
+                $deliveryMuni   = $ad['municipality'];
+                $deliveryBrgy   = $ad['barangay'];
+                $deliveryStreet = $ad['street_address'] ?? '';
+                break;
+            }
+        }
+    }
 
     // Resolve the real fee from the zones table (server-side — never trust the browser)
     $actualDeliveryFee = 0.00;
@@ -159,13 +177,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $selectedDeliveryType = $_POST['delivery_type'] ?? 'delivery';
-$savedMuni   = $user['municipality'] ?? '';
-$savedBrgy   = $user['barangay'] ?? '';
-$savedStreet = $user['street_address'] ?? '';
-$altMuni     = $user['alt_municipality'] ?? '';
-$altBrgy     = $user['alt_barangay'] ?? '';
-$altStreet   = $user['alt_street_address'] ?? '';
-$hasAltAddr  = ($altMuni !== '' && $altBrgy !== '');
+// Pre-fill from the default saved address (if any)
+$savedMuni   = $defaultAddress['municipality'] ?? '';
+$savedBrgy   = $defaultAddress['barangay'] ?? '';
+$savedStreet = $defaultAddress['street_address'] ?? '';
 // On first load the fee is unknown until a zone is chosen; JS fills it in.
 $displayDeliveryFee = 0.00;
 $grandTotal         = $cartTotal + $displayDeliveryFee;
@@ -1076,60 +1091,110 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
             color: var(--primary)
         }
 
-        /* Address chooser (primary vs alternative) */
-        .addr-choice {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: stretch;
-            margin-bottom: 16px;
-        }
-
-        .addr-choice-label {
-            width: 100%;
-            font-size: 0.78rem;
+        /* Address picker (Shopee-style) */
+        .co-addr-label {
+            font-size: 0.82rem;
             font-weight: 700;
             color: #6f6a62;
-            margin-bottom: 2px;
+            margin-bottom: 8px;
         }
 
-        .addr-choice-btn {
-            flex: 1;
-            min-width: 200px;
-            text-align: left;
-            cursor: pointer;
-            border: 2px solid #ebe8e3;
-            border-radius: 10px;
-            background: #fff;
-            padding: 12px 14px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #23201c;
+        .co-addr-list {
             display: flex;
             flex-direction: column;
-            gap: 3px;
-            transition: all 0.15s;
-            font-family: inherit;
+            gap: 10px;
         }
 
-        .addr-choice-btn:hover {
+        .co-addr-card {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            border: 2px solid #ebe8e3;
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: #fff;
+        }
+
+        .co-addr-card:hover {
             border-color: #d9b48a;
         }
 
-        .addr-choice-btn.active {
+        .co-addr-card.selected {
             border-color: var(--primary, #e67e22);
+            background: #fffaf4;
+        }
+
+        .co-addr-card input[type="radio"] {
+            margin-top: 3px;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary, #e67e22);
+            flex-shrink: 0;
+        }
+
+        .co-addr-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .co-addr-top {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+
+        .co-addr-name {
+            font-weight: 700;
+            color: #23201c;
+            font-size: 0.9rem;
+        }
+
+        .co-addr-phone {
+            color: #6f6a62;
+            font-size: 0.82rem;
+        }
+
+        .co-addr-tag {
+            font-size: 0.66rem;
+            font-weight: 700;
+            background: #f0eee9;
+            color: #6f6a62;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .co-addr-default {
+            font-size: 0.64rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
             background: #fef4ea;
+            color: #d16b12;
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid #f5d9bb;
         }
 
-        .addr-choice-btn i {
+        .co-addr-line {
+            font-size: 0.84rem;
+            color: #3a352f;
+            line-height: 1.5;
+        }
+
+        .co-addr-new {
+            border-style: dashed;
+        }
+
+        .co-addr-new .co-addr-name {
             color: var(--primary, #e67e22);
-            margin-right: 4px;
         }
 
-        .addr-choice-sub {
-            font-size: 0.74rem;
-            font-weight: 500;
-            color: #9c968c;
+        .co-addr-new i {
+            color: var(--primary, #e67e22);
         }
     </style>
 </head>
@@ -1210,39 +1275,64 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                     </label>
                                 </div>
                                 <div id="deliveryAddressWrap">
-                                    <?php if ($hasAltAddr): ?>
-                                        <div class="addr-choice" id="addrChoice">
-                                            <div class="addr-choice-label">Deliver to:</div>
-                                            <button type="button" class="addr-choice-btn active" id="addrBtnPrimary" onclick="useAddress('primary')">
-                                                <i class="fa-solid fa-house"></i> Primary Address
-                                                <span class="addr-choice-sub"><?= htmlspecialchars(trim(($savedStreet ? $savedStreet . ', ' : '') . $savedBrgy . ', ' . $savedMuni, ', ')) ?></span>
-                                            </button>
-                                            <button type="button" class="addr-choice-btn" id="addrBtnAlt" onclick="useAddress('alt')">
-                                                <i class="fa-solid fa-location-dot"></i> Alternative Address
-                                                <span class="addr-choice-sub"><?= htmlspecialchars(trim(($altStreet ? $altStreet . ', ' : '') . $altBrgy . ', ' . $altMuni, ', ')) ?></span>
-                                            </button>
+                                    <?php if (!empty($userAddresses)): ?>
+                                        <div class="co-addr-label">Deliver to:</div>
+                                        <div class="co-addr-list">
+                                            <?php foreach ($userAddresses as $idx => $ad): ?>
+                                                <label class="co-addr-card <?= $idx === 0 ? 'selected' : '' ?>">
+                                                    <input type="radio" name="saved_address_id" value="<?= $ad['id'] ?>"
+                                                        data-muni="<?= htmlspecialchars($ad['municipality']) ?>"
+                                                        data-brgy="<?= htmlspecialchars($ad['barangay']) ?>"
+                                                        data-street="<?= htmlspecialchars($ad['street_address'] ?? '') ?>"
+                                                        <?= $idx === 0 ? 'checked' : '' ?> onchange="coPickSaved(this)">
+                                                    <div class="co-addr-info">
+                                                        <div class="co-addr-top">
+                                                            <span class="co-addr-name"><?= htmlspecialchars($ad['recipient_name'] ?: $user['full_name']) ?></span>
+                                                            <?php if ($ad['phone']): ?><span class="co-addr-phone">· <?= htmlspecialchars($ad['phone']) ?></span><?php endif; ?>
+                                                            <?php if ($ad['label']): ?><span class="co-addr-tag"><?= htmlspecialchars($ad['label']) ?></span><?php endif; ?>
+                                                            <?php if ($ad['is_default']): ?><span class="co-addr-default">Default</span><?php endif; ?>
+                                                        </div>
+                                                        <div class="co-addr-line"><?= htmlspecialchars(formatAddress($ad)) ?></div>
+                                                    </div>
+                                                </label>
+                                            <?php endforeach; ?>
+                                            <label class="co-addr-card co-addr-new">
+                                                <input type="radio" name="saved_address_id" value="new" onchange="coPickSaved(this)">
+                                                <div class="co-addr-info">
+                                                    <div class="co-addr-top"><i class="fa-solid fa-plus"></i> <span class="co-addr-name">Use a different address</span></div>
+                                                    <div class="co-addr-line">Enter a new delivery address for this order</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        <div style="margin-top:8px;"><a href="profile.php#addresses" style="font-size:0.82rem;color:var(--primary,#e67e22);font-weight:600;text-decoration:none;"><i class="fa-solid fa-gear"></i> Manage addresses</a></div>
+                                    <?php else: ?>
+                                        <div style="background:#fff8f1;border:1px solid #f0d9bd;border-radius:10px;padding:12px 14px;font-size:0.85rem;color:#8a5a0c;margin-bottom:14px;">
+                                            <i class="fa-solid fa-circle-info"></i> You have no saved addresses. <a href="profile.php#addresses" style="color:#d16b12;font-weight:700;">Add one in your profile</a>, or enter an address below.
                                         </div>
                                     <?php endif; ?>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label class="form-label">Municipality / City <span class="req">*</span></label>
-                                            <select name="delivery_municipality" id="coMuni" class="form-input" onchange="coLoadBrgy(this.value)">
-                                                <option value="">Select municipality…</option>
-                                            </select>
+
+                                    <div id="coManualAddr" style="<?= !empty($userAddresses) ? 'display:none;' : '' ?>margin-top:14px;">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label class="form-label">Municipality / City <span class="req">*</span></label>
+                                                <select name="delivery_municipality" id="coMuni" class="form-input" onchange="coLoadBrgy(this.value)">
+                                                    <option value="">Select municipality…</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label">Barangay <span class="req">*</span></label>
+                                                <select name="delivery_barangay" id="coBrgy" class="form-input" onchange="coUpdateFee()">
+                                                    <option value="">Select barangay…</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">Barangay <span class="req">*</span></label>
-                                            <select name="delivery_barangay" id="coBrgy" class="form-input" onchange="coUpdateFee()">
-                                                <option value="">Select barangay…</option>
-                                            </select>
+                                            <label class="form-label">Street / House No. / Purok <span class="req">*</span></label>
+                                            <input type="text" name="delivery_street" id="coStreet" class="form-input"
+                                                value="<?= htmlspecialchars($_POST['delivery_street'] ?? $savedStreet) ?>"
+                                                placeholder="e.g. Purok 3, House No. 12">
+                                            <span class="form-hint" id="coFeeHint">Select your barangay to see the delivery fee.</span>
                                         </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Street / House No. / Purok <span class="req">*</span></label>
-                                        <input type="text" name="delivery_street" id="coStreet" class="form-input"
-                                            value="<?= htmlspecialchars($_POST['delivery_street'] ?? $savedStreet) ?>"
-                                            placeholder="e.g. Purok 3, House No. 12">
-                                        <span class="form-hint" id="coFeeHint">Select your barangay to see the delivery fee.</span>
                                     </div>
                                 </div>
                                 <div class="pickup-info <?= $selectedDeliveryType === 'pickup' ? 'show' : '' ?>" id="pickupInfo">
@@ -1352,26 +1442,35 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
         const SAVED_MUNI = <?= json_encode($savedMuni) ?>;
         const SAVED_BRGY = <?= json_encode($savedBrgy) ?>;
         const SAVED_STREET = <?= json_encode($savedStreet) ?>;
-        const ALT_MUNI = <?= json_encode($altMuni) ?>;
-        const ALT_BRGY = <?= json_encode($altBrgy) ?>;
-        const ALT_STREET = <?= json_encode($altStreet) ?>;
         let CURRENT_FEE = 0; // resolved once a zone is chosen
 
-        // Fill the delivery dropdowns with a saved address (primary or alternative)
-        function useAddress(which) {
-            const muni = which === 'alt' ? ALT_MUNI : SAVED_MUNI;
-            const brgy = which === 'alt' ? ALT_BRGY : SAVED_BRGY;
-            const street = which === 'alt' ? ALT_STREET : SAVED_STREET;
-            const muniSel = document.getElementById('coMuni');
-            muniSel.value = muni;
-            document.getElementById('coStreet').value = street || '';
-            coLoadBrgy(muni, brgy); // loads barangays and preselects, then updates fee
-            // toggle active button
-            const bp = document.getElementById('addrBtnPrimary');
-            const ba = document.getElementById('addrBtnAlt');
-            if (bp && ba) {
-                bp.classList.toggle('active', which !== 'alt');
-                ba.classList.toggle('active', which === 'alt');
+        // Address picker: pick a saved address (fills muni/brgy/fee) or reveal manual fields for "new"
+        function coPickSaved(radio) {
+            // highlight the chosen card
+            document.querySelectorAll('.co-addr-card').forEach(function(c) {
+                c.classList.remove('selected');
+            });
+            var card = radio.closest('.co-addr-card');
+            if (card) card.classList.add('selected');
+
+            var manual = document.getElementById('coManualAddr');
+            if (radio.value === 'new') {
+                // show manual entry, clear it
+                manual.style.display = 'block';
+                document.getElementById('coMuni').value = '';
+                document.getElementById('coBrgy').innerHTML = '<option value="">Select barangay…</option>';
+                document.getElementById('coStreet').value = '';
+                CURRENT_FEE = 0;
+                coUpdateFee();
+            } else {
+                // saved address chosen — hide manual fields, fill hidden muni/brgy, compute fee
+                manual.style.display = 'none';
+                var muni = radio.getAttribute('data-muni');
+                var brgy = radio.getAttribute('data-brgy');
+                var street = radio.getAttribute('data-street');
+                document.getElementById('coMuni').value = muni;
+                document.getElementById('coStreet').value = street || '';
+                coLoadBrgy(muni, brgy); // loads barangays + preselects + updates fee
             }
         }
 

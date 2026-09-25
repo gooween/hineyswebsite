@@ -771,10 +771,6 @@ if (isset($_GET['msg'])) {
 
                 <div class="form-eyebrow">Welcome back</div>
                 <h2 class="form-title">Sign in to<br>your account</h2>
-                <p class="form-desc">
-                    Don't have an account?
-                    <a href="register.php">Create one free →</a>
-                </p>
 
                 <?php if ($error): ?>
                     <div class="alert alert-error">

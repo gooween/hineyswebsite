@@ -7,11 +7,53 @@
 session_start();
 require_once '../config/db.php';
 require_once '../config/auth.php';
+require_once __DIR__ . '/../includes/address_helpers.php';
 requireCustomer();
 
 $activePage = 'profile';
 $uid        = (int)$_SESSION['user_id'];
 $cartItems  = cartCount($conn);
+
+
+// ── Address CRUD (Shopee-style) ───────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && str_starts_with(($_POST['action'] ?? ''), 'addr_')) {
+    $act = $_POST['action'];
+
+    if ($act === 'addr_add' || $act === 'addr_edit') {
+        $data = [
+            'label'          => trim($_POST['label'] ?? ''),
+            'recipient_name' => trim($_POST['recipient_name'] ?? ''),
+            'phone'          => trim($_POST['phone'] ?? ''),
+            'municipality'   => trim($_POST['municipality'] ?? ''),
+            'barangay'       => trim($_POST['barangay'] ?? ''),
+            'street_address' => trim($_POST['street_address'] ?? ''),
+            'landmark'       => trim($_POST['landmark'] ?? ''),
+            'is_default'     => !empty($_POST['is_default']) ? 1 : 0,
+        ];
+        if ($data['municipality'] === '' || $data['barangay'] === '') {
+            redirect('profile.php#addresses', 'error', 'Please select a municipality and barangay.');
+        }
+        if ($act === 'addr_add') {
+            addUserAddress($conn, $uid, $data);
+            redirect('profile.php#addresses', 'success', 'Address added.');
+        } else {
+            $addrId = (int)($_POST['address_id'] ?? 0);
+            updateUserAddress($conn, $uid, $addrId, $data);
+            if (!empty($_POST['is_default'])) setDefaultAddress($conn, $uid, $addrId);
+            redirect('profile.php#addresses', 'success', 'Address updated.');
+        }
+    }
+
+    if ($act === 'addr_delete') {
+        deleteUserAddress($conn, $uid, (int)($_POST['address_id'] ?? 0));
+        redirect('profile.php#addresses', 'success', 'Address removed.');
+    }
+
+    if ($act === 'addr_default') {
+        setDefaultAddress($conn, $uid, (int)($_POST['address_id'] ?? 0));
+        redirect('profile.php#addresses', 'success', 'Default address updated.');
+    }
+}
 
 
 // ── POST handlers ─────────────────────────────────────────────
@@ -23,19 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fullName     = trim($_POST['full_name'] ?? '');
         $email        = trim($_POST['email']     ?? '');
         $phone        = trim($_POST['phone']     ?? '');
-        $municipality = trim($_POST['municipality']   ?? '');
-        $barangay     = trim($_POST['barangay']       ?? '');
-        $street       = trim($_POST['street_address'] ?? '');
-        $landmark     = trim($_POST['landmark']       ?? '');
-        // Alternative address (optional)
-        $altMuni      = trim($_POST['alt_municipality']   ?? '');
-        $altBrgy      = trim($_POST['alt_barangay']       ?? '');
-        $altStreet    = trim($_POST['alt_street_address'] ?? '');
-        $altLandmark  = trim($_POST['alt_landmark']       ?? '');
-
-        // Build the combined free-text address (keeps checkout & old code working)
-        $parts   = array_filter([$street, $barangay, $municipality, 'Bohol'], fn($p) => $p !== '');
-        $address = implode(', ', $parts);
 
         if (!$fullName || !$email) {
             $_SESSION['flash_type']    = 'error';
@@ -63,8 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $chk->close();
 
-        $stmt = $conn->prepare("UPDATE users SET full_name=?, email=?, phone=?, address=?, municipality=?, barangay=?, street_address=?, landmark=?, alt_municipality=?, alt_barangay=?, alt_street_address=?, alt_landmark=? WHERE id=?");
-        $stmt->bind_param('ssssssssssssi', $fullName, $email, $phone, $address, $municipality, $barangay, $street, $landmark, $altMuni, $altBrgy, $altStreet, $altLandmark, $uid);
+        $stmt = $conn->prepare("UPDATE users SET full_name=?, email=?, phone=? WHERE id=?");
+        $stmt->bind_param('sssi', $fullName, $email, $phone, $uid);
         $stmt->execute();
         $stmt->close();
 
@@ -127,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── Fetch user data ───────────────────────────────────────────
 $user = $conn->query("SELECT * FROM users WHERE id={$uid} LIMIT 1")->fetch_assoc();
+$addresses = getUserAddresses($conn, $uid);
 
 // ── Order stats ───────────────────────────────────────────────
 $statsRow = $conn->query("
@@ -870,6 +900,205 @@ $recentOrders = $conn->query("
         .site-footer a {
             color: var(--primary);
         }
+
+        /* My Addresses (Shopee-style) */
+        .addr-empty {
+            text-align: center;
+            padding: 36px 20px;
+            color: #9c968c;
+        }
+
+        .addr-empty i {
+            font-size: 2.4rem;
+            color: #d9d4cc;
+            margin-bottom: 12px;
+        }
+
+        .addr-empty p {
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+        }
+
+        .addr-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .addr-card {
+            display: flex;
+            gap: 14px;
+            justify-content: space-between;
+            border: 1px solid #ebe8e3;
+            border-radius: 12px;
+            padding: 16px;
+            background: #fff;
+            transition: border-color .15s;
+        }
+
+        .addr-card.is-default {
+            border-color: #e67e22;
+            background: #fffaf4;
+        }
+
+        .addr-card-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .addr-card-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+
+        .addr-recipient {
+            font-weight: 700;
+            color: #23201c;
+            font-size: 0.95rem;
+        }
+
+        .addr-phone {
+            color: #6f6a62;
+            font-size: 0.85rem;
+        }
+
+        .addr-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: #f0eee9;
+            color: #6f6a62;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .addr-default-badge {
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            background: #fef4ea;
+            color: #d16b12;
+            padding: 3px 9px;
+            border-radius: 20px;
+            border: 1px solid #f5d9bb;
+        }
+
+        .addr-card-line {
+            font-size: 0.88rem;
+            color: #3a352f;
+            line-height: 1.5;
+        }
+
+        .addr-card-landmark {
+            font-size: 0.78rem;
+            color: #9c968c;
+            margin-top: 3px;
+        }
+
+        .addr-card-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-end;
+            flex-shrink: 0;
+        }
+
+        .addr-act-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #6f6a62;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .addr-act-btn:hover {
+            color: #e67e22;
+            background: #fef4ea;
+        }
+
+        .addr-act-danger:hover {
+            color: #d94f46;
+            background: #fbeae9;
+        }
+
+        .addr-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(35, 32, 28, 0.5);
+            backdrop-filter: blur(3px);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .addr-modal-backdrop.show {
+            display: flex;
+        }
+
+        .addr-modal {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 560px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 24px 60px rgba(35, 32, 28, 0.2);
+        }
+
+        .addr-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            border-bottom: 1px solid #ebe8e3;
+            font-weight: 800;
+            font-size: 1.05rem;
+            color: #23201c;
+            position: sticky;
+            top: 0;
+            background: #fff;
+        }
+
+        .addr-modal-close {
+            border: none;
+            background: #f5f3ef;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #9c968c;
+            font-size: 0.9rem;
+        }
+
+        .addr-modal-close:hover {
+            background: #fbeae9;
+            color: #d94f46;
+        }
+
+        .addr-modal-body {
+            padding: 20px 22px;
+        }
+
+        .addr-modal-foot {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 16px 22px;
+            border-top: 1px solid #ebe8e3;
+        }
     </style>
 </head>
 
@@ -915,7 +1144,7 @@ $recentOrders = $conn->query("
                             <div class="section-icon si-orange"><i class="fa-solid fa-user"></i></div>
                             <div>
                                 <div class="section-title">Personal Information</div>
-                                <div class="section-subtitle">Update your name, email, phone, and delivery address</div>
+                                <div class="section-subtitle">Update your name, email, and phone</div>
                             </div>
                         </div>
                         <div class="section-body">
@@ -940,60 +1169,6 @@ $recentOrders = $conn->query("
                                             value="<?= htmlspecialchars($user['phone'] ?? '') ?>"
                                             placeholder="e.g. 09171234567">
                                     </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Municipality / City</label>
-                                        <select name="municipality" id="profMuni" class="form-input" onchange="profLoadBrgy(this.value)">
-                                            <option value="">Select municipality…</option>
-                                        </select>
-                                        <span class="form-hint">Choose your delivery municipality.</span>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Barangay</label>
-                                        <select name="barangay" id="profBrgy" class="form-input">
-                                            <option value="">Select barangay…</option>
-                                        </select>
-                                        <span class="form-hint" id="profFeeHint">Delivery fee will show at checkout.</span>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Street / House No. / Purok</label>
-                                        <input type="text" name="street_address" class="form-input"
-                                            value="<?= htmlspecialchars($user['street_address'] ?? '') ?>"
-                                            placeholder="e.g. Purok 3, House No. 12">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Landmark (optional)</label>
-                                        <input type="text" name="landmark" class="form-input"
-                                            value="<?= htmlspecialchars($user['landmark'] ?? '') ?>"
-                                            placeholder="e.g. near the chapel">
-                                    </div>
-
-                                    <div style="grid-column:1/-1;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--primary, #e67e22);margin:8px 0 4px;padding-bottom:6px;border-bottom:1px solid #f0e4d4;">
-                                        Alternative Address <span style="font-weight:500;text-transform:none;letter-spacing:0;color:#9c968c;">(optional — a second address you can pick at checkout)</span>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Municipality / City</label>
-                                        <select name="alt_municipality" id="profAltMuni" class="form-input" onchange="profLoadAltBrgy(this.value)">
-                                            <option value="">Select municipality…</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Barangay</label>
-                                        <select name="alt_barangay" id="profAltBrgy" class="form-input">
-                                            <option value="">Select barangay…</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Street / House No. / Purok</label>
-                                        <input type="text" name="alt_street_address" class="form-input"
-                                            value="<?= htmlspecialchars($user['alt_street_address'] ?? '') ?>"
-                                            placeholder="e.g. Purok 3, House No. 12">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Landmark (optional)</label>
-                                        <input type="text" name="alt_landmark" class="form-input"
-                                            value="<?= htmlspecialchars($user['alt_landmark'] ?? '') ?>"
-                                            placeholder="e.g. near the chapel">
-                                    </div>
                                 </div>
                                 <div class="form-actions">
                                     <button type="submit" class="btn btn-primary">
@@ -1006,6 +1181,61 @@ $recentOrders = $conn->query("
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- My Addresses (Shopee-style) -->
+                    <div class="section-card" id="addresses">
+                        <div class="section-header">
+                            <div class="section-icon si-orange"><i class="fa-solid fa-location-dot"></i></div>
+                            <div>
+                                <div class="section-title">My Addresses</div>
+                                <div class="section-subtitle">Manage your delivery addresses — set a default, add, edit, or remove</div>
+                            </div>
+                            <button type="button" class="btn btn-primary" style="margin-left:auto;" onclick="openAddrModal('add')">
+                                <i class="fa-solid fa-plus"></i> Add New Address
+                            </button>
+                        </div>
+                        <div class="section-body">
+                            <?php if (empty($addresses)): ?>
+                                <div class="addr-empty">
+                                    <i class="fa-solid fa-map-location-dot"></i>
+                                    <p>No addresses yet. Add your first delivery address to check out faster.</p>
+                                    <button type="button" class="btn btn-primary" onclick="openAddrModal('add')"><i class="fa-solid fa-plus"></i> Add Address</button>
+                                </div>
+                            <?php else: ?>
+                                <div class="addr-list">
+                                    <?php foreach ($addresses as $ad): ?>
+                                        <div class="addr-card <?= $ad['is_default'] ? 'is-default' : '' ?>">
+                                            <div class="addr-card-main">
+                                                <div class="addr-card-top">
+                                                    <span class="addr-recipient"><?= htmlspecialchars($ad['recipient_name'] ?: $user['full_name']) ?></span>
+                                                    <?php if ($ad['phone']): ?><span class="addr-phone">· <?= htmlspecialchars($ad['phone']) ?></span><?php endif; ?>
+                                                    <?php if ($ad['label']): ?><span class="addr-label"><?= htmlspecialchars($ad['label']) ?></span><?php endif; ?>
+                                                    <?php if ($ad['is_default']): ?><span class="addr-default-badge">Default</span><?php endif; ?>
+                                                </div>
+                                                <div class="addr-card-line"><?= htmlspecialchars(formatAddress($ad)) ?></div>
+                                                <?php if ($ad['landmark']): ?><div class="addr-card-landmark">Landmark: <?= htmlspecialchars($ad['landmark']) ?></div><?php endif; ?>
+                                            </div>
+                                            <div class="addr-card-actions">
+                                                <button type="button" class="addr-act-btn" onclick='openAddrModal("edit", <?= json_encode($ad) ?>)'><i class="fa-solid fa-pen"></i> Edit</button>
+                                                <?php if (!$ad['is_default']): ?>
+                                                    <form method="POST" action="profile.php" style="display:inline;">
+                                                        <input type="hidden" name="action" value="addr_default">
+                                                        <input type="hidden" name="address_id" value="<?= $ad['id'] ?>">
+                                                        <button type="submit" class="addr-act-btn"><i class="fa-solid fa-star"></i> Set Default</button>
+                                                    </form>
+                                                    <form method="POST" action="profile.php" style="display:inline;" onsubmit="return confirm('Remove this address?');">
+                                                        <input type="hidden" name="action" value="addr_delete">
+                                                        <input type="hidden" name="address_id" value="<?= $ad['id'] ?>">
+                                                        <button type="submit" class="addr-act-btn addr-act-danger"><i class="fa-solid fa-trash"></i> Delete</button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -1206,7 +1436,147 @@ $recentOrders = $conn->query("
         </footer>
     </div>
 
+    <!-- ADDRESS ADD/EDIT MODAL -->
+    <div class="addr-modal-backdrop" id="addrModal" onclick="if(event.target===this)closeAddrModal()">
+        <div class="addr-modal">
+            <div class="addr-modal-head">
+                <span id="addrModalTitle">Add New Address</span>
+                <button type="button" class="addr-modal-close" onclick="closeAddrModal()">✕</button>
+            </div>
+            <form method="POST" action="profile.php">
+                <input type="hidden" name="action" id="addrFormAction" value="addr_add">
+                <input type="hidden" name="address_id" id="addrFormId" value="">
+                <div class="addr-modal-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Full Name <span class="req">*</span></label>
+                            <input type="text" name="recipient_name" id="af_recipient" class="form-input" placeholder="Recipient name" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone <span class="req">*</span></label>
+                            <input type="text" name="phone" id="af_phone" class="form-input" placeholder="e.g. 09171234567" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Municipality / City <span class="req">*</span></label>
+                            <select name="municipality" id="af_muni" class="form-input" onchange="afLoadBrgy(this.value)" required>
+                                <option value="">Select municipality…</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Barangay <span class="req">*</span></label>
+                            <select name="barangay" id="af_brgy" class="form-input" required>
+                                <option value="">Select barangay…</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Street / House No. / Purok</label>
+                            <input type="text" name="street_address" id="af_street" class="form-input" placeholder="e.g. Purok 3, House No. 12">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Landmark (optional)</label>
+                            <input type="text" name="landmark" id="af_landmark" class="form-input" placeholder="e.g. near the chapel">
+                        </div>
+                        <div class="form-group span-2">
+                            <label class="form-label">Label (optional)</label>
+                            <input type="text" name="label" id="af_label" class="form-input" placeholder="e.g. Home, Work">
+                        </div>
+                        <div class="form-group span-2">
+                            <label style="display:flex;align-items:center;gap:8px;font-size:0.88rem;cursor:pointer;">
+                                <input type="checkbox" name="is_default" id="af_default" value="1" style="width:16px;height:16px;">
+                                Set as default address
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="addr-modal-foot">
+                    <button type="button" class="btn" style="background:#f0eee9;color:#6f6a62;" onclick="closeAddrModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save Address</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // ── My Addresses modal ──────────────────────────────────
+        var AF_MUNI_LOADED = false;
+
+        function afLoadMunis(cb) {
+            var sel = document.getElementById('af_muni');
+            if (AF_MUNI_LOADED) {
+                if (cb) cb();
+                return;
+            }
+            fetch('get_delivery_zones.php?action=municipalities')
+                .then(function(r) {
+                    return r.json();
+                })
+                .then(function(d) {
+                    if (d.ok) d.municipalities.forEach(function(m) {
+                        var o = document.createElement('option');
+                        o.value = m;
+                        o.textContent = m;
+                        sel.appendChild(o);
+                    });
+                    AF_MUNI_LOADED = true;
+                    if (cb) cb();
+                }).catch(function() {
+                    if (cb) cb();
+                });
+        }
+
+        function afLoadBrgy(muni, preselect, cb) {
+            var sel = document.getElementById('af_brgy');
+            sel.innerHTML = '<option value="">Select barangay…</option>';
+            if (!muni) {
+                if (cb) cb();
+                return;
+            }
+            fetch('get_delivery_zones.php?action=barangays&m=' + encodeURIComponent(muni))
+                .then(function(r) {
+                    return r.json();
+                })
+                .then(function(d) {
+                    if (d.ok) d.barangays.forEach(function(b) {
+                        var o = document.createElement('option');
+                        o.value = b.barangay;
+                        o.textContent = b.barangay;
+                        if (preselect && b.barangay === preselect) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                    if (cb) cb();
+                }).catch(function() {
+                    if (cb) cb();
+                });
+        }
+
+        function openAddrModal(mode, data) {
+            var m = document.getElementById('addrModal');
+            document.getElementById('addrModalTitle').textContent = (mode === 'edit') ? 'Edit Address' : 'Add New Address';
+            document.getElementById('addrFormAction').value = (mode === 'edit') ? 'addr_edit' : 'addr_add';
+            document.getElementById('addrFormId').value = (mode === 'edit' && data) ? data.id : '';
+            // reset
+            document.getElementById('af_recipient').value = (data && data.recipient_name) ? data.recipient_name : '';
+            document.getElementById('af_phone').value = (data && data.phone) ? data.phone : '';
+            document.getElementById('af_street').value = (data && data.street_address) ? data.street_address : '';
+            document.getElementById('af_landmark').value = (data && data.landmark) ? data.landmark : '';
+            document.getElementById('af_label').value = (data && data.label) ? data.label : '';
+            document.getElementById('af_default').checked = (data && String(data.is_default) === '1');
+            m.classList.add('show');
+            afLoadMunis(function() {
+                if (mode === 'edit' && data) {
+                    document.getElementById('af_muni').value = data.municipality || '';
+                    afLoadBrgy(data.municipality || '', data.barangay || '');
+                } else {
+                    document.getElementById('af_muni').value = '';
+                    document.getElementById('af_brgy').innerHTML = '<option value="">Select barangay…</option>';
+                }
+            });
+        }
+
+        function closeAddrModal() {
+            document.getElementById('addrModal').classList.remove('show');
+        }
+
         // ── Password visibility toggle ─────────────────────────────────
         function togglePw(inputId, btn) {
             const input = document.getElementById(inputId);
@@ -1290,103 +1660,6 @@ $recentOrders = $conn->query("
                 hint.style.color = 'var(--danger)';
             }
         }
-
-        // ── Profile delivery-zone selectors ────────────────────────────
-        const PROF_SAVED_MUNI = <?= json_encode($user['municipality'] ?? '') ?>;
-        const PROF_SAVED_BRGY = <?= json_encode($user['barangay'] ?? '') ?>;
-        const PROF_ALT_MUNI = <?= json_encode($user['alt_municipality'] ?? '') ?>;
-        const PROF_ALT_BRGY = <?= json_encode($user['alt_barangay'] ?? '') ?>;
-
-        // ── Alternative address dropdowns (same zone source) ──────
-        function profLoadAltMunis() {
-            fetch('get_delivery_zones.php?action=municipalities')
-                .then(r => r.json())
-                .then(d => {
-                    if (!d.ok) return;
-                    const sel = document.getElementById('profAltMuni');
-                    d.municipalities.forEach(m => {
-                        const o = document.createElement('option');
-                        o.value = m;
-                        o.textContent = m;
-                        if (m === PROF_ALT_MUNI) o.selected = true;
-                        sel.appendChild(o);
-                    });
-                    if (PROF_ALT_MUNI) profLoadAltBrgy(PROF_ALT_MUNI, PROF_ALT_BRGY);
-                })
-                .catch(() => {});
-        }
-
-        function profLoadAltBrgy(muni, preselect) {
-            const sel = document.getElementById('profAltBrgy');
-            sel.innerHTML = '<option value="">Select barangay…</option>';
-            if (!muni) return;
-            fetch('get_delivery_zones.php?action=barangays&m=' + encodeURIComponent(muni))
-                .then(r => r.json())
-                .then(d => {
-                    if (!d.ok) return;
-                    d.barangays.forEach(b => {
-                        const o = document.createElement('option');
-                        o.value = b.barangay;
-                        o.textContent = b.barangay;
-                        if (b.barangay === preselect) o.selected = true;
-                        sel.appendChild(o);
-                    });
-                })
-                .catch(() => {});
-        }
-
-        function profLoadMunis() {
-            fetch('get_delivery_zones.php?action=municipalities')
-                .then(r => r.json())
-                .then(d => {
-                    if (!d.ok) return;
-                    const sel = document.getElementById('profMuni');
-                    d.municipalities.forEach(m => {
-                        const o = document.createElement('option');
-                        o.value = m;
-                        o.textContent = m;
-                        if (m === PROF_SAVED_MUNI) o.selected = true;
-                        sel.appendChild(o);
-                    });
-                    if (PROF_SAVED_MUNI) profLoadBrgy(PROF_SAVED_MUNI, PROF_SAVED_BRGY);
-                })
-                .catch(() => {});
-        }
-
-        function profLoadBrgy(muni, preselect) {
-            const sel = document.getElementById('profBrgy');
-            sel.innerHTML = '<option value="">Select barangay…</option>';
-            document.getElementById('profFeeHint').textContent = 'Delivery fee will show at checkout.';
-            if (!muni) return;
-            fetch('get_delivery_zones.php?action=barangays&m=' + encodeURIComponent(muni))
-                .then(r => r.json())
-                .then(d => {
-                    if (!d.ok) return;
-                    d.barangays.forEach(b => {
-                        const o = document.createElement('option');
-                        o.value = b.barangay;
-                        o.textContent = b.barangay;
-                        o.dataset.fee = b.fee;
-                        if (b.barangay === preselect) o.selected = true;
-                        sel.appendChild(o);
-                    });
-                    profShowFee();
-                })
-                .catch(() => {});
-        }
-
-        function profShowFee() {
-            const sel = document.getElementById('profBrgy');
-            const opt = sel.options[sel.selectedIndex];
-            const hint = document.getElementById('profFeeHint');
-            if (opt && opt.dataset.fee !== undefined) {
-                const fee = parseFloat(opt.dataset.fee);
-                hint.textContent = fee === 0 ? 'Delivery fee: FREE' : 'Delivery fee: ₱' + fee.toFixed(2);
-            }
-        }
-        document.getElementById('profBrgy').addEventListener('change', profShowFee);
-        profLoadMunis();
-        profLoadAltMunis();
     </script>
 </body>
 
