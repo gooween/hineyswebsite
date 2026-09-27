@@ -6,6 +6,59 @@ header('Pragma: no-cache');
 header('Expires: Sat, 01 Jan 2000 00:00:00 GMT');
 require_once 'config/db.php';
 
+// "Remember me" helpers — shared with logout.php so both files agree on
+// how the token/cookie are issued and cleared.
+require_once 'includes/remember.php';
+
+// Logout must be handled before anything else looks at the session — otherwise a
+// still-logged-in user hitting ?logout=1 gets redirected away before we ever unset it.
+if (isset($_GET['logout'])) {
+    clearRememberToken($conn);
+    session_unset();
+    session_destroy();
+    header('Location: index.php?msg=loggedout');
+    exit;
+}
+
+// If there's no active session, try to log the user in from the "remember me" cookie.
+if (empty($_SESSION['user_id']) && !empty($_COOKIE[REMEMBER_COOKIE])) {
+    $parts    = explode(':', $_COOKIE[REMEMBER_COOKIE], 2);
+    $selector = $parts[0] ?? '';
+    $validator = $parts[1] ?? '';
+
+    if ($selector !== '' && $validator !== '') {
+        $stmt = $conn->prepare(
+            "SELECT rt.user_id, rt.validator_hash, rt.expires_at,
+                    u.full_name, u.email, u.role, u.is_active
+             FROM remember_tokens rt
+             JOIN users u ON u.id = rt.user_id
+             WHERE rt.selector = ? LIMIT 1"
+        );
+        $stmt->bind_param('s', $selector);
+        $stmt->execute();
+        $tokenRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $valid = $tokenRow
+            && strtotime($tokenRow['expires_at']) > time()
+            && hash_equals($tokenRow['validator_hash'], hash('sha256', $validator))
+            && $tokenRow['is_active'];
+
+        if ($valid) {
+            $_SESSION['user_id']   = $tokenRow['user_id'];
+            $_SESSION['full_name'] = $tokenRow['full_name'];
+            $_SESSION['email']     = $tokenRow['email'];
+            $_SESSION['role']      = $tokenRow['role'];
+            $_SESSION['is_active'] = $tokenRow['is_active'];
+
+            // Rotate the token on every use so a stolen cookie stops working once reused.
+            issueRememberToken($conn, (int) $tokenRow['user_id']);
+        } else {
+            clearRememberToken($conn);
+        }
+    }
+}
+
 if (!empty($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
         header('Location: admin/dashboard.php');
@@ -19,13 +72,6 @@ if (!empty($_SESSION['user_id'])) {
 // Land on home first — Login links use ?login=1 so they bypass this.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SERVER['QUERY_STRING'])) {
     header('Location: user/home.php');
-    exit;
-}
-
-if (isset($_GET['logout'])) {
-    session_unset();
-    session_destroy();
-    header('Location: index.php?msg=loggedout');
     exit;
 }
 
@@ -58,6 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['email']     = $user['email'];
             $_SESSION['role']      = $user['role'];
             $_SESSION['is_active'] = $user['is_active'];
+
+            if (!empty($_POST['remember'])) {
+                issueRememberToken($conn, (int) $user['id']);
+            } else {
+                clearRememberToken($conn);
+            }
 
             if ($user['role'] === 'admin') {
                 redirect('admin/dashboard.php', 'success', 'Welcome back, ' . $user['full_name'] . '!');

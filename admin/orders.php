@@ -635,6 +635,22 @@ $activePage = 'orders';
             border-color: var(--danger);
         }
 
+        .oact-print {
+            color: var(--ink-2);
+            border-color: var(--line-strong);
+        }
+
+        .oact-print:hover {
+            background: var(--ink-2);
+            color: #fff;
+            border-color: var(--ink-2);
+        }
+
+        .oact-print.printing {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
         /* Pagination */
         .pagination {
             display: flex;
@@ -1164,16 +1180,7 @@ $activePage = 'orders';
                     <span><strong><?= $pendingCount ?> order<?= $pendingCount !== 1 ? 's' : '' ?></strong> waiting for your approval.</span>
                 </div>
             <?php endif; ?>
-            <?php if ($proofPendingCount > 0): ?>
-                <div class="alert-banner alert-blue">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                    <span><strong><?= $proofPendingCount ?> GCash order<?= $proofPendingCount !== 1 ? 's' : '' ?></strong> approved but awaiting customer payment proof upload.</span>
-                </div>
-            <?php endif; ?>
+
 
             <!-- Status tabs -->
             <div class="filter-tabs">
@@ -1228,7 +1235,6 @@ $activePage = 'orders';
                                     <th>Total</th>
                                     <th>Method</th>
                                     <th>Payment</th>
-                                    <th>Proof</th>
                                     <th>Status</th>
                                     <th style="text-align:center;min-width:190px;">Actions</th>
                                 </tr>
@@ -1251,7 +1257,6 @@ $activePage = 'orders';
                                         : strtoupper($o['payment_method']);
                                     $feeIsSet = $o['delivery_fee'] !== null;
                                     $itemsSubtotal = (float)$o['items_subtotal'];
-                                    $hasProof = !empty($o['gcash_proof']);
                                 ?>
                                     <tr>
                                         <td style="color:var(--ink-3);font-size:var(--fs-xs);font-weight:var(--fw-semi);"><?= $rowNum++ ?></td>
@@ -1274,7 +1279,6 @@ $activePage = 'orders';
                                         </td>
                                         <td><span class="method-badge"><?= $methodIcon ?> <?= htmlspecialchars($methodText) ?></span></td>
                                         <td><span class="st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span></td>
-                                        <td><?php if ($o['payment_method'] === 'gcash'): ?><?php if ($hasProof): ?><span class="proof-badge proof-yes" onclick="viewProof('<?= htmlspecialchars(addslashes($o['gcash_proof'])) ?>','<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-paperclip"></i> View</span><?php else: ?><span class="proof-badge proof-no"><i class="fa-solid fa-clock"></i> None</span><?php endif; ?><?php else: ?><span style="font-size:var(--fs-xs);color:var(--ink-3);">N/A</span><?php endif; ?></td>
                                         <td><span class="st-pill <?= $statusClass ?>"><?= $statusLabel ?></span></td>
                                         <td style="text-align:center;">
                                             <div class="row-actions">
@@ -1282,6 +1286,11 @@ $activePage = 'orders';
                                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                                         <circle cx="12" cy="12" r="3" />
                                                     </svg><span class="act-label">View</span></button>
+                                                <button class="oact oact-print" id="printBtn<?= $o['id'] ?>" onclick="printReceipt(<?= $o['id'] ?>, this)" title="Print receipt (Bluetooth)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="6 9 6 2 18 2 18 9" />
+                                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                                        <rect x="6" y="14" width="12" height="8" />
+                                                    </svg><span class="act-label">Print</span></button>
                                                 <?php if ($isPending): ?>
                                                     <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method']]), ENT_QUOTES) ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                                             <polyline points="20 6 9 17 4 12" />
@@ -1356,7 +1365,7 @@ $activePage = 'orders';
             <div class="modal-body">
                 <div id="view_content">Loading…</div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button><button type="button" class="btn btn-primary" id="viewPrintBtn" onclick="printReceipt(window._viewOrderId, this)"><i class="fa-solid fa-print"></i> Print Receipt</button></div>
         </div>
     </div>
 
@@ -1502,19 +1511,7 @@ $activePage = 'orders';
         </div>
     </div>
 
-    <!-- PROOF MODAL -->
-    <div class="modal-backdrop" id="proofModal" onclick="backdropClose(event,'proofModal')">
-        <div class="modal-card sm">
-            <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-paperclip"></i> GCash Payment Proof</div><button class="modal-close" onclick="closeModal('proofModal')">✕</button>
-            </div>
-            <div class="modal-body modal-body-pad">
-                <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;" id="proof_order_label"></div>
-                <div class="proof-img-wrap"><img id="proof_img_el" src="" alt="GCash Payment Proof" style="max-width:100%;border-radius:10px;border:1px solid var(--card-border);"></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('proofModal')">Close</button></div>
-        </div>
-    </div>
+
 
     <script>
         function openModal(id) {
@@ -1679,6 +1676,7 @@ $activePage = 'orders';
         }
 
         function openView(orderId) {
+            window._viewOrderId = orderId;
             document.getElementById('view_modal_title').textContent = 'Order #' + String(orderId).padStart(4, '0');
             document.getElementById('view_content').innerHTML = '<div style="text-align:center;padding:48px 20px;color:#9ca3af;"><div style="width:32px;height:32px;border:3px solid #f3f4f6;border-top-color:#e67e22;border-radius:50%;animation:viewSpin 0.7s linear infinite;margin:0 auto 12px;"></div>Loading…</div>';
             openModal('viewModal');
@@ -1689,12 +1687,34 @@ $activePage = 'orders';
             });
         }
 
+        async function printReceipt(orderId, btnEl) {
+            if (!orderId) return;
+            var btn = btnEl || document.getElementById('printBtn' + orderId);
+            var originalHtml = btn ? btn.innerHTML : null;
+            if (btn) {
+                btn.classList.add('printing');
+                btn.disabled = true;
+            }
+            try {
+                await HatchPrinter.printOrder(orderId);
+            } catch (err) {
+                console.error('Print failed:', err);
+                alert('Printing failed: ' + (err && err.message ? err.message : 'Unknown error') + '\n\nMake sure Bluetooth is on, the printer is powered on and nearby, and you are using Chrome.');
+            } finally {
+                if (btn) {
+                    btn.classList.remove('printing');
+                    btn.disabled = false;
+                }
+            }
+        }
+
         function viewProof(path, orderNum) {
             document.getElementById('proof_order_label').textContent = 'Order #' + orderNum + ' — GCash Payment Screenshot';
             document.getElementById('proof_img_el').src = /^https?:\/\//.test(path) ? path : '../' + path + '?v=' + Date.now();
             openModal('proofModal');
         }
     </script>
+    <script src="assets/js/thermal-print.js"></script>
 </body>
 
 </html>

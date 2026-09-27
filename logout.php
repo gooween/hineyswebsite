@@ -28,6 +28,13 @@ header('Expires: Sat, 01 Jan 2000 00:00:00 GMT');
 // ── Remember which role just logged out (for flash message) ──
 $role = $_SESSION['role'] ?? '';
 
+// ── 0. Clear the "remember me" token/cookie, if any ──────────
+// Without this, the auto-login check in index.php would just log
+// the user right back in on the very next page load.
+require_once 'config/db.php';
+require_once 'includes/remember.php';
+clearRememberToken($conn);
+
 // ── 1. Unset all session variables ───────────────────────────
 $_SESSION = [];
 
