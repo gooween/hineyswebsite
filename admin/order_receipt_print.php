@@ -8,6 +8,7 @@
 
 session_start();
 require_once '../config/db.php';
+require_once __DIR__ . '/../includes/receipt_pdf.php';   // hatch_payment_label()
 requireAdmin();
 
 const LINE_WIDTH = 32;
@@ -98,14 +99,15 @@ if ($itemsRes) {
 }
 
 $paidAt = null;
-$txRes = $conn->query("SELECT transaction_date FROM transactions WHERE order_id = {$id} ORDER BY id DESC LIMIT 1");
+$txnRow = null;
+$txRes = $conn->query("SELECT transaction_date, payment_method FROM transactions WHERE order_id = {$id} ORDER BY id DESC LIMIT 1");
 if ($txRes && $row = $txRes->fetch_assoc()) {
     $paidAt = $row['transaction_date'];
+    $txnRow = $row;
 }
 
-$methodDisplay = $order['payment_method'] === 'paymongo'
-    ? (!empty($order['paymongo_method']) ? strtoupper($order['paymongo_method']) : 'PAYMONGO')
-    : strtoupper($order['payment_method']);
+// Actual channel (GCash / Maya / QR Ph / Card ...) instead of just "PAYMONGO"
+$methodDisplay = strtoupper(hatch_payment_label($order, $txnRow));
 
 $transactionNo = 'HATCH-ORD-' . str_pad((string)$order['id'], 6, '0', STR_PAD_LEFT);
 
@@ -129,7 +131,7 @@ if (!empty($order['delivery_address'])) {
     foreach (wrap_text($order['delivery_address']) as $l) $lines[] = $l;
 }
 $lines[] = '';
-$lines[] = 'Payment:  ' . $methodDisplay . ' (' . strtoupper($order['payment_status']) . ')';
+foreach (wrap_text('Payment:  ' . $methodDisplay . ' (' . strtoupper($order['payment_status']) . ')') as $l) $lines[] = $l;
 $lines[] = 'Status:   ' . strtoupper(str_replace('_', ' ', $order['status']));
 $lines[] = rule_line('-');
 
@@ -198,6 +200,31 @@ $receiptText = implode("\n", $lines);
             white-space: pre-wrap;
         }
 
+        /* Logo sits on top of the receipt "paper" in the preview. Greyscale
+       approximates how it comes out on the thermal printer. */
+        .receipt-logo {
+            width: 280px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            padding: 14px 14px 0;
+            text-align: center;
+        }
+
+        .receipt-logo img {
+            max-width: 150px;
+            max-height: 70px;
+            filter: grayscale(1) contrast(1.4);
+        }
+
+        .receipt-logo+pre.receipt {
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            padding-top: 6px;
+        }
+
         .actions {
             width: 280px;
             margin: 16px auto 0;
@@ -246,6 +273,7 @@ $receiptText = implode("\n", $lines);
 
 <body>
     <h2>Preview — confirm before printing</h2>
+    <div class="receipt-logo"><img src="../assets/images/hineys_logo.png" alt="Hiney's logo" onerror="this.parentNode.remove()"></div>
     <pre class="receipt"><?= htmlspecialchars($receiptText) ?></pre>
 
     <div class="actions">

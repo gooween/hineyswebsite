@@ -15,6 +15,7 @@
 
 session_start();
 require_once '../config/db.php';
+require_once __DIR__ . '/../includes/receipt_pdf.php';   // hatch_logo_escpos()
 requireAdmin();
 
 header('Content-Type: application/json');
@@ -22,6 +23,14 @@ header('Content-Type: application/json');
 // ── Config — adjust if the share name or port ever changes ───────────
 const PRINTER_SHARE = '\\\\localhost\\OFFICOM';
 const LINE_WIDTH = 32;
+
+// Print the Hiney's logo (assets/images/hineys_logo.png) at the top of the receipt
+// as an ESC/POS raster image. Needs PHP's GD extension and a printer that
+// understands ESC/POS "GS v 0" (virtually all 58mm thermal printers do).
+// If the printer prints garbage characters at the top instead of a logo,
+// set this to false — the text receipt prints exactly as before.
+const PRINT_LOGO = true;
+const LOGO_WIDTH_DOTS = 200;   // 384 dots = full 58mm width; smaller = smaller logo
 
 function pad_right($s, $len)
 {
@@ -122,14 +131,15 @@ if ($itemsRes) {
 }
 
 $paidAt = null;
-$txRes = $conn->query("SELECT transaction_date FROM transactions WHERE order_id = {$id} ORDER BY id DESC LIMIT 1");
+$txnRow = null;
+$txRes = $conn->query("SELECT transaction_date, payment_method FROM transactions WHERE order_id = {$id} ORDER BY id DESC LIMIT 1");
 if ($txRes && $row = $txRes->fetch_assoc()) {
     $paidAt = $row['transaction_date'];
+    $txnRow = $row;
 }
 
-$methodDisplay = $order['payment_method'] === 'paymongo'
-    ? (!empty($order['paymongo_method']) ? strtoupper($order['paymongo_method']) : 'PAYMONGO')
-    : strtoupper($order['payment_method']);
+// Actual channel (GCash / Maya / QR Ph / Card ...) instead of just "PAYMONGO"
+$methodDisplay = strtoupper(hatch_payment_label($order, $txnRow));
 
 $transactionNo = 'HATCH-ORD-' . str_pad((string)$order['id'], 6, '0', STR_PAD_LEFT);
 
@@ -153,7 +163,7 @@ if (!empty($order['delivery_address'])) {
     foreach (wrap_text($order['delivery_address']) as $l) $lines[] = $l;
 }
 $lines[] = '';
-$lines[] = 'Payment:  ' . $methodDisplay . ' (' . strtoupper($order['payment_status']) . ')';
+foreach (wrap_text('Payment:  ' . $methodDisplay . ' (' . strtoupper($order['payment_status']) . ')') as $l) $lines[] = $l;
 $lines[] = 'Status:   ' . strtoupper(str_replace('_', ' ', $order['status']));
 $lines[] = rule_line('-');
 
@@ -183,6 +193,11 @@ $lines[] = '';
 $lines[] = '';
 
 $receiptText = implode("\r\n", $lines) . "\r\n";
+
+// Logo bytes go first (empty string if disabled / GD missing / logo file missing).
+if (PRINT_LOGO) {
+    $receiptText = hatch_logo_escpos(HATCH_LOGO_PATH, LOGO_WIDTH_DOTS) . $receiptText;
+}
 
 // ── Write to a temp file, then copy it straight to the printer share ──
 $tmpPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hatch_receipt_' . $id . '_' . time() . '.txt';

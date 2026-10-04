@@ -7,6 +7,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../config/cloudinary.php';
+require_once __DIR__ . '/../includes/receipt_pdf.php';   // hatch_payment_label()
 // Media may be a full Cloudinary URL (new) or a local path (legacy).
 if (!function_exists('mediaSrc')) {
     function mediaSrc(string $path): string
@@ -137,7 +138,8 @@ if ($filterStatus && !in_array($filterStatus, $validStatuses)) $filterStatus = '
 $whereStatus = $filterStatus ? "AND o.status='{$filterStatus}'" : '';
 
 $orders = $conn->query("
-    SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method,
+    SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
+           (SELECT t.payment_method FROM transactions t WHERE t.order_id = o.id ORDER BY t.id DESC LIMIT 1) AS txn_method,
            o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
            o.created_at, o.updated_at,
            COUNT(oi.id) AS item_count,
@@ -197,6 +199,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
     $txn = $tStmt->get_result()->fetch_assoc();
     $tStmt->close();
 
+    $order['payment_label'] = hatch_payment_label($order, $txn);
     echo json_encode(['success' => true, 'order' => $order, 'items' => $items, 'txn' => $txn]);
     exit;
 }
@@ -1045,6 +1048,28 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             background: var(--primary-dark)
         }
 
+        .btn-receipt {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: #fff;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            font-family: inherit;
+            transition: all var(--transition);
+            white-space: nowrap
+        }
+
+        .btn-receipt:hover {
+            background: var(--primary);
+            color: #fff
+        }
+
         .empty-state {
             text-align: center;
             padding: 80px 20px;
@@ -1655,7 +1680,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                         <div class="order-meta-item">
                                             <span class="order-meta-label">Payment</span>
                                             <span class="order-meta-value">
-                                                <?= strtoupper($o['payment_method']) ?>
+                                                <?= htmlspecialchars(hatch_payment_label($o, ['payment_method' => $o['txn_method'] ?? ''])) ?>
                                                 <span class="pay-badge <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>">
                                                     <?= ucfirst($o['payment_status']) ?>
                                                 </span>
@@ -1764,6 +1789,9 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                         <?php if (in_array($sid, ['pending', 'approved'], true)): ?>
                                             <button class="btn-cancel-order" onclick="openCancelOrder(<?= $o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')">Cancel Order</button>
                                         <?php endif; ?>
+                                        <?php if ($sid !== 'cancelled'): ?>
+                                            <a class="btn-receipt" href="order_receipt_pdf.php?id=<?= (int)$o['id'] ?>" title="Download receipt as PDF" onclick="return confirmReceipt(event, <?= (int)$o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-file-pdf"></i> Receipt</a>
+                                        <?php endif; ?>
                                         <button class="btn-view-order" onclick="viewOrder(<?= $o['id'] ?>)">View Details →</button>
                                     </div>
                                 </div>
@@ -1841,6 +1869,25 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                     <button type="submit" style="background:#d94f46;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-family:inherit;">Yes, Cancel Order</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- DOWNLOAD RECEIPT CONFIRMATION -->
+    <div class="modal-backdrop" id="receiptConfirmModal" onclick="if(event.target===this)closeReceiptConfirm()" style="z-index:1200;">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-file-pdf"></i> Download Receipt</div>
+                <button class="modal-close" onclick="closeReceiptConfirm()">✕</button>
+            </div>
+            <div style="padding:22px 24px;">
+                <p style="font-size:0.9rem;color:#6f6a62;line-height:1.6;margin:0;">
+                    Download the PDF receipt for order <strong id="receipt_confirm_num" style="color:#23201c;">#0000</strong>?
+                </p>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;padding:0 24px 22px;">
+                <button type="button" class="btn-view-order" onclick="closeReceiptConfirm()" style="background:#f0eee9;color:#6f6a62;">Cancel</button>
+                <button type="button" class="btn-view-order" id="receiptConfirmBtn" onclick="doReceiptDownload()"><i class="fa-solid fa-download"></i> Yes, Download</button>
+            </div>
         </div>
     </div>
 
@@ -1957,12 +2004,16 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             if (data.txn) {
                 txnHtml = `<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-credit-card"></i> Transaction</div>
             <div class="modal-info-grid">
-                <div><div class="modal-info-label">Method</div><div class="modal-info-value">${data.txn.payment_method.toUpperCase()}</div></div>
+                <div><div class="modal-info-label">Method</div><div class="modal-info-value">${esc(o.payment_label || data.txn.payment_method.toUpperCase())}</div></div>
                 <div><div class="modal-info-label">Reference</div><div class="modal-info-value">${esc(data.txn.reference_no||'—')}</div></div>
                 <div><div class="modal-info-label">Amount</div><div class="modal-info-value" style="color:var(--success);">${fmtPeso(data.txn.amount)}</div></div>
                 <div><div class="modal-info-label">Date</div><div class="modal-info-value">${fmtDate(data.txn.transaction_date)}</div></div>
             </div></div>`;
             }
+
+            const receiptBtn = o.status !== 'cancelled' ?
+                `<div class="modal-section" style="text-align:center;"><a class="btn-receipt" href="order_receipt_pdf.php?id=${o.id}" onclick="return confirmReceipt(event, ${o.id}, '#${String(o.id).padStart(4,'0')}')"><i class="fa-solid fa-file-pdf"></i> Download Receipt (PDF)</a></div>` :
+                '';
 
             const notesHtml = o.notes ?
                 `<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-line;">${esc(o.notes)}</div>` :
@@ -1977,7 +2028,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             <div class="modal-info-grid">
                 <div><div class="modal-info-label">Order ID</div><div class="modal-info-value">#${String(o.id).padStart(4,'0')}</div></div>
                 <div><div class="modal-info-label">Date Placed</div><div class="modal-info-value">${fmtDate(o.created_at)}</div></div>
-                <div><div class="modal-info-label">Payment</div><div class="modal-info-value">${o.payment_method.toUpperCase()}</div></div>
+                <div><div class="modal-info-label">Payment</div><div class="modal-info-value">${esc(o.payment_label || o.payment_method.toUpperCase())}</div></div>
                 <div><div class="modal-info-label">Payment Status</div><div class="modal-info-value" style="color:${o.payment_status==='paid'?'var(--success)':'var(--danger)'};">${o.payment_status.charAt(0).toUpperCase()+o.payment_status.slice(1)}</div></div>
             </div>
         </div>
@@ -1995,7 +2046,31 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         </div>
         ${proofHtml}
         ${txnHtml}
+        ${receiptBtn}
     `;
+        }
+
+        // ── Receipt download confirmation ──
+        let receiptPendingId = null;
+
+        function confirmReceipt(ev, id, num) {
+            ev.preventDefault();
+            receiptPendingId = id;
+            document.getElementById('receipt_confirm_num').textContent = num;
+            document.getElementById('receiptConfirmModal').classList.add('show');
+            return false;
+        }
+
+        function closeReceiptConfirm() {
+            document.getElementById('receiptConfirmModal').classList.remove('show');
+            receiptPendingId = null;
+        }
+
+        function doReceiptDownload() {
+            if (!receiptPendingId) return;
+            const id = receiptPendingId;
+            closeReceiptConfirm();
+            window.location.href = 'order_receipt_pdf.php?id=' + encodeURIComponent(id);
         }
 
         function openCancelOrder(id, num) {
