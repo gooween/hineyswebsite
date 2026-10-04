@@ -553,9 +553,10 @@ $activePage = 'orders';
             font-size: var(--fs-xs);
             font-weight: var(--fw-semi);
             font-family: inherit;
-            white-space: nowrap;
-            overflow: hidden;
-            transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), background 0.14s, color 0.14s, border-color 0.14s, padding 0.22s;
+            /* Fixed size, always — nothing about this box ever changes
+               dimensions, so it can never push a neighboring button under
+               the cursor. Only color/background transition on hover. */
+            transition: background 0.14s, color 0.14s, border-color 0.14s;
         }
 
         .oact svg,
@@ -564,21 +565,7 @@ $activePage = 'orders';
         }
 
         .oact .act-label {
-            max-width: 0;
-            opacity: 0;
-            margin-left: 0;
-            transition: max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s, margin-left 0.22s;
-        }
-
-        .oact:hover {
-            width: auto;
-            padding: 0 11px;
-        }
-
-        .oact:hover .act-label {
-            max-width: 90px;
-            opacity: 1;
-            margin-left: 5px;
+            display: none;
         }
 
         .oact-view {
@@ -1282,25 +1269,25 @@ $activePage = 'orders';
                                         <td><span class="st-pill <?= $statusClass ?>"><?= $statusLabel ?></span></td>
                                         <td style="text-align:center;">
                                             <div class="row-actions">
-                                                <button class="oact oact-view" onclick="openView(<?= $o['id'] ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <button class="oact oact-view" onclick="openView(<?= $o['id'] ?>)" title="View"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                                         <circle cx="12" cy="12" r="3" />
                                                     </svg><span class="act-label">View</span></button>
-                                                <button class="oact oact-print" id="printBtn<?= $o['id'] ?>" onclick="printReceipt(<?= $o['id'] ?>, this)" title="Print receipt (Bluetooth)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <button class="oact oact-print" id="printBtn<?= $o['id'] ?>" onclick="printReceipt(<?= $o['id'] ?>)" title="Print receipt"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                         <polyline points="6 9 6 2 18 2 18 9" />
                                                         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                                                         <rect x="6" y="14" width="12" height="8" />
                                                     </svg><span class="act-label">Print</span></button>
                                                 <?php if ($isPending): ?>
-                                                    <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method']]), ENT_QUOTES) ?>)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                    <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method']]), ENT_QUOTES) ?>)" title="Approve"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                                             <polyline points="20 6 9 17 4 12" />
                                                         </svg><span class="act-label">Approve</span></button>
-                                                    <button class="oact oact-reject" onclick="openReject(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                    <button class="oact oact-reject" onclick="openReject(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Reject"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                                             <line x1="18" y1="6" x2="6" y2="18" />
                                                             <line x1="6" y1="6" x2="18" y2="18" />
                                                         </svg><span class="act-label">Reject</span></button>
                                                 <?php else: ?>
-                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
+                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
                                                     <?php if (!$isFinalised): ?>
                                                         <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
                                                     <?php endif; ?>
@@ -1365,7 +1352,7 @@ $activePage = 'orders';
             <div class="modal-body">
                 <div id="view_content">Loading…</div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button><button type="button" class="btn btn-primary" id="viewPrintBtn" onclick="printReceipt(window._viewOrderId, this)"><i class="fa-solid fa-print"></i> Print Receipt</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button><button type="button" class="btn btn-primary" id="viewPrintBtn" onclick="printReceipt(window._viewOrderId)"><i class="fa-solid fa-print"></i> Print Receipt</button></div>
         </div>
     </div>
 
@@ -1687,25 +1674,11 @@ $activePage = 'orders';
             });
         }
 
-        async function printReceipt(orderId, btnEl) {
+        function printReceipt(orderId) {
             if (!orderId) return;
-            var btn = btnEl || document.getElementById('printBtn' + orderId);
-            var originalHtml = btn ? btn.innerHTML : null;
-            if (btn) {
-                btn.classList.add('printing');
-                btn.disabled = true;
-            }
-            try {
-                await HatchPrinter.printOrder(orderId);
-            } catch (err) {
-                console.error('Print failed:', err);
-                alert('Printing failed: ' + (err && err.message ? err.message : 'Unknown error') + '\n\nMake sure Bluetooth is on, the printer is powered on and nearby, and you are using Chrome.');
-            } finally {
-                if (btn) {
-                    btn.classList.remove('printing');
-                    btn.disabled = false;
-                }
-            }
+            // Opens a preview of the receipt first — printing only happens
+            // once the person clicks "Confirm & Print" on that page.
+            window.open('order_receipt_print.php?id=' + encodeURIComponent(orderId), '_blank');
         }
 
         function viewProof(path, orderNum) {
