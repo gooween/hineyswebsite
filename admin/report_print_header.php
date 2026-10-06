@@ -388,9 +388,16 @@ if (!empty($_SESSION['user_id'])) {
 
         /* ══ PRINT RULES ══ */
         @media print {
+
+            /* A zero page margin is what stops Chrome drawing its own
+               header/footer (date, URL, title) — it uses that margin
+               space to draw into, so with none left, it has nowhere to
+               put them. The old 14mm/12mm margin is recreated below as
+               padding on .sheet instead, so the printed page looks the
+               same as before, just without the browser's own text. */
             @page {
                 size: A4;
-                margin: 14mm 12mm;
+                margin: 0;
             }
 
             body {
@@ -402,7 +409,7 @@ if (!empty($_SESSION['user_id'])) {
                 border: none;
                 margin: 0;
                 max-width: 100%;
-                padding: 0;
+                padding: 14mm 12mm;
             }
 
             .rp-actions {

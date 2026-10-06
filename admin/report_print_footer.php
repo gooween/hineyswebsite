@@ -33,10 +33,6 @@ if (!empty($_SESSION['user_id'])) {
 </div>
 
 <!-- Footer -->
-<div class="rp-foot">
-    <div><?= htmlspecialchars($bizName ?? 'HATCH — Hiney\'s Automated Tracking Commerce and Hub') ?> — Internal Report</div>
-    <div>Printed <?= date('M j, Y g:i A') ?></div>
-</div>
 
 </div><!-- /.sheet -->
 

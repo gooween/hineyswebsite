@@ -310,4 +310,4 @@ $receiptText = implode("\n", $lines);
     </script>
 </body>
 
-</html>
+</html>x

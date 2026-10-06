@@ -81,6 +81,20 @@ $r = $conn->query("
 ");
 $totalStockValue = (float)($r->fetch_assoc()['val'] ?? 0);
 
+// ── KPI 5: Potential lost revenue from expired/spoiled stock ──
+// Shown separately from Total Stock Value — this is a loss figure, not
+// part of what's currently sellable. Assumes stock_batches.status can be
+// 'expired' (same convention as 'active' used elsewhere above); change
+// the string below if your schema uses a different value.
+$r = $conn->query("
+    SELECT COALESCE(SUM(sb.remaining * p.price), 0) AS val
+    FROM stock_batches sb
+    JOIN products p ON p.id = sb.product_id
+    WHERE sb.status = 'expired' AND p.is_active = 1
+    {$catWhere}
+");
+$expiredLostValue = (float)($r->fetch_assoc()['val'] ?? 0);
+
 // ── Chart 1: Stock level per product (horizontal bar) ────────
 $stockLabels = [];
 $stockQtys   = [];
@@ -640,7 +654,7 @@ $activePage = 'report_inventory';
             </form>
 
             <!-- KPI Cards -->
-            <div class="grid cols-2 mb-6" style="grid-template-columns:repeat(4,1fr);">
+            <div class="grid cols-2 mb-6" style="grid-template-columns:repeat(5,1fr);">
                 <div class="stat-card tone-blue">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Total Products</span>
@@ -676,6 +690,14 @@ $activePage = 'report_inventory';
                     </div>
                     <div class="stat-value money"><?= peso($totalStockValue) ?></div>
                     <div class="stat-foot">Qty × price per product</div>
+                </div>
+                <div class="stat-card tone-red">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Lost to Expiry</span>
+                        <div class="stat-icon"><i class="fa-solid fa-trash-can"></i></div>
+                    </div>
+                    <div class="stat-value money"><?= peso($expiredLostValue) ?></div>
+                    <div class="stat-foot">Potential sales lost — not part of Stock Value</div>
                 </div>
             </div>
 

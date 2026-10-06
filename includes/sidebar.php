@@ -32,7 +32,7 @@ $navItems = [
 ];
 
 $storeItems = [
-    ['key' => 'gcash_settings', 'icon' => 'fa-credit-card', 'label' => 'Payment Settings', 'href' => 'gcash_settings.php'],
+    ['key' => 'gcash_settings', 'icon' => 'fa-credit-card', 'label' => 'Address Settings', 'href' => 'gcash_settings.php'],
     ['key' => 'delivery_zones', 'icon' => 'fa-truck',       'label' => 'Delivery Zones',   'href' => 'delivery_zones.php'],
 ];
 

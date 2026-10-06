@@ -37,7 +37,10 @@ if (!function_exists('saveSetting')) {
 // ── Save pickup address ───────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_pickup') {
     $pickup = trim($_POST['pickup_address'] ?? '');
-    saveSetting($conn, 'pickup_address', $pickup);
+    if ($pickup === '') {
+        redirect('gcash_settings.php', 'error', 'Enter a pickup address before saving — customers see it at checkout.');
+    }
+    saveSetting($conn, 'pickup_address', mb_substr($pickup, 0, 255));
     redirect('gcash_settings.php', 'success', 'Pickup address saved.');
 }
 
@@ -122,6 +125,7 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
         }
 
         .fa-info-circle,
+        .fa-circle-info,
         .fa-credit-card,
         .fa-mobile-screen,
         .fa-envelope,
@@ -190,7 +194,7 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
         }
 
         .page-header {
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
 
         .page-title {
@@ -201,25 +205,29 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             display: flex;
             align-items: center;
             gap: 10px;
+            margin: 0;
         }
 
         .page-title-sub {
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 4px;
+            max-width: 60ch;
         }
 
-        .settings-grid {
+        /* Form on the left, live preview + notes on the right */
+        .settings-layout {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
             gap: 24px;
             align-items: start;
+            max-width: 1040px;
         }
 
-        @media(max-width:960px) {
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
+        .settings-side {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
 
         .card {
@@ -246,6 +254,7 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             display: flex;
             align-items: center;
             gap: 8px;
+            margin: 0;
         }
 
         .card-body {
@@ -255,16 +264,11 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            margin-bottom: 16px;
-        }
-
-        .form-group:last-of-type {
-            margin-bottom: 0;
+            gap: 6px;
         }
 
         .form-label {
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 700;
             color: var(--dark);
         }
@@ -274,128 +278,54 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             margin-left: 2px;
         }
 
-        .form-input,
         .form-textarea {
-            padding: 10px 13px;
+            width: 100%;
+            min-height: 110px;
+            padding: 11px 13px;
             border: 1.5px solid var(--card-border);
             border-radius: 9px;
-            font-size: 0.88rem;
+            font-size: 0.92rem;
+            line-height: 1.5;
             font-family: inherit;
             color: var(--text);
             background: #fafafa;
             outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s;
-            width: 100%;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
         }
 
-        .form-input:focus,
         .form-textarea:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.14);
             background: #fff;
         }
 
-        .form-textarea {
-            resize: vertical;
-            min-height: 72px;
-        }
-
-        .form-hint {
-            font-size: 0.72rem;
+        .field-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.76rem;
             color: var(--text-muted);
         }
 
-        /* QR Upload area */
-        .qr-current {
-            background: #f9fafb;
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 16px;
+        .field-meta .count.near {
+            color: #b45309;
+            font-weight: 700;
         }
 
-        .qr-img {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 10px;
-            margin: 0 auto 12px;
-            display: block;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--card-border);
-        }
-
-        .qr-none-icon {
-            font-size: 4rem;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .qr-none-text {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        /* Drop zone */
-        .drop-zone {
-            border: 2px dashed var(--card-border);
-            border-radius: 12px;
-            padding: 28px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: #fafafa;
-            position: relative;
-        }
-
-        .drop-zone:hover,
-        .drop-zone.dragover {
-            border-color: var(--primary);
-            background: var(--primary-light);
-        }
-
-        .drop-zone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
-        }
-
-        .drop-zone-icon {
-            font-size: 2rem;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .drop-zone-text {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .drop-zone-text strong {
-            color: var(--primary);
-        }
-
-        .drop-zone-hint {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        /* Buttons */
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 7px;
             padding: 10px 20px;
             border-radius: 9px;
             font-size: 0.88rem;
             font-weight: 700;
             cursor: pointer;
             border: 1.5px solid;
-            transition: all 0.15s;
+            transition: background 0.15s, opacity 0.15s;
             font-family: inherit;
         }
 
@@ -405,18 +335,8 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             border-color: var(--primary);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #cf6d17;
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: #fff;
-            border-color: #ef4444;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
         }
 
         .btn-ghost {
@@ -425,8 +345,18 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             border-color: var(--card-border);
         }
 
-        .btn-ghost:hover {
+        .btn-ghost:hover:not(:disabled) {
             background: var(--page-bg);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid rgba(230, 126, 34, 0.45);
+            outline-offset: 2px;
         }
 
         .card-footer {
@@ -434,44 +364,85 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             border-top: 1px solid var(--card-border);
             background: #fafafa;
             display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        /* Preview selected file */
-        .preview-strip {
-            display: none;
             align-items: center;
             gap: 10px;
-            background: #ecfdf5;
-            border: 1px solid #6ee7b7;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-top: 10px;
-            font-size: 0.82rem;
-            color: #065f46;
         }
 
-        .preview-strip img {
-            width: 40px;
-            height: 40px;
-            object-fit: cover;
-            border-radius: 6px;
-        }
-
-        /* Info badge */
-        .info-badge {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
-            padding: 10px 14px;
+        .save-state {
+            margin-right: auto;
             font-size: 0.8rem;
-            color: #1e40af;
+            color: var(--text-muted);
+        }
+
+        .save-state.dirty {
+            color: #b45309;
+            font-weight: 600;
+        }
+
+        /* "What customers see" preview */
+        .pickup-preview {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 14px 16px;
+            border: 1.5px solid var(--primary);
+            border-radius: 11px;
+            background: var(--primary-light, #fff7ed);
+        }
+
+        .pickup-preview .pin {
+            flex: 0 0 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .pickup-preview .lbl {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .pickup-preview .addr {
+            margin-top: 2px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--dark);
             line-height: 1.5;
-            margin-bottom: 16px;
+            white-space: pre-line;
+            overflow-wrap: anywhere;
+        }
+
+        .pickup-preview .addr.empty {
+            font-weight: 500;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        .preview-note {
+            margin: 12px 0 0;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .notice {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 14px 16px;
+            border: 1px solid #cfe3fb;
+            border-radius: var(--radius);
+            background: #eef6ff;
+            color: #2c5b8f;
+            font-size: 0.84rem;
+            line-height: 1.6;
+        }
+
+        .notice i {
+            margin-top: 3px;
         }
 
         .mobile-menu-btn {
@@ -487,7 +458,13 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
             color: var(--dark);
         }
 
-        @media(max-width:768px) {
+        @media (max-width: 960px) {
+            .settings-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
             .main-content {
                 margin-left: 0;
                 padding: 16px 16px 48px;
@@ -495,6 +472,20 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
 
             .mobile-menu-btn {
                 display: flex;
+            }
+
+            .card-footer {
+                flex-wrap: wrap;
+            }
+
+            .card-footer .btn-primary {
+                flex: 1 1 100%;
+                order: -1;
+            }
+
+            .save-state {
+                flex: 1 1 100%;
+                margin: 0;
             }
         }
     </style>
@@ -510,31 +501,86 @@ $pickupAddress = getSetting($conn, 'pickup_address', "Hiney's Farm, Loreto, Cort
 
         <?= flash() ?>
 
-        <div style="max-width:640px;">
-            <div class="card">
+        <div class="settings-layout">
+            <form class="card" method="POST" action="gcash_settings.php" id="pickupForm">
+                <input type="hidden" name="action" value="save_pickup">
                 <div class="card-header">
-                    <div class="card-title"><i class="fa-solid fa-location-dot"></i> Pickup Address</div>
+                    <h2 class="card-title"><i class="fa-solid fa-location-dot"></i> Pickup address</h2>
                 </div>
-                <form method="POST" action="gcash_settings.php">
-                    <input type="hidden" name="action" value="save_pickup">
-                    <div style="padding:22px 24px;">
-                        <div class="form-group">
-                            <label class="form-label">Pickup Address</label>
-                            <textarea name="pickup_address" class="form-textarea" rows="3"
-                                placeholder="Full address where customers can pick up their order..."><?= htmlspecialchars($pickupAddress) ?></textarea>
-                            <span class="form-hint">Shown to customers who choose "Pick Up" as their delivery option.</span>
-                        </div>
-                        <div style="background:#eef6ff;border:1px solid #cfe3fb;border-radius:8px;padding:12px 14px;font-size:0.82rem;color:#2c5b8f;line-height:1.6;margin-top:6px;">
-                            <i class="fa-solid fa-circle-info"></i> Online payments (GCash, Maya, QR Ph) are now processed automatically through PayMongo at checkout — no GCash QR or account details need to be managed here anymore.
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label" for="pickup_address">Where customers pick up their order <span class="req">*</span></label>
+                        <textarea id="pickup_address" name="pickup_address" class="form-textarea" rows="4" maxlength="255" required
+                            placeholder="Street, barangay, municipality, province — add a landmark if it helps."><?= htmlspecialchars($pickupAddress) ?></textarea>
+                        <div class="field-meta">
+                            <span>Shown to customers who choose Pick Up at checkout.</span>
+                            <span class="count" id="addrCount" aria-live="polite">0 / 255</span>
                         </div>
                     </div>
-                    <div class="card-footer">
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save Pickup Address</button>
+                </div>
+                <div class="card-footer">
+                    <span class="save-state" id="saveState" role="status">All changes saved</span>
+                    <button type="button" class="btn btn-ghost" id="resetBtn" disabled>Discard changes</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn" disabled><i class="fa-solid fa-check"></i> Save changes</button>
+                </div>
+            </form>
+
+            <div class="settings-side">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fa-solid fa-store"></i> What customers see</h2>
                     </div>
-                </form>
+                    <div class="card-body">
+                        <div class="pickup-preview">
+                            <div class="pin"><i class="fa-solid fa-location-dot"></i></div>
+                            <div>
+                                <div class="lbl">Pick up at</div>
+                                <div class="addr" id="addrPreview"></div>
+                            </div>
+                        </div>
+                        <p class="preview-note">Updates as you type. It goes live when you save.</p>
+                    </div>
+                </div>
+
+                <div class="notice">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>GCash, Maya and QR Ph payments are handled automatically by PayMongo at checkout, so there are no payment details to manage here.</span>
+                </div>
             </div>
         </div>
     </div>
+
+    <script>
+        (function() {
+            var ta = document.getElementById('pickup_address'),
+                prev = document.getElementById('addrPreview'),
+                cnt = document.getElementById('addrCount'),
+                save = document.getElementById('saveBtn'),
+                reset = document.getElementById('resetBtn'),
+                state = document.getElementById('saveState'),
+                saved = ta.value;
+
+            function sync() {
+                var v = ta.value.trim(),
+                    dirty = ta.value !== saved;
+                prev.textContent = v || 'No address set yet';
+                prev.classList.toggle('empty', !v);
+                cnt.textContent = ta.value.length + ' / 255';
+                cnt.classList.toggle('near', ta.value.length >= 230);
+                save.disabled = !dirty || !v;
+                reset.disabled = !dirty;
+                state.textContent = dirty ? (v ? 'Unsaved changes' : 'Enter an address to save') : 'All changes saved';
+                state.classList.toggle('dirty', dirty);
+            }
+            ta.addEventListener('input', sync);
+            reset.addEventListener('click', function() {
+                ta.value = saved;
+                sync();
+                ta.focus();
+            });
+            sync();
+        })();
+    </script>
 </body>
 
 </html>

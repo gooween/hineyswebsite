@@ -52,6 +52,31 @@ $lowStockCount = (int)($conn->query("SELECT COUNT(*) c FROM products p WHERE p.i
 $outOfStockCount = (int)($conn->query("SELECT COUNT(*) c FROM products p WHERE p.is_active=1 AND {$BATCH} = 0 {$catWhere}")->fetch_assoc()['c'] ?? 0);
 $totalStockValue = (float)($conn->query("SELECT COALESCE(SUM({$BATCH} * p.price),0) v FROM products p WHERE p.is_active=1 {$catWhere}")->fetch_assoc()['v'] ?? 0);
 
+// Potential lost revenue from expired/spoiled stock — shown separately
+// from Total Stock Value, since it's a loss figure, not sellable stock.
+// Assumes stock_batches.status can be 'expired' (same convention as
+// 'active' used above); adjust the string if your schema differs.
+$expiredLostValue = (float)($conn->query("
+    SELECT COALESCE(SUM(sb.remaining * p.price), 0) v
+    FROM stock_batches sb
+    JOIN products p ON p.id = sb.product_id
+    WHERE sb.status = 'expired' AND p.is_active = 1
+    {$catWhere}
+")->fetch_assoc()['v'] ?? 0);
+
+$expiredRows = [];
+$eq = $conn->query("
+    SELECT p.name, p.unit, SUM(sb.remaining) AS qty, p.price,
+           SUM(sb.remaining * p.price) AS lost_value
+    FROM stock_batches sb
+    JOIN products p ON p.id = sb.product_id
+    WHERE sb.status = 'expired' AND p.is_active = 1
+    {$catWhere}
+    GROUP BY p.id
+    ORDER BY lost_value DESC
+");
+if ($eq) while ($r = $eq->fetch_assoc()) $expiredRows[] = $r;
+
 // Movement (period) — from inventory_logs
 $moveIn  = (int)($conn->query("SELECT COALESCE(SUM(il.quantity),0) s FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='in' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere}")->fetch_assoc()['s'] ?? 0);
 $moveOut = (int)($conn->query("SELECT COALESCE(SUM(il.quantity),0) s FROM inventory_logs il JOIN products p ON p.id=il.product_id WHERE il.type='out' AND DATE(il.created_at) BETWEEN '{$pFromSql}' AND '{$pToSql}' {$catWhere}")->fetch_assoc()['s'] ?? 0);
@@ -77,6 +102,7 @@ $printMeta     = [
     ['label' => 'Movement Period', 'value' => $pLabel . ' (' . date('M j', strtotime($pFrom)) . ' – ' . date('M j', strtotime($pTo)) . ')'],
     ['label' => 'Total Products', 'value' => number_format($totalProducts)],
     ['label' => 'Stock Value', 'value' => peso($totalStockValue)],
+    ['label' => 'Lost to Expiry', 'value' => peso($expiredLostValue)],
 ];
 require '../admin/report_print_header.php';
 ?>
@@ -161,6 +187,39 @@ require '../admin/report_print_header.php';
         </tfoot>
     </table>
 <?php else: ?><div class="rp-empty">No category data.</div><?php endif; ?>
+
+<div class="rp-section-title">Expired / Spoiled Stock <span class="count">potential lost revenue</span></div>
+<?php if (!empty($expiredRows)): ?>
+    <table class="rp-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Unit</th>
+                <th class="num">Qty Lost</th>
+                <th class="num">Unit Price</th>
+                <th class="num">Lost Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($expiredRows as $r): ?>
+                <tr>
+                    <td style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></td>
+                    <td class="muted"><?= htmlspecialchars($r['unit']) ?></td>
+                    <td class="num"><?= number_format((int)$r['qty']) ?></td>
+                    <td class="num"><?= peso((float)$r['price']) ?></td>
+                    <td class="num" style="font-weight:700;"><?= peso((float)$r['lost_value']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4">Total Potential Lost Revenue</td>
+                <td class="num"><?= peso($expiredLostValue) ?></td>
+            </tr>
+        </tfoot>
+    </table>
+    <div class="rp-empty" style="padding-top:4px;border:none;">This is a loss estimate, not part of Total Stock Value above.</div>
+<?php else: ?><div class="rp-empty">No expired/spoiled stock on record.</div><?php endif; ?>
 
 <div class="rp-section-title">Most Restocked <span class="count"><?= htmlspecialchars($pLabel) ?></span></div>
 <?php if (!empty($restockRows)): ?>
