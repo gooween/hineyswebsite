@@ -1780,6 +1780,21 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                     </div>
                                 <?php endif; ?>
 
+                                <?php if ($o['payment_method'] === 'paymongo' && $o['payment_status'] === 'unpaid'): ?>
+                                    <?php if ($sid === 'pending'): ?>
+                                        <div class="proof-upload-section" style="border-top:1px solid #ebe8e3;">
+                                            <div class="proof-upload-title" style="color:#9c968c;"><i class="fa-solid fa-hourglass-half"></i> Waiting for approval</div>
+                                            <div class="proof-upload-desc" style="margin-bottom:0;">Online payment (GCash, Maya or QR Ph) unlocks once our team approves your order and confirms the delivery fee.</div>
+                                        </div>
+                                    <?php elseif (in_array($sid, ['approved', 'processing', 'out_for_delivery'], true)): ?>
+                                        <div class="proof-upload-section" style="border-top:1px solid #ebe8e3;">
+                                            <div class="proof-upload-title"><i class="fa-solid fa-mobile-screen"></i> Your order is approved — ready to pay</div>
+                                            <div class="proof-upload-desc">Pay <strong><?= peso((float)$o['total_amount']) ?></strong> securely with GCash, Maya, or QR Ph.</div>
+                                            <a class="btn-view-order" href="../payment/create_session.php?order_id=<?= (int)$o['id'] ?>" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">Pay Now</a>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+
                                 <div class="order-card-footer">
                                     <div class="order-address">
                                         <span><i class="fa-solid fa-location-dot"></i></span>
@@ -1789,7 +1804,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                         <?php if (in_array($sid, ['pending', 'approved'], true)): ?>
                                             <button class="btn-cancel-order" onclick="openCancelOrder(<?= $o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')">Cancel Order</button>
                                         <?php endif; ?>
-                                        <?php if ($sid !== 'cancelled'): ?>
+                                        <?php if ($sid !== 'cancelled' && $o['payment_status'] === 'paid'): ?>
                                             <a class="btn-receipt" href="order_receipt_pdf.php?id=<?= (int)$o['id'] ?>" title="Download receipt as PDF" onclick="return confirmReceipt(event, <?= (int)$o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-file-pdf"></i> Receipt</a>
                                         <?php endif; ?>
                                         <button class="btn-view-order" onclick="viewOrder(<?= $o['id'] ?>)">View Details →</button>
@@ -1876,17 +1891,17 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
     <div class="modal-backdrop" id="receiptConfirmModal" onclick="if(event.target===this)closeReceiptConfirm()" style="z-index:1200;">
         <div class="modal" style="max-width:420px;">
             <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-file-pdf"></i> Download Receipt</div>
+                <div class="modal-title"><i class="fa-solid fa-file-pdf"></i> Order Receipt</div>
                 <button class="modal-close" onclick="closeReceiptConfirm()">✕</button>
             </div>
             <div style="padding:22px 24px;">
                 <p style="font-size:0.9rem;color:#6f6a62;line-height:1.6;margin:0;">
-                    Download the PDF receipt for order <strong id="receipt_confirm_num" style="color:#23201c;">#0000</strong>?
+                    View or download the PDF receipt for order <strong id="receipt_confirm_num" style="color:#23201c;">#0000</strong>?
                 </p>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;padding:0 24px 22px;">
-                <button type="button" class="btn-view-order" onclick="closeReceiptConfirm()" style="background:#f0eee9;color:#6f6a62;">Cancel</button>
-                <button type="button" class="btn-view-order" id="receiptConfirmBtn" onclick="doReceiptDownload()"><i class="fa-solid fa-download"></i> Yes, Download</button>
+                <button type="button" class="btn-view-order" onclick="doReceiptView()" style="background:#f0eee9;color:#6f6a62;"><i class="fa-solid fa-eye"></i> View</button>
+                <button type="button" class="btn-view-order" id="receiptConfirmBtn" onclick="doReceiptDownload()"><i class="fa-solid fa-download"></i> Download</button>
             </div>
         </div>
     </div>
@@ -2011,10 +2026,6 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             </div></div>`;
             }
 
-            const receiptBtn = o.status !== 'cancelled' ?
-                `<div class="modal-section" style="text-align:center;"><a class="btn-receipt" href="order_receipt_pdf.php?id=${o.id}" onclick="return confirmReceipt(event, ${o.id}, '#${String(o.id).padStart(4,'0')}')"><i class="fa-solid fa-file-pdf"></i> Download Receipt (PDF)</a></div>` :
-                '';
-
             const notesHtml = o.notes ?
                 `<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-line;">${esc(o.notes)}</div>` :
                 '';
@@ -2046,7 +2057,6 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         </div>
         ${proofHtml}
         ${txnHtml}
-        ${receiptBtn}
     `;
         }
 
@@ -2064,6 +2074,14 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         function closeReceiptConfirm() {
             document.getElementById('receiptConfirmModal').classList.remove('show');
             receiptPendingId = null;
+        }
+
+        // Opens the PDF inline in a new tab (order_receipt_pdf.php?view=1)
+        function doReceiptView() {
+            if (!receiptPendingId) return;
+            const id = receiptPendingId;
+            closeReceiptConfirm();
+            window.open('order_receipt_pdf.php?id=' + encodeURIComponent(id) + '&view=1', '_blank');
         }
 
         function doReceiptDownload() {

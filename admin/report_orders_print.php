@@ -107,15 +107,54 @@ function orderStatusPill(string $s): string
 // ── Print chrome ──────────────────────────────────────────────
 $periodLabel = $period === 'daily' ? 'Today' : ($period === 'weekly' ? 'This Week' : ($period === 'monthly' ? 'This Month' : 'Custom range'));
 $printTitle    = 'Orders Report';
-$printSubtitle = ($period ? $periodLabel . ' · ' : '') . date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
+$rangeLabel    = ($dateFrom === $dateTo)
+    ? date('M j, Y', strtotime($dateFrom))
+    : date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
+$printSubtitle = ($period ? $periodLabel . ' · ' : '') . $rangeLabel;
 $printMeta     = [
-    ['label' => 'Period',  'value' => $periodLabel . ' (' . date('M j', strtotime($dateFrom)) . ' – ' . date('M j', strtotime($dateTo)) . ')'],
     ['label' => 'Status',  'value' => $statusFilter ? ($statusLabelMap[$statusFilter] ?? ucfirst($statusFilter)) : 'All statuses'],
-    ['label' => 'Total Orders', 'value' => number_format($totalOrders)],
 ];
 
 require '../admin/report_print_header.php';
 ?>
+
+<style>
+    /* KPI summary: plain horizontal row (no cards) */
+    .rp-kpis {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 14px 0 18px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #d1d5db;
+    }
+
+    .rp-kpi {
+        flex: 1;
+        text-align: left;
+        border: 0;
+        padding: 0;
+        background: none;
+    }
+
+    .rp-kpi .k-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .rp-kpi .k-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin: 2px 0;
+    }
+
+    .rp-kpi .k-sub {
+        font-size: 0.68rem;
+        color: #6b7280;
+    }
+</style>
 
 <!-- KPI summary -->
 <div class="rp-kpis">

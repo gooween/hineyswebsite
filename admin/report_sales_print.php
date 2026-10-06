@@ -28,13 +28,40 @@ $dateToSql   = $conn->real_escape_string($dateTo);
 $paidWhere = "WHERE DATE(o.created_at) BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
               AND o.status = 'delivered' AND o.payment_status = 'paid'";
 
+// ── Category filter (Eggs / Live Chicken / …) ─────────────────
+$catFilter  = (int)($_GET['cat'] ?? 0);
+$categories = [];
+$catLabel   = 'All categories';
+$crs = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
+while ($crs && $crow = $crs->fetch_assoc()) {
+    $categories[] = $crow;
+    if ((int)$crow['id'] === $catFilter) $catLabel = $crow['name'];
+}
+if ($catLabel === 'All categories') $catFilter = 0;   // unknown id → no filter
+// When a category is chosen, figures are counted from that category's
+// order items (so mixed orders only contribute their matching items).
+$catCond = $catFilter ? " AND p.category_id = {$catFilter}" : '';
+
 // ── KPIs ──────────────────────────────────────────────────────
-$k = $conn->query("
-    SELECT COALESCE(SUM(o.total_amount),0) AS revenue,
-           COUNT(*) AS paid_orders,
-           COALESCE(AVG(o.total_amount),0) AS avg_order
-    FROM orders o {$paidWhere}
-")->fetch_assoc();
+if ($catFilter) {
+    $kSql = "
+        SELECT COALESCE(SUM(oi.subtotal),0) AS revenue,
+               COUNT(DISTINCT o.id) AS paid_orders,
+               COALESCE(SUM(oi.subtotal) / NULLIF(COUNT(DISTINCT o.id),0),0) AS avg_order
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        {$paidWhere}{$catCond}
+    ";
+} else {
+    $kSql = "
+        SELECT COALESCE(SUM(o.total_amount),0) AS revenue,
+               COUNT(*) AS paid_orders,
+               COALESCE(AVG(o.total_amount),0) AS avg_order
+        FROM orders o {$paidWhere}
+    ";
+}
+$k = $conn->query($kSql)->fetch_assoc();
 $totalRevenue = (float)($k['revenue'] ?? 0);
 $paidOrders   = (int)($k['paid_orders'] ?? 0);
 $avgOrder     = (float)($k['avg_order'] ?? 0);
@@ -44,7 +71,8 @@ $unitsRow = $conn->query("
     SELECT COALESCE(SUM(oi.quantity),0) AS units
     FROM order_items oi
     JOIN orders o ON o.id = oi.order_id
-    {$paidWhere}
+    JOIN products p ON p.id = oi.product_id
+    {$paidWhere}{$catCond}
 ")->fetch_assoc();
 $totalUnits = (int)($unitsRow['units'] ?? 0);
 
@@ -56,21 +84,36 @@ $topProducts = $conn->query("
     FROM order_items oi
     JOIN orders o ON o.id = oi.order_id
     JOIN products p ON p.id = oi.product_id
-    {$paidWhere}
+    {$paidWhere}{$catCond}
     GROUP BY oi.product_id
     ORDER BY revenue DESC
     LIMIT 15
 ");
 
 // ── Payment method breakdown ──────────────────────────────────
-$payBreak = $conn->query("
-    SELECT o.payment_method,
-           COUNT(*) AS cnt,
-           COALESCE(SUM(o.total_amount),0) AS amt
-    FROM orders o {$paidWhere}
-    GROUP BY o.payment_method
-    ORDER BY amt DESC
-");
+if ($catFilter) {
+    $paySql = "
+        SELECT o.payment_method,
+               COUNT(DISTINCT o.id) AS cnt,
+               COALESCE(SUM(oi.subtotal),0) AS amt
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        {$paidWhere}{$catCond}
+        GROUP BY o.payment_method
+        ORDER BY amt DESC
+    ";
+} else {
+    $paySql = "
+        SELECT o.payment_method,
+               COUNT(*) AS cnt,
+               COALESCE(SUM(o.total_amount),0) AS amt
+        FROM orders o {$paidWhere}
+        GROUP BY o.payment_method
+        ORDER BY amt DESC
+    ";
+}
+$payBreak = $conn->query($paySql);
 
 // ── Category performance ──────────────────────────────────────
 $catPerf = $conn->query("
@@ -81,23 +124,63 @@ $catPerf = $conn->query("
     JOIN orders o ON o.id = oi.order_id
     JOIN products p ON p.id = oi.product_id
     JOIN categories c ON c.id = p.category_id
-    {$paidWhere}
+    {$paidWhere}{$catCond}
     GROUP BY c.id
     ORDER BY revenue DESC
 ");
 
 // ── Print chrome ──────────────────────────────────────────────
+// Period is shown once (subtitle). A single-day range shows just that date.
+$periodLabel   = ($dateFrom === $dateTo)
+    ? date('F j, Y', strtotime($dateFrom))
+    : date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
 $printTitle    = 'Sales Report';
-$printSubtitle = date('M j, Y', strtotime($dateFrom)) . ' – ' . date('M j, Y', strtotime($dateTo));
+$printSubtitle = $periodLabel;
 $printMeta     = [
-    ['label' => 'Period',      'value' => date('M j, Y', strtotime($dateFrom)) . ' to ' . date('M j, Y', strtotime($dateTo))],
-    ['label' => 'Total Sales', 'value' => peso($totalRevenue)],
-    ['label' => 'Paid Orders', 'value' => number_format($paidOrders)],
+    ['label' => 'Category', 'value' => $catLabel],
     ['label' => 'Basis',       'value' => 'Paid, non-cancelled orders'],
 ];
 
 require '../admin/report_print_header.php';
 ?>
+
+<style>
+    /* KPI summary: plain horizontal row (no cards) */
+    .rp-kpis {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 14px 0 18px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #d1d5db;
+    }
+
+    .rp-kpi {
+        flex: 1;
+        text-align: left;
+        border: 0;
+        padding: 0;
+        background: none;
+    }
+
+    .rp-kpi .k-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .rp-kpi .k-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin: 2px 0;
+    }
+
+    .rp-kpi .k-sub {
+        font-size: 0.68rem;
+        color: #6b7280;
+    }
+</style>
 
 <!-- KPI summary -->
 <div class="rp-kpis">

@@ -25,6 +25,16 @@ if (!$data) {
     http_response_code(404);
     die('Order not found.');
 }
+// Receipts are only available once the order has been paid.
+$pq = $conn->prepare("SELECT payment_status FROM orders WHERE id = ? AND user_id = ? LIMIT 1");
+$pq->bind_param('ii', $id, $uid);
+$pq->execute();
+$pRow = $pq->get_result()->fetch_assoc();
+$pq->close();
+if (!$pRow || $pRow['payment_status'] !== 'paid') {
+    http_response_code(403);
+    die('A receipt is available once the order has been paid.');
+}
 if ($data['order']['status'] === 'cancelled') {
     http_response_code(403);
     die('No receipt is available for a cancelled order.');

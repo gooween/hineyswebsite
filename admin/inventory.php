@@ -417,6 +417,24 @@ $activePage = 'inventory';
             display: flex;
         }
 
+        a.stat-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            cursor: pointer;
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+
+        a.stat-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, .10);
+        }
+
+        a.stat-link:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 2px;
+        }
+
         .modal-card {
             background: var(--surface);
             border-radius: var(--r-lg);
@@ -547,23 +565,23 @@ $activePage = 'inventory';
 
             <!-- Stat cards -->
             <div class="grid cols-2 mb-6" style="grid-template-columns:repeat(4,1fr);">
-                <div class="stat-card tone-blue">
+                <a href="products.php" class="stat-card tone-blue stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Total Products</span>
                         <div class="stat-icon"><i class="fa-solid fa-box"></i></div>
                     </div>
                     <div class="stat-value"><?= number_format($totalItems) ?></div>
                     <div class="stat-foot">Active products tracked</div>
-                </div>
-                <div class="stat-card tone-green">
+                </a>
+                <a href="products.php" class="stat-card tone-green stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Units in Stock</span>
                         <div class="stat-icon"><i class="fa-solid fa-cubes-stacked"></i></div>
                     </div>
                     <div class="stat-value"><?= number_format($totalUnits) ?></div>
                     <div class="stat-foot">Across all batches</div>
-                </div>
-                <div class="stat-card tone-amber">
+                </a>
+                <a href="products.php?stock=low" class="stat-card tone-amber stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Low Stock</span>
                         <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -572,8 +590,8 @@ $activePage = 'inventory';
                         <?php if ($lowStockCount > 0): ?><span class="pulse"><span class="pulse-dot amber"></span><?= number_format($lowStockCount) ?></span><?php else: ?><?= number_format($lowStockCount) ?><?php endif; ?>
                     </div>
                     <div class="stat-foot">At or below reorder level</div>
-                </div>
-                <div class="stat-card tone-red">
+                </a>
+                <a href="products.php?stock=out" class="stat-card tone-red stat-link">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Out of Stock</span>
                         <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
@@ -582,7 +600,7 @@ $activePage = 'inventory';
                         <?php if ($outOfStockCount > 0): ?><span class="pulse"><span class="pulse-dot"></span><?= number_format($outOfStockCount) ?></span><?php else: ?><?= number_format($outOfStockCount) ?><?php endif; ?>
                     </div>
                     <div class="stat-foot">Zero units remaining</div>
-                </div>
+                </a>
             </div>
 
             <!-- Toolbar -->

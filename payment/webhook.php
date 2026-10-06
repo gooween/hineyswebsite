@@ -55,7 +55,7 @@ file_put_contents(__DIR__ . '/webhook_log.txt', date('c') . " {$type}\n", FILE_A
 if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
     // Dig out the reference_number we set when creating the session
     $attr = $event['data']['attributes']['data']['attributes'] ?? [];
-    $reference = $attr['reference_number'] ?? '';
+    $reference = $attr['reference_number'] ?? ($attr['external_reference_number'] ?? '');
 
     // payment.paid events may not carry the reference; fall back to checkout id
     $checkoutId = $event['data']['attributes']['data']['id'] ?? '';
@@ -73,6 +73,10 @@ if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
     if ($method === '') {
         $method = $attr['payment_method_used'] ?? '';
     }
+    // payment.paid events carry the payment itself, so the channel is on source.type
+    if ($method === '') {
+        $method = $attr['source']['type'] ?? '';
+    }
     // Normalize to a friendly label
     $methodMap = ['gcash' => 'GCash', 'paymaya' => 'Maya', 'qrph' => 'QR Ph'];
     $methodLabel = $methodMap[strtolower($method)] ?? ($method !== '' ? ucfirst($method) : 'PayMongo');
@@ -80,12 +84,12 @@ if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
     $order = null;
     if ($reference !== '') {
         $rEsc = $conn->real_escape_string($reference);
-        $res = $conn->query("SELECT id, payment_status FROM orders WHERE paymongo_reference='{$rEsc}' LIMIT 1");
+        $res = $conn->query("SELECT id, payment_status, paymongo_method FROM orders WHERE paymongo_reference='{$rEsc}' LIMIT 1");
         $order = $res ? $res->fetch_assoc() : null;
     }
     if (!$order && $checkoutId !== '') {
         $cEsc = $conn->real_escape_string($checkoutId);
-        $res = $conn->query("SELECT id, payment_status FROM orders WHERE paymongo_checkout_id='{$cEsc}' LIMIT 1");
+        $res = $conn->query("SELECT id, payment_status, paymongo_method FROM orders WHERE paymongo_checkout_id='{$cEsc}' LIMIT 1");
         $order = $res ? $res->fetch_assoc() : null;
     }
 
@@ -103,7 +107,18 @@ if ($type === 'checkout_session.payment.paid' || $type === 'payment.paid') {
             $txnMethod = $conn->real_escape_string(strtolower($method) ?: 'paymongo');
             $conn->query("INSERT INTO transactions (order_id, amount, payment_method, reference_no, transaction_date)
                           VALUES ({$oid}, {$amt}, '{$txnMethod}', '{$refEsc}', NOW())");
+        } elseif (strtolower($method) !== '') {
+            // A transaction already exists (e.g. admin marked it paid first) — keep it in sync with the channel used
+            $txnMethod = $conn->real_escape_string(strtolower($method));
+            $conn->query("UPDATE transactions SET payment_method='{$txnMethod}' WHERE order_id={$oid} AND payment_method='paymongo'");
         }
+    } elseif ($order && $methodLabel !== 'PayMongo' && empty($order['paymongo_method'])) {
+        // Already marked paid (e.g. by an admin) but the channel the customer picked was never saved
+        $oid  = (int)$order['id'];
+        $mEsc = $conn->real_escape_string($methodLabel);
+        $conn->query("UPDATE orders SET paymongo_method='{$mEsc}', updated_at=NOW() WHERE id={$oid}");
+        $txnMethod = $conn->real_escape_string(strtolower($method));
+        $conn->query("UPDATE transactions SET payment_method='{$txnMethod}' WHERE order_id={$oid} AND payment_method='paymongo'");
     }
 }
 exit;

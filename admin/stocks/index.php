@@ -32,6 +32,7 @@ $conn->query("UPDATE stock_batches SET status='expired'
 $filterStatus  = trim($_GET['status']  ?? '');
 $filterProduct = (int)($_GET['product'] ?? 0);
 $filterDate    = trim($_GET['date']    ?? '');
+$sort          = (($_GET['sort'] ?? '') === 'latest') ? 'latest' : 'earliest';
 $page          = max(1, (int)($_GET['page'] ?? 1));
 $perPage       = 20;
 $offset        = ($page - 1) * $perPage;
@@ -45,6 +46,7 @@ $totalRes   = $conn->query("SELECT COUNT(*) AS cnt FROM stock_batches sb {$where
 $totalCount = (int)($totalRes->fetch_assoc()['cnt'] ?? 0);
 $totalPages = max(1, (int)ceil($totalCount / $perPage));
 
+$orderDir = $sort === 'latest' ? 'DESC' : 'ASC';
 $batches = $conn->query("
     SELECT sb.*, p.name AS product_name, c.name AS category_name,
            u.full_name AS created_by_name
@@ -53,7 +55,7 @@ $batches = $conn->query("
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN users u ON u.id = sb.created_by
     {$where}
-    ORDER BY sb.created_at ASC
+    ORDER BY sb.created_at {$orderDir}, sb.id {$orderDir}
     LIMIT {$perPage} OFFSET {$offset}
 ");
 
@@ -335,7 +337,7 @@ $stats = $conn->query("
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Stock Batches</h1>
-                    <div class="page-title-sub">All batches sorted oldest first (FIFO). The system assigns the oldest active batch to orders automatically.</div>
+                    <div class="page-title-sub">All batches sorted <?= $sort === 'latest' ? 'newest' : 'oldest' ?> first. The system assigns the oldest active batch to orders automatically.</div>
                 </div>
                 <a href="add.php" class="btn btn-primary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -403,8 +405,12 @@ $stats = $conn->query("
                             </option>
                         <?php endwhile; ?>
                     </select>
+                    <select name="sort" class="filter-select" onchange="this.form.submit()">
+                        <option value="earliest" <?= $sort === 'earliest' ? 'selected' : '' ?>>Earliest first</option>
+                        <option value="latest" <?= $sort === 'latest' ? 'selected' : '' ?>>Latest first</option>
+                    </select>
                     <input type="date" name="date" class="filter-date" value="<?= htmlspecialchars($filterDate) ?>" onchange="this.form.submit()">
-                    <?php if ($filterStatus || $filterProduct || $filterDate): ?>
+                    <?php if ($filterStatus || $filterProduct || $filterDate || $sort !== 'earliest'): ?>
                         <a href="index.php" class="btn-clear">✕ Clear</a>
                     <?php endif; ?>
                 </form>

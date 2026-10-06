@@ -12,6 +12,25 @@ requireCustomer();
 $activePage = 'orders';
 $orderId  = (int)($_GET['order_id'] ?? 0);
 $orderNum = $orderId ? str_pad($orderId, 4, '0', STR_PAD_LEFT) : '';
+
+// Show the real payment state. The webhook marks it paid a moment after the
+// customer returns, so re-check every 3s (up to ~30s) until it lands.
+$uid       = (int)$_SESSION['user_id'];
+$isPaid    = false;
+$paidVia   = '';
+if ($orderId) {
+    $ps = $conn->prepare("SELECT payment_status, paymongo_method FROM orders WHERE id = ? AND user_id = ? LIMIT 1");
+    $ps->bind_param('ii', $orderId, $uid);
+    $ps->execute();
+    $po = $ps->get_result()->fetch_assoc();
+    $ps->close();
+    if ($po && $po['payment_status'] === 'paid') {
+        $isPaid  = true;
+        $paidVia = (string)($po['paymongo_method'] ?? '');
+    }
+}
+$tries     = (int)($_GET['n'] ?? 0);
+$recheck   = !$isPaid && $orderId && $tries < 10;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,6 +39,9 @@ $orderNum = $orderId ? str_pad($orderId, 4, '0', STR_PAD_LEFT) : '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Received — HATCH</title>
+    <?php if ($recheck): ?>
+        <meta http-equiv="refresh" content="3;url=success.php?order_id=<?= $orderId ?>&n=<?= $tries + 1 ?>">
+    <?php endif; ?>
     <style>
         :root {
             --primary: #e67e22;
@@ -134,9 +156,15 @@ $orderNum = $orderId ? str_pad($orderId, 4, '0', STR_PAD_LEFT) : '';
     <div class="wrap">
         <div class="card">
             <div class="icon"><i class="fa-solid fa-circle-check"></i></div>
-            <h1>Payment Received!</h1>
-            <p>Thank you! Your payment for order <span class="order">#<?= htmlspecialchars($orderNum) ?></span> was received.</p>
-            <div class="note"><i class="fa-solid fa-clock"></i> We're confirming it now — your order status updates to <strong>Paid</strong> automatically within a few moments. Track it anytime in My Orders.</div>
+            <?php if ($isPaid): ?>
+                <h1>Payment Confirmed!</h1>
+                <p>Thank you! Your payment<?= $paidVia !== '' ? ' via <strong>' . htmlspecialchars($paidVia) . '</strong>' : '' ?> for order <span class="order">#<?= htmlspecialchars($orderNum) ?></span> is confirmed.</p>
+                <div class="note"><i class="fa-solid fa-circle-check"></i> Your order is marked <strong>Paid</strong>. We'll review and confirm it shortly — track it anytime in My Orders.</div>
+            <?php else: ?>
+                <h1>Payment Received!</h1>
+                <p>Thank you! Your payment for order <span class="order">#<?= htmlspecialchars($orderNum) ?></span> was received.</p>
+                <div class="note"><i class="fa-solid fa-clock"></i> We're confirming it now — this page updates automatically, and your order will show as <strong>Paid</strong> in My Orders within a few moments.</div>
+            <?php endif; ?>
             <a href="../user/orders.php" class="btn"><i class="fa-solid fa-box"></i> View My Orders</a>
         </div>
     </div>

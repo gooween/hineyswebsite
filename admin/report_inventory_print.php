@@ -96,16 +96,51 @@ $inventoryTable = $conn->query("SELECT p.name, p.unit, p.price, c.name category,
 
 // Print chrome (shared plain letterhead)
 $printTitle    = 'Inventory Report';
-$printSubtitle = 'Stock snapshot as of ' . date('M j, Y') . ($period ? '  ·  Movement: ' . $pLabel : '');
+$printSubtitle = 'Stock snapshot as of ' . date('M j, Y') . '  ·  Movement: ' . $pLabel . ($pFrom === $pTo ? '' : ' (' . date('M j', strtotime($pFrom)) . ' – ' . date('M j', strtotime($pTo)) . ')');
 $printMeta     = [
     ['label' => 'Generated', 'value' => date('M j, Y g:i A')],
-    ['label' => 'Movement Period', 'value' => $pLabel . ' (' . date('M j', strtotime($pFrom)) . ' – ' . date('M j', strtotime($pTo)) . ')'],
-    ['label' => 'Total Products', 'value' => number_format($totalProducts)],
-    ['label' => 'Stock Value', 'value' => peso($totalStockValue)],
     ['label' => 'Lost to Expiry', 'value' => peso($expiredLostValue)],
 ];
 require '../admin/report_print_header.php';
 ?>
+
+<style>
+    /* KPI summary: plain horizontal row (no cards) */
+    .rp-kpis {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 14px 0 18px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #d1d5db;
+    }
+
+    .rp-kpi {
+        flex: 1;
+        text-align: left;
+        border: 0;
+        padding: 0;
+        background: none;
+    }
+
+    .rp-kpi .k-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .rp-kpi .k-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin: 2px 0;
+    }
+
+    .rp-kpi .k-sub {
+        font-size: 0.68rem;
+        color: #6b7280;
+    }
+</style>
 
 <div class="rp-kpis">
     <div class="rp-kpi accent-blue">

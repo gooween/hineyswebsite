@@ -163,9 +163,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $orderNum = str_pad($orderId, 4, '0', STR_PAD_LEFT);
             if ($paymentMethod === 'paymongo') {
-                // Off to PayMongo hosted checkout (GCash / QR Ph)
-                header('Location: ../payment/create_session.php?order_id=' . $orderId);
-                exit;
+                // Online payment is only unlocked AFTER the admin approves the order
+                // (the admin may set the delivery fee first). The customer then pays
+                // from My Orders → "Pay Now" (payment/create_session.php).
+                redirect('orders.php', 'success', "Order #{$orderNum} placed! Once our team approves it, you can pay online from My Orders.");
             } else {
                 redirect('orders.php', 'success', "Order #{$orderNum} placed successfully! We'll confirm it shortly.");
             }
@@ -1367,7 +1368,7 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                         <div class="payment-option-icon"><i class="fa-solid fa-mobile-screen"></i></div>
                                         <div>
                                             <div class="payment-option-name">GCash / Maya / QR Ph</div>
-                                            <div class="payment-option-desc">Pay securely online — you'll be redirected to complete payment now.</div>
+                                            <div class="payment-option-desc">Pay securely online after our team approves your order.</div>
                                         </div>
                                     </label>
                                 </div>
@@ -1377,13 +1378,13 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                             <line x1="12" y1="8" x2="12" y2="12" />
                                             <line x1="12" y1="16" x2="12.01" y2="16" />
                                         </svg> How Online Payment Works</div>
-                                    <div class="gcash-info-note">Fast & secure — pay right after placing your order:</div>
+                                    <div class="gcash-info-note">Fast & secure — you pay once your order is approved:</div>
                                     <div class="gcash-steps">
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">1</div><span>Place your order — you'll be taken to a secure payment page.</span>
+                                            <div class="gcash-step-num">1</div><span>Place your order — our team reviews it and confirms the delivery fee.</span>
                                         </div>
                                         <div class="gcash-step">
-                                            <div class="gcash-step-num">2</div><span>Pay with <strong>GCash</strong>, <strong>Maya</strong>, or <strong>QR Ph</strong> on PayMongo's checkout.</span>
+                                            <div class="gcash-step-num">2</div><span>Once approved, tap <strong>Pay Now</strong> in My Orders and pay with <strong>GCash</strong>, <strong>Maya</strong>, or <strong>QR Ph</strong>.</span>
                                         </div>
                                         <div class="gcash-step">
                                             <div class="gcash-step-num">3</div><span>Payment is confirmed automatically — your order is marked <strong>Paid</strong>.</span>

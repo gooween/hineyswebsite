@@ -22,7 +22,7 @@ if (!$orderId) {
 
 // Load the order — must belong to this customer, be PayMongo + unpaid
 $stmt = $conn->prepare("
-    SELECT id, total_amount, payment_method, payment_status
+    SELECT id, status, total_amount, payment_method, payment_status
     FROM orders WHERE id = ? AND user_id = ? LIMIT 1
 ");
 $stmt->bind_param('ii', $orderId, $uid);
@@ -38,6 +38,13 @@ if ($order['payment_method'] !== 'paymongo') {
 }
 if ($order['payment_status'] === 'paid') {
     redirect('../user/orders.php', 'success', 'This order is already paid.');
+}
+// Payment is only allowed AFTER the admin approves the order.
+if ($order['status'] === 'pending') {
+    redirect('../user/orders.php', 'error', 'You can pay once our team approves your order. We\'ll update it shortly.');
+}
+if (!in_array($order['status'], ['approved', 'processing', 'out_for_delivery'], true)) {
+    redirect('../user/orders.php', 'error', 'This order can no longer be paid online.');
 }
 
 // Build line items from order_items (amounts in CENTAVOS: ₱250.00 -> 25000)

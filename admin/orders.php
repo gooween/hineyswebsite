@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../config/paymongo.php';   // paymongoRequest()
 requireAdmin();
 
 // ── Stock helpers ─────────────────────────────────────────────
@@ -124,10 +125,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($payment_status === 'paid') {
                 $chk = $conn->query("SELECT id FROM transactions WHERE order_id={$id} LIMIT 1");
                 if ($chk && $chk->num_rows === 0) {
-                    $ord = $conn->query("SELECT total_amount, payment_method FROM orders WHERE id={$id} LIMIT 1");
+                    $ord = $conn->query("SELECT total_amount, payment_method, paymongo_method FROM orders WHERE id={$id} LIMIT 1");
                     if ($ord && $row = $ord->fetch_assoc()) {
                         $amt  = (float)$row['total_amount'];
-                        $meth = $conn->real_escape_string($row['payment_method']);
+                        // PayMongo orders: record the channel the customer actually picked (GCash / Maya / QR Ph / Card)
+                        $methRaw = ($row['payment_method'] === 'paymongo' && !empty($row['paymongo_method']))
+                            ? $row['paymongo_method']
+                            : $row['payment_method'];
+                        $meth = $conn->real_escape_string($methRaw);
                         $note = $conn->real_escape_string('Auto-recorded when order marked as paid');
                         $conn->query("INSERT INTO transactions (order_id,amount,payment_method,transaction_date,notes) VALUES ({$id},{$amt},'{$meth}',NOW(),'{$note}')");
                     }
@@ -155,6 +160,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// ── PayMongo reconcile ────────────────────────────────────────
+// Asks PayMongo directly about recent online orders that are still unpaid, or
+// paid but missing the channel the customer picked (GCash / Maya / QR Ph).
+// This keeps the admin correct even if a webhook was missed or arrived early.
+function syncPaymongoOrders(mysqli $conn): void
+{
+    if (!function_exists('paymongoRequest')) return;
+    $rows = $conn->query("SELECT id, payment_status, paymongo_checkout_id, paymongo_reference
+                          FROM orders
+                          WHERE payment_method='paymongo' AND status <> 'cancelled'
+                            AND paymongo_checkout_id IS NOT NULL AND paymongo_checkout_id <> ''
+                            AND (
+                                  (payment_status <> 'paid' AND created_at >= (NOW() - INTERVAL 2 DAY))
+                               OR (payment_status = 'paid' AND (paymongo_method IS NULL OR paymongo_method = '')
+                                   AND created_at >= (NOW() - INTERVAL 90 DAY))
+                            )
+                          ORDER BY RAND() LIMIT 3");
+    if (!$rows) return;
+    $map = ['gcash' => 'GCash', 'paymaya' => 'Maya', 'qrph' => 'QR Ph'];
+    while ($o = $rows->fetch_assoc()) {
+        try {
+            [$code, $data] = paymongoRequest('GET', '/checkout_sessions/' . rawurlencode($o['paymongo_checkout_id']));   // no body on a GET
+        } catch (Throwable $e) {
+            continue;
+        }
+        if ($code < 200 || $code >= 300 || empty($data['data']['attributes'])) continue;
+        $attr = $data['data']['attributes'];
+
+        $pay = null;
+        foreach (($attr['payments'] ?? []) as $p) {
+            if (($p['attributes']['status'] ?? '') === 'paid') {
+                $pay = $p['attributes'];
+                break;
+            }
+        }
+        if (!$pay) continue;   // nothing paid on PayMongo's side yet
+
+        $method = strtolower($pay['source']['type'] ?? ($attr['payment_method_used'] ?? ''));
+        $label  = $map[$method] ?? ($method !== '' ? ucfirst($method) : '');
+        $oid    = (int)$o['id'];
+        $lEsc   = $conn->real_escape_string($label);
+
+        if ($o['payment_status'] !== 'paid') {
+            $conn->query("UPDATE orders SET payment_status='paid', paid_at=NOW(), paymongo_method=" . ($label !== '' ? "'{$lEsc}'" : "paymongo_method") . ", updated_at=NOW() WHERE id={$oid}");
+            $chk = $conn->query("SELECT COUNT(*) AS c FROM transactions WHERE order_id={$oid}");
+            if ($chk && (int)$chk->fetch_assoc()['c'] === 0) {
+                $amt   = (float)($conn->query("SELECT total_amount FROM orders WHERE id={$oid}")->fetch_assoc()['total_amount'] ?? 0);
+                $ref   = $conn->real_escape_string($o['paymongo_reference'] ?: $o['paymongo_checkout_id']);
+                $tm    = $conn->real_escape_string($method !== '' ? $method : 'paymongo');
+                $conn->query("INSERT INTO transactions (order_id, amount, payment_method, reference_no, transaction_date) VALUES ({$oid}, {$amt}, '{$tm}', '{$ref}', NOW())");
+            }
+        } elseif ($label !== '') {
+            $conn->query("UPDATE orders SET paymongo_method='{$lEsc}', updated_at=NOW() WHERE id={$oid}");
+        }
+        if ($method !== '') {
+            $conn->query("UPDATE transactions SET payment_method='" . $conn->real_escape_string($method) . "' WHERE order_id={$oid} AND payment_method='paymongo'");
+        }
+    }
+}
+syncPaymongoOrders($conn);
 
 $search        = trim($_GET['q'] ?? '');
 $filterStatus  = trim($_GET['status'] ?? '');
@@ -1279,7 +1345,7 @@ $activePage = 'orders';
                                                         <rect x="6" y="14" width="12" height="8" />
                                                     </svg><span class="act-label">Print</span></button>
                                                 <?php if ($isPending): ?>
-                                                    <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method']]), ENT_QUOTES) ?>)" title="Approve"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                    <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText]), ENT_QUOTES) ?>)" title="Approve"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                                             <polyline points="20 6 9 17 4 12" />
                                                         </svg><span class="act-label">Approve</span></button>
                                                     <button class="oact oact-reject" onclick="openReject(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Reject"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -1287,7 +1353,7 @@ $activePage = 'orders';
                                                             <line x1="6" y1="6" x2="18" y2="18" />
                                                         </svg><span class="act-label">Reject</span></button>
                                                 <?php else: ?>
-                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
+                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText, 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
                                                     <?php if (!$isFinalised): ?>
                                                         <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
                                                     <?php endif; ?>
@@ -1580,7 +1646,7 @@ $activePage = 'orders';
             document.getElementById('approve_id').value = data.id;
             document.getElementById('approve_order_label').textContent = '#' + String(data.id).padStart(4, '0');
             document.getElementById('approve_customer_label').textContent = data.full_name;
-            document.getElementById('approve_method_label').textContent = data.payment_method.toUpperCase();
+            document.getElementById('approve_method_label').textContent = (data.method_label || data.payment_method).toUpperCase();
             document.getElementById('approve_total_label').textContent = fmtPeso(data.total_amount);
             var addr = data.delivery_address || '';
             document.getElementById('approve_address_label').textContent = addr ? (addr.length > 60 ? addr.substring(0, 60) + '…' : addr) : '';
@@ -1618,7 +1684,7 @@ $activePage = 'orders';
             document.getElementById('upd_id').value = data.id;
             document.getElementById('upd_order_label').textContent = '#' + String(data.id).padStart(4, '0');
             document.getElementById('upd_customer_label').textContent = data.full_name;
-            document.getElementById('upd_method_label').textContent = data.payment_method.toUpperCase();
+            document.getElementById('upd_method_label').textContent = (data.method_label || data.payment_method).toUpperCase();
             document.getElementById('upd_status').value = data.status;
             document.getElementById('upd_payment_status').value = data.payment_status;
             document.getElementById('gcash_note').style.display = data.payment_method === 'gcash' ? 'flex' : 'none';
@@ -1686,6 +1752,20 @@ $activePage = 'orders';
             document.getElementById('proof_img_el').src = /^https?:\/\//.test(path) ? path : '../' + path + '?v=' + Date.now();
             openModal('proofModal');
         }
+    </script>
+    <script>
+        // Pick up new online (PayMongo) payments without a manual refresh:
+        // reload every 30s unless a modal is open, a field is being edited, or the tab is hidden.
+        setInterval(function() {
+            var modalOpen = ['viewModal', 'approveModal', 'rejectModal', 'updateModal', 'cancelModal', 'proofModal']
+                .some(function(id) {
+                    var m = document.getElementById(id);
+                    return m && m.classList.contains('open');
+                });
+            var tag = document.activeElement ? document.activeElement.tagName : '';
+            var editing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+            if (!modalOpen && !editing && !document.hidden) location.reload();
+        }, 30000);
     </script>
     <script src="assets/js/thermal-print.js"></script>
 </body>

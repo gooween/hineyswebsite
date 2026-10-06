@@ -31,13 +31,40 @@ if ($statusFilter !== '') {
     $paidWhere .= " AND o.status = '" . $conn->real_escape_string($statusFilter) . "'";
 }
 
+// ── Category filter (Eggs / Live Chicken / …) ─────────────────
+$catFilter  = (int)($_GET['cat'] ?? 0);
+$categories = [];
+$catLabel   = 'All categories';
+$crs = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
+while ($crs && $crow = $crs->fetch_assoc()) {
+    $categories[] = $crow;
+    if ((int)$crow['id'] === $catFilter) $catLabel = $crow['name'];
+}
+if ($catLabel === 'All categories') $catFilter = 0;   // unknown id → no filter
+// When a category is chosen, figures are counted from that category's
+// order items (so mixed orders only contribute their matching items).
+$catCond = $catFilter ? " AND p.category_id = {$catFilter}" : '';
+
 // ── KPIs ──────────────────────────────────────────────────────
-$k = $conn->query("
-    SELECT COALESCE(SUM(o.total_amount),0) AS revenue,
-           COUNT(*) AS paid_orders,
-           COALESCE(AVG(o.total_amount),0) AS avg_order
-    FROM orders o {$paidWhere}
-")->fetch_assoc();
+if ($catFilter) {
+    $kSql = "
+        SELECT COALESCE(SUM(oi.subtotal),0) AS revenue,
+               COUNT(DISTINCT o.id) AS paid_orders,
+               COALESCE(SUM(oi.subtotal) / NULLIF(COUNT(DISTINCT o.id),0),0) AS avg_order
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        {$paidWhere}{$catCond}
+    ";
+} else {
+    $kSql = "
+        SELECT COALESCE(SUM(o.total_amount),0) AS revenue,
+               COUNT(*) AS paid_orders,
+               COALESCE(AVG(o.total_amount),0) AS avg_order
+        FROM orders o {$paidWhere}
+    ";
+}
+$k = $conn->query($kSql)->fetch_assoc();
 $totalRevenue = (float)($k['revenue'] ?? 0);
 $paidOrders   = (int)($k['paid_orders'] ?? 0);
 $avgOrder     = (float)($k['avg_order'] ?? 0);
@@ -47,7 +74,8 @@ $unitsRow = $conn->query("
     SELECT COALESCE(SUM(oi.quantity),0) AS units
     FROM order_items oi
     JOIN orders o ON o.id = oi.order_id
-    {$paidWhere}
+    JOIN products p ON p.id = oi.product_id
+    {$paidWhere}{$catCond}
 ")->fetch_assoc();
 $totalUnits = (int)($unitsRow['units'] ?? 0);
 
@@ -59,7 +87,7 @@ $topProducts = $conn->query("
     FROM order_items oi
     JOIN orders o ON o.id = oi.order_id
     JOIN products p ON p.id = oi.product_id
-    {$paidWhere}
+    {$paidWhere}{$catCond}
     GROUP BY oi.product_id
     ORDER BY revenue DESC
     LIMIT 15
@@ -74,29 +102,58 @@ $catPerf = $conn->query("
     JOIN orders o ON o.id = oi.order_id
     JOIN products p ON p.id = oi.product_id
     JOIN categories c ON c.id = p.category_id
-    {$paidWhere}
+    {$paidWhere}{$catCond}
     GROUP BY c.id
     ORDER BY revenue DESC
 ");
 
 // ── Payment method breakdown ──────────────────────────────────
-$payBreak = $conn->query("
-    SELECT o.payment_method,
-           COUNT(*) AS cnt,
-           COALESCE(SUM(o.total_amount),0) AS amt
-    FROM orders o {$paidWhere}
-    GROUP BY o.payment_method
-    ORDER BY amt DESC
-");
+if ($catFilter) {
+    $paySql = "
+        SELECT o.payment_method,
+               COUNT(DISTINCT o.id) AS cnt,
+               COALESCE(SUM(oi.subtotal),0) AS amt
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        {$paidWhere}{$catCond}
+        GROUP BY o.payment_method
+        ORDER BY amt DESC
+    ";
+} else {
+    $paySql = "
+        SELECT o.payment_method,
+               COUNT(*) AS cnt,
+               COALESCE(SUM(o.total_amount),0) AS amt
+        FROM orders o {$paidWhere}
+        GROUP BY o.payment_method
+        ORDER BY amt DESC
+    ";
+}
+$payBreak = $conn->query($paySql);
 
 // ── Daily sales trend (for the chart) ─────────────────────────
-$daily = $conn->query("
-    SELECT DATE(o.created_at) AS d,
-           COALESCE(SUM(o.total_amount),0) AS revenue
-    FROM orders o {$paidWhere}
-    GROUP BY DATE(o.created_at)
-    ORDER BY d ASC
-");
+if ($catFilter) {
+    $dailySql = "
+        SELECT DATE(o.created_at) AS d,
+               COALESCE(SUM(oi.subtotal),0) AS revenue
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        {$paidWhere}{$catCond}
+        GROUP BY DATE(o.created_at)
+        ORDER BY d ASC
+    ";
+} else {
+    $dailySql = "
+        SELECT DATE(o.created_at) AS d,
+               COALESCE(SUM(o.total_amount),0) AS revenue
+        FROM orders o {$paidWhere}
+        GROUP BY DATE(o.created_at)
+        ORDER BY d ASC
+    ";
+}
+$daily = $conn->query($dailySql);
 $trendLabels = [];
 $trendData   = [];
 if ($daily) {
@@ -143,21 +200,56 @@ $activePage = 'report_sales';
         /* Filter bar */
         .filter-bar {
             display: flex;
-            align-items: center;
+            flex-direction: row;
+            align-items: flex-end;
             gap: var(--s3);
             flex-wrap: wrap;
             background: var(--surface);
             border: 1px solid var(--line);
             border-radius: var(--r);
-            padding: var(--s3) var(--s4);
+            padding: var(--s4);
             margin-bottom: var(--s5);
         }
 
+        /* Wrappers dissolve so every control sits on one flex line */
+        .filter-fields,
+        .filter-foot {
+            display: contents;
+        }
+
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 130px;
+        }
+
+
+        .filter-foot-left {
+            order: 2;
+            flex-basis: 100%;
+            display: flex;
+            align-items: center;
+            gap: var(--s2, 8px);
+            flex-wrap: wrap;
+            padding-top: var(--s3);
+            border-top: 1px solid var(--line);
+        }
+
+
         .filter-label {
-            font-size: var(--fs-sm);
+            font-size: var(--fs-xs);
             font-weight: var(--fw-semi);
-            color: var(--ink-2);
+            color: var(--ink-3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             white-space: nowrap;
+        }
+
+        .filter-field .filter-input,
+        .filter-field .filter-select {
+            width: 100%;
+            height: 38px;
         }
 
         .filter-input,
@@ -188,7 +280,8 @@ $activePage = 'report_sales';
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 14px;
+            height: 38px;
+            padding: 0 18px;
             border-radius: var(--r-sm);
             font-size: var(--fs-sm);
             font-weight: var(--fw-semi);
@@ -239,12 +332,14 @@ $activePage = 'report_sales';
             display: inline-flex;
             align-items: center;
             gap: 5px;
+            order: 1;
             margin-left: auto;
             font-size: var(--fs-xs);
             font-weight: var(--fw-semi);
             color: var(--ink-2);
             background: var(--surface-2);
-            padding: 5px 11px;
+            height: 38px;
+            padding: 0 14px;
             border-radius: var(--r-pill);
         }
 
@@ -386,9 +481,8 @@ $activePage = 'report_sales';
         }
 
         @media (max-width: 768px) {
-            .filter-bar {
-                flex-direction: column;
-                align-items: stretch;
+            .filter-field {
+                flex: 1 1 140px;
             }
 
             .date-range-badge {
@@ -450,52 +544,69 @@ $activePage = 'report_sales';
             <!-- Filter Bar -->
             <form method="GET" action="report_sales.php">
                 <div class="filter-bar">
-                    <span class="filter-label">Date Range:</span>
-                    <input type="date" name="from" class="filter-input" value="<?= htmlspecialchars($dateFrom) ?>">
-                    <span style="font-size:var(--fs-sm);color:var(--ink-3);">to</span>
-                    <input type="date" name="to" class="filter-input" value="<?= htmlspecialchars($dateTo) ?>">
-
-                    <div class="filter-sep"></div>
-
-                    <span class="filter-label">Status:</span>
-                    <select name="status" class="filter-select">
-                        <option value="">All Statuses</option>
-                        <?php foreach ($allStatuses as $val => $lbl): ?>
-                            <option value="<?= $val ?>" <?= $statusFilter === $val ? 'selected' : '' ?>><?= $lbl ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <button type="submit" class="btn-apply">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                        Apply
-                    </button>
-
-                    <div class="quick-ranges">
-                        <?php
-                        $ranges = [
-                            'Today'      => [date('Y-m-d'), date('Y-m-d')],
-                            'This Week'  => [date('Y-m-d', strtotime('monday this week')), date('Y-m-d')],
-                            'This Month' => [date('Y-m-01'), date('Y-m-d')],
-                            'This Year'  => [date('Y-01-01'), date('Y-m-d')],
-                        ];
-                        foreach ($ranges as $lbl => [$f, $t]):
-                            $isActive = ($dateFrom === $f && $dateTo === $t && !$statusFilter);
-                        ?>
-                            <a href="report_sales.php?from=<?= $f ?>&to=<?= $t ?>" class="qr-link <?= $isActive ? 'active' : '' ?>"><?= $lbl ?></a>
-                        <?php endforeach; ?>
+                    <div class="filter-fields">
+                        <div class="filter-field">
+                            <label class="filter-label" for="f-from">From</label>
+                            <input type="date" id="f-from" name="from" class="filter-input" value="<?= htmlspecialchars($dateFrom) ?>">
+                        </div>
+                        <div class="filter-field">
+                            <label class="filter-label" for="f-to">To</label>
+                            <input type="date" id="f-to" name="to" class="filter-input" value="<?= htmlspecialchars($dateTo) ?>">
+                        </div>
+                        <div class="filter-field">
+                            <label class="filter-label" for="f-status">Status</label>
+                            <select id="f-status" name="status" class="filter-select">
+                                <option value="">All Statuses</option>
+                                <?php foreach ($allStatuses as $val => $lbl): ?>
+                                    <option value="<?= $val ?>" <?= $statusFilter === $val ? 'selected' : '' ?>><?= $lbl ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label class="filter-label" for="f-cat">Category</label>
+                            <select id="f-cat" name="cat" class="filter-select" onchange="this.form.submit()">
+                                <option value="">All Categories</option>
+                                <?php foreach ($categories as $c): ?>
+                                    <option value="<?= (int)$c['id'] ?>" <?= $catFilter === (int)$c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-apply">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            Apply
+                        </button>
                     </div>
 
-                    <span class="date-range-badge">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg>
-                        <?= date('M j, Y', strtotime($dateFrom)) ?> – <?= date('M j, Y', strtotime($dateTo)) ?>
-                    </span>
+                    <div class="filter-foot">
+                        <div class="filter-foot-left">
+                            <div class="quick-ranges">
+                                <?php
+                                $ranges = [
+                                    'Today'      => [date('Y-m-d'), date('Y-m-d')],
+                                    'This Week'  => [date('Y-m-d', strtotime('monday this week')), date('Y-m-d')],
+                                    'This Month' => [date('Y-m-01'), date('Y-m-d')],
+                                    'This Year'  => [date('Y-01-01'), date('Y-m-d')],
+                                ];
+                                foreach ($ranges as $lbl => [$f, $t]):
+                                    $isActive = ($dateFrom === $f && $dateTo === $t && !$statusFilter);
+                                ?>
+                                    <a href="report_sales.php?from=<?= $f ?>&to=<?= $t ?><?= $catFilter ? '&cat=' . $catFilter : '' ?>" class="qr-link <?= $isActive ? 'active' : '' ?>"><?= $lbl ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <span class="date-range-badge">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
+                            </svg>
+                            <?= date('M j, Y', strtotime($dateFrom)) ?> – <?= date('M j, Y', strtotime($dateTo)) ?>
+                        </span>
+                    </div>
                 </div>
             </form>
 
@@ -752,7 +863,8 @@ $activePage = 'report_sales';
             const params = new URLSearchParams({
                 from: '<?= htmlspecialchars($dateFrom) ?>',
                 to: '<?= htmlspecialchars($dateTo) ?>',
-                status: '<?= htmlspecialchars($statusFilter) ?>'
+                status: '<?= htmlspecialchars($statusFilter) ?>',
+                cat: '<?= $catFilter ?>'
             });
             window.open('report_sales_print.php?' + params.toString(), '_blank');
         }
@@ -762,31 +874,33 @@ $activePage = 'report_sales';
             const rows = [];
             rows.push(['HATCH — Sales Report']);
             rows.push(['Period', '<?= date('M j, Y', strtotime($dateFrom)) ?> to <?= date('M j, Y', strtotime($dateTo)) ?>']);
-            rows.push([]);
-            rows.push(['Total Sales', '<?= $totalRevenue ?>']);
-            rows.push(['Paid Orders', '<?= $paidOrders ?>']);
-            rows.push(['Avg Order Value', '<?= round($avgOrder, 2) ?>']);
-            rows.push(['Units Sold', '<?= $totalUnits ?>']);
-            rows.push([]);
-            rows.push(['Top Products by Revenue']);
-            rows.push(['Rank', 'Product', 'Unit', 'Qty Sold', 'Revenue']);
-            <?php
-            $topProducts->data_seek(0);
-            $rk = 1;
-            while ($p = $topProducts->fetch_assoc()):
-            ?>
-                rows.push(['<?= $rk++ ?>', <?= json_encode($p['name']) ?>, <?= json_encode($p['unit']) ?>, '<?= (int)$p['qty'] ?>', '<?= round((float)$p['revenue'], 2) ?>']);
-            <?php endwhile; ?>
-            const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
-            const blob = new Blob(['\uFEFF' + csv], {
-                type: 'text/csv;charset=utf-8;'
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'sales_report_<?= date('Y-m-d') ?>.csv';
-            a.click();
-            URL.revokeObjectURL(url);
+            <?php if ($catFilter): ?>rows.push(['Category', <?= json_encode($catLabel) ?>]);
+        <?php endif; ?>
+        rows.push([]);
+        rows.push(['Total Sales', '<?= $totalRevenue ?>']);
+        rows.push(['Paid Orders', '<?= $paidOrders ?>']);
+        rows.push(['Avg Order Value', '<?= round($avgOrder, 2) ?>']);
+        rows.push(['Units Sold', '<?= $totalUnits ?>']);
+        rows.push([]);
+        rows.push(['Top Products by Revenue']);
+        rows.push(['Rank', 'Product', 'Unit', 'Qty Sold', 'Revenue']);
+        <?php
+        $topProducts->data_seek(0);
+        $rk = 1;
+        while ($p = $topProducts->fetch_assoc()):
+        ?>
+            rows.push(['<?= $rk++ ?>', <?= json_encode($p['name']) ?>, <?= json_encode($p['unit']) ?>, '<?= (int)$p['qty'] ?>', '<?= round((float)$p['revenue'], 2) ?>']);
+        <?php endwhile; ?>
+        const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], {
+            type: 'text/csv;charset=utf-8;'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sales_report_<?= date('Y-m-d') ?>.csv';
+        a.click();
+        URL.revokeObjectURL(url);
         }
     </script>
 </body>

@@ -147,6 +147,7 @@ $search       = trim($_GET['q'] ?? '');
 $filterCat    = (int)($_GET['cat'] ?? 0);
 $filterStatus = trim($_GET['status'] ?? '');
 $filterUnit   = trim($_GET['unit'] ?? '');
+$filterStock  = in_array($_GET['stock'] ?? '', ['low', 'out'], true) ? $_GET['stock'] : '';
 $showArchive  = isset($_GET['view']) && $_GET['view'] === 'archive';
 $offset       = ($page - 1) * $perPage;
 
@@ -160,6 +161,14 @@ if ($showArchive) {
 if ($search)     $where .= " AND (p.name LIKE '%{$conn->real_escape_string($search)}%' OR p.description LIKE '%{$conn->real_escape_string($search)}%')";
 if ($filterCat)  $where .= " AND p.category_id = {$filterCat}";
 if ($filterUnit) $where .= " AND p.unit = '{$conn->real_escape_string($filterUnit)}'";
+
+// Stock-level filter (from Inventory stat cards) — same definitions as inventory.php
+if (!$showArchive && $filterStock) {
+    $stockExpr = "COALESCE((SELECT SUM(sb.remaining) FROM stock_batches sb WHERE sb.product_id = p.id AND sb.status = 'active'), 0)";
+    $reorderExpr = "COALESCE((SELECT i2.reorder_level FROM inventory i2 WHERE i2.product_id = p.id LIMIT 1), 10)";
+    if ($filterStock === 'out') $where .= " AND {$stockExpr} = 0";
+    else                        $where .= " AND {$stockExpr} > 0 AND {$stockExpr} <= {$reorderExpr}";
+}
 
 $totalResult = $conn->query("SELECT COUNT(*) AS cnt FROM products p LEFT JOIN categories c ON c.id = p.category_id {$where}");
 $totalCount  = (int)($totalResult->fetch_assoc()['cnt'] ?? 0);
@@ -1363,6 +1372,7 @@ $activePage = 'products';
                 </span>
                 <?php if (!$showArchive): ?>
                     <form method="GET" style="display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap;">
+                        <?php if ($filterStock): ?><input type="hidden" name="stock" value="<?= htmlspecialchars($filterStock) ?>"><?php endif; ?>
                         <div class="search-wrap">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="11" cy="11" r="8" />
@@ -1395,7 +1405,10 @@ $activePage = 'products';
                                 <option value="<?= $val ?>" <?= $filterUnit === $val ? 'selected' : '' ?>><?= $label ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <?php if ($search || $filterCat || $filterUnit): ?>
+                        <?php if ($filterStock): ?>
+                            <span class="count-pill"><?= $filterStock === 'out' ? 'Out of stock' : 'Low stock' ?></span>
+                        <?php endif; ?>
+                        <?php if ($search || $filterCat || $filterUnit || $filterStock): ?>
                             <a href="products.php" class="clear-link">✕ Clear</a>
                         <?php endif; ?>
                     </form>
