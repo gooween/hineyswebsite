@@ -5,8 +5,17 @@
 // Purpose: Customer self-registration page
 // ============================================================
 session_start();
-require_once 'config/db.php';
-require_once 'admin/bohol_locations.php';   // defines $BOHOL_LOCATIONS (all Bohol muni -> barangays)
+require_once __DIR__ . '/config/db.php';
+
+// Deliverable areas come from delivery_zones — the SAME source checkout uses.
+// (Previously this read admin/bohol_locations.php, which lists every Bohol
+// barangay, so customers could register an address checkout couldn't deliver to.)
+// Variable name kept as $BOHOL_LOCATIONS so the dropdown + JS below work unchanged.
+$BOHOL_LOCATIONS = [];
+$zr = $conn->query("SELECT municipality, barangay FROM delivery_zones WHERE active = 1 ORDER BY municipality, barangay");
+while ($zr && ($zrow = $zr->fetch_assoc())) {
+    $BOHOL_LOCATIONS[$zrow['municipality']][] = $zrow['barangay'];
+}
 
 if (!empty($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
@@ -63,6 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!$formData['barangay']) {
         $errors['barangay'] = 'Please select your barangay.';
+    }
+
+    // Server-side check: the pair must exist in the active delivery zones
+    if (
+        $formData['municipality'] && $formData['barangay']
+        && !in_array($formData['barangay'], $BOHOL_LOCATIONS[$formData['municipality']] ?? [], true)
+    ) {
+        $errors['barangay'] = "We don't deliver to that barangay yet. Please choose another, or contact us.";
     }
 
     if (!$password) {
@@ -604,6 +621,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap: 4px;
         }
 
+        .field-hint {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
         /* Password strength */
         .strength-bar {
             height: 3px;
@@ -1001,6 +1024,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <?php if (isset($errors['barangay'])): ?>
                             <div class="field-err"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($errors['barangay']) ?></div>
+                        <?php else: ?>
+                            <div class="field-hint">Only areas we currently deliver to are listed.</div>
                         <?php endif; ?>
                     </div>
 
@@ -1117,7 +1142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
-        // ── Bohol location data for cascading dropdowns ──────────
+        // ── Deliverable areas (from delivery_zones) for cascading dropdowns ──
         const BOHOL_LOCATIONS = <?= json_encode($BOHOL_LOCATIONS) ?>;
         const SAVED_BARANGAY = <?= json_encode($formData['barangay'] ?? '') ?>;
 
@@ -1234,6 +1259,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (pw1 !== pw2) {
                 e.preventDefault();
                 checkMatch();
+                return;
+            }
+
+            // Municipality + barangay must be chosen (selects aren't marked required)
+            if (!document.getElementById('municipality').value || !document.getElementById('barangay').value) {
+                e.preventDefault();
+                alert('Please select your municipality and barangay.');
                 return;
             }
 

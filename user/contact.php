@@ -1,16 +1,30 @@
 <?php
 session_start();
-require_once '../config/db.php';
+require_once __DIR__ . '/../config/db.php';
 
-// ── PHPMailer ─────────────────────────────────────────────────
+// ── PHPMailer (optional, best-effort) ─────────────────────────
+// The message is ALWAYS saved to the database first. Email is only a
+// bonus: if PHPMailer is missing or SMTP is blocked (InfinityFree blocks
+// outbound SMTP), the page still works and the visitor sees success.
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\Exception as MailException;
 
-require_once '../lib/phpmailer/PHPMailer.php';
-require_once '../lib/phpmailer/SMTP.php';
-require_once '../lib/phpmailer/Exception.php';
-require_once '../config/mail.php';
+$mailLibReady = false;
+$mailDir = __DIR__ . '/../lib/phpmailer/';
+// Linux is case-sensitive: file must be named exactly PHPMailer.php
+if (
+    is_file($mailDir . 'PHPMailer.php') &&
+    is_file($mailDir . 'SMTP.php') &&
+    is_file($mailDir . 'Exception.php') &&
+    is_file(__DIR__ . '/../config/mail.php')
+) {
+    require_once $mailDir . 'PHPMailer.php';
+    require_once $mailDir . 'SMTP.php';
+    require_once $mailDir . 'Exception.php';
+    require_once __DIR__ . '/../config/mail.php';
+    $mailLibReady = defined('MAIL_HOST') && defined('MAIL_USERNAME') && defined('MAIL_PASSWORD')
+        && defined('MAIL_PORT') && defined('MAIL_TO_ADDRESS');
+}
 
 $isLoggedIn = !empty($_SESSION['user_id']);
 $activePage = 'contact';
@@ -28,18 +42,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$name || !$message) {
         $_SESSION['contact_error'] = 'Name and message are required.';
+    } elseif ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['contact_error'] = 'Please enter a valid email address.';
     } else {
-        // 1. Save to DB
-        $stmt = $conn->prepare("INSERT INTO contacts (name, email, phone, subject, message, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())");
-        $stmt->bind_param('sssss', $name, $email, $phone, $subject, $message);
-        $dbOk = $stmt->execute();
-        $stmt->close();
+        // 1. Save to DB (source of truth)
+        $dbOk = false;
+        try {
+            $stmt = $conn->prepare("INSERT INTO contacts (name, email, phone, subject, message, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())");
+            $stmt->bind_param('sssss', $name, $email, $phone, $subject, $message);
+            $dbOk = $stmt->execute();
+            $stmt->close();
+        } catch (\Throwable $e) {
+            error_log('Contact DB error: ' . $e->getMessage());
+        }
 
-        // 2. Send email via PHPMailer
-        $mailSent = false;
-        $mailError = '';
-        if ($dbOk) {
+        // 2. Email notification (best-effort, never breaks the page)
+        if ($dbOk && $mailLibReady) {
             try {
+                $h    = fn($v) => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+                $dash = '—';
+
                 $mail = new PHPMailer(true);
                 $mail->isSMTP();
                 $mail->Host       = MAIL_HOST;
@@ -48,9 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail->Password   = MAIL_PASSWORD;
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = MAIL_PORT;
+                $mail->Timeout    = 5;   // fail fast if the host blocks SMTP
+                $mail->SMTPDebug  = 0;
+                $mail->CharSet    = 'UTF-8';
 
-                $mail->setFrom(MAIL_USERNAME, MAIL_FROM_NAME);
-                $mail->addAddress(MAIL_TO_ADDRESS, MAIL_TO_NAME);
+                $mail->setFrom(MAIL_USERNAME, defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'Website');
+                $mail->addAddress(MAIL_TO_ADDRESS, defined('MAIL_TO_NAME') ? MAIL_TO_NAME : '');
                 if ($email) $mail->addReplyTo($email, $name);
 
                 $mail->isHTML(true);
@@ -63,23 +88,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div style='background:#fff;padding:24px 28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;'>
                             <table style='width:100%;border-collapse:collapse;font-size:0.9rem;'>
-                                <tr><td style='padding:8px 0;color:#6b7280;width:110px;font-weight:600;'>Name</td><td style='padding:8px 0;color:#111827;font-weight:700;'>" . htmlspecialchars($name) . "</td></tr>
-                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Email</td><td style='padding:8px 0;color:#111827;'>" . ($email ? htmlspecialchars($email) : '—') . "</td></tr>
-                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Phone</td><td style='padding:8px 0;color:#111827;'>" . ($phone ? htmlspecialchars($phone) : '—') . "</td></tr>
-                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Subject</td><td style='padding:8px 0;color:#111827;'>" . ($subject ? htmlspecialchars($subject) : '—') . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;width:110px;font-weight:600;'>Name</td><td style='padding:8px 0;color:#111827;font-weight:700;'>" . $h($name) . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Email</td><td style='padding:8px 0;color:#111827;'>" . ($email ? $h($email) : $dash) . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Phone</td><td style='padding:8px 0;color:#111827;'>" . ($phone ? $h($phone) : $dash) . "</td></tr>
+                                <tr><td style='padding:8px 0;color:#6b7280;font-weight:600;'>Subject</td><td style='padding:8px 0;color:#111827;'>" . ($subject ? $h($subject) : $dash) . "</td></tr>
                             </table>
                             <hr style='border:none;border-top:1px solid #e5e7eb;margin:16px 0;'>
                             <p style='color:#6b7280;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;'>Message</p>
-                            <p style='color:#374151;line-height:1.7;white-space:pre-wrap;'>" . htmlspecialchars($message) . "</p>
+                            <p style='color:#374151;line-height:1.7;white-space:pre-wrap;'>" . $h($message) . "</p>
                         </div>
-                        <p style='text-align:center;color:#9ca3af;font-size:0.75rem;margin-top:12px;'>Sent from hineyseggs.com contact form</p>
+                        <p style='text-align:center;color:#9ca3af;font-size:0.75rem;margin-top:12px;'>Sent from the website contact form</p>
                     </div>
                 ";
                 $mail->AltBody = "Name: {$name}\nEmail: {$email}\nPhone: {$phone}\nSubject: {$subject}\n\nMessage:\n{$message}";
                 $mail->send();
-                $mailSent = true;
-            } catch (Exception $e) {
-                $mailError = $mail->ErrorInfo;
+            } catch (\Throwable $e) {
+                // Includes PHPMailer exceptions, blocked SMTP, timeouts, etc.
+                error_log('Contact mail failed: ' . $e->getMessage());
             }
         }
 
@@ -837,7 +862,7 @@ $prefillEmail = $_SESSION['email']     ?? '';
 
 <body>
 
-    <?php include '../includes/navbar.php'; ?>
+    <?php include __DIR__ . '/../includes/navbar.php'; ?>
 
     <div class="page-header">
         <div class="page-header-bg"></div>
