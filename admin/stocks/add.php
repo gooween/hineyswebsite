@@ -24,9 +24,9 @@ function getExpiry($category, $unit)
     $u   = strtolower($unit);
     if (str_contains($cat, 'crack'))  return 2;
     if (str_contains($cat, 'egg'))    return 21;
-    if (str_contains($u, 'alive'))    return 1;
-    if (str_contains($u, 'process')) return 3;
-    if (str_contains($cat, 'chicken')) return 1;
+    if (str_contains($u, 'alive'))    return null;   // live birds don't expire
+    if (str_contains($u, 'process')) return 2;       // dressed chicken, refrigerated (≤4°C): 1–2 days
+    if (str_contains($cat, 'chicken')) return 2;     // any other chicken product: treat as dressed
     return 21;
 }
 
@@ -78,7 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please select a valid product.';
     } else {
         $expiry_days = getExpiry($prow['category'], $prow['unit']);
-        $expires_at  = date('Y-m-d', strtotime("+{$expiry_days} days"));
+        $expires_at  = $expiry_days === null ? null : date('Y-m-d', strtotime("+{$expiry_days} days"));
+        $expSqlVal   = $expires_at === null ? 'NULL' : "'{$expires_at}'";
         $unit        = $conn->real_escape_string($prow['unit']);
         $notesEsc    = $conn->real_escape_string($notes);
 
@@ -90,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $bc = $conn->real_escape_string(generateBatchCode($prow['name'], $prow['unit'], $prow['category'], $conn));
                 $conn->query("INSERT INTO stock_batches (batch_code,product_id,quantity,remaining,unit,notes,expires_at,created_by,created_at,status)
-                    VALUES ('{$bc}',{$product_id},{$tray_count},{$tray_count},'{$unit}','{$notesEsc}','{$expires_at}',{$uid},NOW(),'active')");
+                    VALUES ('{$bc}',{$product_id},{$tray_count},{$tray_count},'{$unit}','{$notesEsc}',{$expSqlVal},{$uid},NOW(),'active')");
                 if ($conn->insert_id) {
                     $conn->query("UPDATE inventory SET quantity=(SELECT COALESCE(SUM(remaining),0) FROM stock_batches WHERE product_id={$product_id} AND status='active'),last_updated=NOW() WHERE product_id={$product_id}");
                     $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$product_id},'in',{$tray_count},'Batch {$bc} — {$tray_count} tray(s)',{$uid},NOW())");
@@ -106,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $bc = $conn->real_escape_string(generateBatchCode($prow['name'], $prow['unit'], $prow['category'], $conn));
                 $conn->query("INSERT INTO stock_batches (batch_code,product_id,quantity,remaining,unit,notes,expires_at,created_by,created_at,status)
-                    VALUES ('{$bc}',{$product_id},{$quantity},{$quantity},'{$unit}','{$notesEsc}','{$expires_at}',{$uid},NOW(),'active')");
+                    VALUES ('{$bc}',{$product_id},{$quantity},{$quantity},'{$unit}','{$notesEsc}',{$expSqlVal},{$uid},NOW(),'active')");
                 if ($conn->insert_id) {
                     $conn->query("UPDATE inventory SET quantity=(SELECT COALESCE(SUM(remaining),0) FROM stock_batches WHERE product_id={$product_id} AND status='active'),last_updated=NOW() WHERE product_id={$product_id}");
                     $conn->query("INSERT INTO inventory_logs (product_id,type,quantity,reason,created_by,created_at) VALUES ({$product_id},'in',{$quantity},'Batch {$bc}',{$uid},NOW())");
@@ -735,7 +736,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="meta-pill"><strong><?= htmlspecialchars($successBatches['product']) ?></strong> <span>(<?= htmlspecialchars($successBatches['category']) ?>)</span></div>
                                 <div class="meta-pill"><span><?= htmlspecialchars($successBatches['unit']) ?></span></div>
                                 <div class="meta-pill"><strong><?= $successBatches['tray_count'] ?></strong> <span><?= isTray($successBatches['unit']) ? 'tray(s)' : 'unit(s)' ?> logged</span></div>
-                                <div class="meta-pill">Expires <strong><?= date('M j, Y', strtotime($successBatches['expires_at'])) ?></strong> <span class="expiry-badge <?= $successBatches['expiry_days'] <= 3 ? 'expiry-warn' : 'expiry-ok' ?>"><?= $successBatches['expiry_days'] ?>d</span></div>
+                                <?php if ($successBatches['expires_at'] === null): ?>
+                                    <div class="meta-pill">Expiry <strong>None</strong> <span class="expiry-badge expiry-ok">alive stock</span></div>
+                                <?php else: ?>
+                                    <div class="meta-pill">Expires <strong><?= date('M j, Y', strtotime($successBatches['expires_at'])) ?></strong> <span class="expiry-badge <?= $successBatches['expiry_days'] <= 3 ? 'expiry-warn' : 'expiry-ok' ?>"><?= $successBatches['expiry_days'] ?>d</span></div>
+                                <?php endif; ?>
                             </div>
                             <div class="codes-section">
                                 <div class="codes-header"><span class="codes-label">Batch Code</span><button class="btn-copy-all" onclick="copyAll()"><i class="fa-solid fa-copy"></i> Copy All</button></div>
@@ -824,8 +829,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="side-body">
                             <div class="rem-row"><span class="rem-key">Eggs (any)</span><span class="rem-val">21 days</span></div>
                             <div class="rem-row"><span class="rem-key">Cracked Eggs</span><span class="rem-val">2 days</span></div>
-                            <div class="rem-row"><span class="rem-key">Alive Chicken</span><span class="rem-val">1 day</span></div>
-                            <div class="rem-row"><span class="rem-key">Dressed Chicken</span><span class="rem-val">3 days</span></div>
+                            <div class="rem-row"><span class="rem-key">Alive Chicken</span><span class="rem-val">No expiry</span></div>
+                            <div class="rem-row"><span class="rem-key">Dressed Chicken (chilled)</span><span class="rem-val">2 days</span></div>
                         </div>
                     </div>
                     <div class="side-card">
@@ -854,9 +859,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 u = unit.toLowerCase();
             if (cat.includes('crack')) return 2;
             if (cat.includes('egg')) return 21;
-            if (u.includes('alive')) return 1;
-            if (u.includes('process')) return 3;
-            if (cat.includes('chicken')) return 1;
+            if (u.includes('alive')) return null; // live birds don't expire
+            if (u.includes('process')) return 2; // dressed, refrigerated
+            if (cat.includes('chicken')) return 2;
             return 21;
         }
 
@@ -899,15 +904,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (hasVal) {
                 const code = getPreviewCode(name, unit, category);
                 const days = getExpiryDays(category, unit);
-                const exp = new Date();
-                exp.setDate(exp.getDate() + days);
-                const expStr = exp.toLocaleDateString('en-PH', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
+                let expText = 'No expiry (alive stock)';
+                if (days !== null) {
+                    const exp = new Date();
+                    exp.setDate(exp.getDate() + days);
+                    const expStr = exp.toLocaleDateString('en-PH', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    expText = `Expires: ${expStr} (${days} days)`;
+                }
                 document.getElementById('previewCode').textContent = code;
-                document.getElementById('previewExpiry').textContent = `Expires: ${expStr} (${days} days)`;
+                document.getElementById('previewExpiry').textContent = expText;
                 document.getElementById('previewBox').style.display = 'block';
             } else {
                 document.getElementById('previewBox').style.display = 'none';

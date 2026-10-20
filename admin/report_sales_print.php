@@ -76,9 +76,36 @@ $unitsRow = $conn->query("
 ")->fetch_assoc();
 $totalUnits = (int)($unitsRow['units'] ?? 0);
 
+// ── Expired products (batches past their expiry date inside the range) ──
+$expiredRows  = [];
+$expiredQty   = 0;
+$expiredValue = 0.0;
+$expRes = $conn->query("
+    SELECT p.name, p.unit, p.price,
+           SUM(sb.remaining) AS qty,
+           SUM(sb.remaining * p.price) AS total_price
+    FROM stock_batches sb
+    JOIN products p ON p.id = sb.product_id
+    WHERE sb.remaining > 0
+      AND sb.expires_at IS NOT NULL
+      AND sb.expires_at < CURDATE()
+      AND sb.status IN ('expired','active')
+      AND sb.expires_at BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
+      " . ($catFilter ? "AND p.category_id = {$catFilter}" : '') . "
+    GROUP BY p.id
+    ORDER BY total_price DESC
+");
+if ($expRes) {
+    while ($r = $expRes->fetch_assoc()) {
+        $expiredRows[] = $r;
+        $expiredQty   += (int)$r['qty'];
+        $expiredValue += (float)$r['total_price'];
+    }
+}
+
 // ── Top products by revenue ───────────────────────────────────
 $topProducts = $conn->query("
-    SELECT p.name, p.unit,
+    SELECT p.name, p.unit, p.price,
            SUM(oi.quantity) AS qty,
            SUM(oi.subtotal) AS revenue
     FROM order_items oi
@@ -194,15 +221,15 @@ require '../admin/report_print_header.php';
         <div class="k-value"><?= number_format($paidOrders) ?></div>
         <div class="k-sub">Completed &amp; paid</div>
     </div>
-    <div class="rp-kpi accent-amber">
-        <div class="k-label">Avg Order Value</div>
-        <div class="k-value" style="font-size:1.05rem;"><?= peso($avgOrder) ?></div>
-        <div class="k-sub">Revenue ÷ orders</div>
-    </div>
     <div class="rp-kpi accent-blue">
         <div class="k-label">Units Sold</div>
         <div class="k-value"><?= number_format($totalUnits) ?></div>
         <div class="k-sub">Total items</div>
+    </div>
+    <div class="rp-kpi accent-red">
+        <div class="k-label">Expired Products</div>
+        <div class="k-value"><?= number_format($expiredQty) ?></div>
+        <div class="k-sub">Worth <?= peso($expiredValue) ?></div>
     </div>
 </div>
 
@@ -221,6 +248,7 @@ if ($topProducts && $topProducts->num_rows > 0) {
                 <th style="width:34px;">#</th>
                 <th>Product</th>
                 <th>Unit</th>
+                <th class="num">Price</th>
                 <th class="num">Qty Sold</th>
                 <th class="num">Revenue</th>
                 <th class="num">% of Sales</th>
@@ -234,6 +262,7 @@ if ($topProducts && $topProducts->num_rows > 0) {
                     <td class="muted"><?= $i + 1 ?></td>
                     <td style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></td>
                     <td class="muted"><?= htmlspecialchars($r['unit']) ?></td>
+                    <td class="num"><?= peso((float)$r['price']) ?></td>
                     <td class="num"><?= number_format((int)$r['qty']) ?></td>
                     <td class="num" style="font-weight:700;"><?= peso((float)$r['revenue']) ?></td>
                     <td class="num"><?= $pct ?>%</td>
@@ -323,7 +352,44 @@ if ($catPerf && $catPerf->num_rows > 0) {
     <div class="rp-empty">No category data.</div>
 <?php endif; ?>
 
+<!-- Expired products -->
+<div class="rp-section-title">Expired Products <span class="count"><?= count($expiredRows) ?> product<?= count($expiredRows) !== 1 ? 's' : '' ?></span></div>
+<?php if (!empty($expiredRows)): ?>
+    <table class="rp-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Unit</th>
+                <th class="num">Price</th>
+                <th class="num">Total Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($expiredRows as $r): ?>
+                <tr>
+                    <td style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></td>
+                    <td class="muted"><?= htmlspecialchars($r['unit']) ?></td>
+                    <td class="num"><?= peso((float)$r['price']) ?></td>
+                    <td class="num" style="font-weight:700;"><?= peso((float)$r['total_price']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3">Total</td>
+                <td class="num"><?= peso($expiredValue) ?></td>
+            </tr>
+        </tfoot>
+    </table>
+<?php else: ?>
+    <div class="rp-empty">No expired products in this period.</div>
+<?php endif; ?>
+
 <?php
 $signRolePrepared = 'Prepared by';
+$signNamePrepared = 'Georgia Hiney Dupit';
+$signPosPrepared  = 'Admin';
 $signRoleApproved = 'Approved by';
+$signNameApproved = 'Georgia Hiney Dupit';
+$signPosApproved  = 'Admin';
 require '../admin/report_print_footer.php';

@@ -32,7 +32,8 @@ $conn->query("UPDATE stock_batches SET status='expired'
 $filterStatus  = trim($_GET['status']  ?? '');
 $filterProduct = (int)($_GET['product'] ?? 0);
 $filterDate    = trim($_GET['date']    ?? '');
-$sort          = (($_GET['sort'] ?? '') === 'latest') ? 'latest' : 'earliest';
+$view          = in_array($_GET['view'] ?? '', ['new', 'expired'], true) ? $_GET['view'] : 'old';   // Old | New | Expired
+if ($view === 'expired') $filterStatus = 'expired';   // keep the Status filter in step
 $page          = max(1, (int)($_GET['page'] ?? 1));
 $perPage       = 20;
 $offset        = ($page - 1) * $perPage;
@@ -46,7 +47,9 @@ $totalRes   = $conn->query("SELECT COUNT(*) AS cnt FROM stock_batches sb {$where
 $totalCount = (int)($totalRes->fetch_assoc()['cnt'] ?? 0);
 $totalPages = max(1, (int)ceil($totalCount / $perPage));
 
-$orderDir = $sort === 'latest' ? 'DESC' : 'ASC';
+if ($view === 'new')          $orderBy = 'sb.created_at DESC, sb.id DESC';
+elseif ($view === 'expired')  $orderBy = 'sb.expires_at DESC, sb.id DESC';
+else                          $orderBy = 'sb.created_at ASC, sb.id ASC';
 $batches = $conn->query("
     SELECT sb.*, p.name AS product_name, c.name AS category_name,
            u.full_name AS created_by_name
@@ -55,7 +58,7 @@ $batches = $conn->query("
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN users u ON u.id = sb.created_by
     {$where}
-    ORDER BY sb.created_at {$orderDir}, sb.id {$orderDir}
+    ORDER BY {$orderBy}
     LIMIT {$perPage} OFFSET {$offset}
 ");
 
@@ -337,7 +340,7 @@ $stats = $conn->query("
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Stock Batches</h1>
-                    <div class="page-title-sub">All batches sorted <?= $sort === 'latest' ? 'newest' : 'oldest' ?> first. The system assigns the oldest active batch to orders automatically.</div>
+                    <div class="page-title-sub"><?= $view === 'expired' ? 'Showing expired batches only.' : 'All batches, ' . ($view === 'new' ? 'newest' : 'oldest') . ' first.' ?> The system assigns the oldest active batch to orders automatically.</div>
                 </div>
                 <a href="add.php" class="btn btn-primary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -405,12 +408,13 @@ $stats = $conn->query("
                             </option>
                         <?php endwhile; ?>
                     </select>
-                    <select name="sort" class="filter-select" onchange="this.form.submit()">
-                        <option value="earliest" <?= $sort === 'earliest' ? 'selected' : '' ?>>Earliest first</option>
-                        <option value="latest" <?= $sort === 'latest' ? 'selected' : '' ?>>Latest first</option>
+                    <select name="view" class="filter-select" onchange="this.form.submit()">
+                        <option value="old" <?= $view === 'old' ? 'selected' : '' ?>>Old</option>
+                        <option value="new" <?= $view === 'new' ? 'selected' : '' ?>>New</option>
+                        <option value="expired" <?= $view === 'expired' ? 'selected' : '' ?>>Expired</option>
                     </select>
                     <input type="date" name="date" class="filter-date" value="<?= htmlspecialchars($filterDate) ?>" onchange="this.form.submit()">
-                    <?php if ($filterStatus || $filterProduct || $filterDate || $sort !== 'earliest'): ?>
+                    <?php if ($filterStatus || $filterProduct || $filterDate || $view !== 'old'): ?>
                         <a href="index.php" class="btn-clear">✕ Clear</a>
                     <?php endif; ?>
                 </form>
@@ -452,7 +456,7 @@ $stats = $conn->query("
                                         $expText = $daysLeft === 0 ? 'Today!' : "In {$daysLeft}d";
                                     } else {
                                         $expClass = 'expiry-ok';
-                                        $expText = $expDate ? date('M j, Y', strtotime($b['expires_at'])) : '—';
+                                        $expText = $expDate ? date('M j, Y', strtotime($b['expires_at'])) : 'No expiry';
                                     }
 
                                     if ($b['status'] === 'active' && $daysLeft !== null && $daysLeft <= 3 && $daysLeft >= 0) {

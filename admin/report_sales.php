@@ -79,9 +79,36 @@ $unitsRow = $conn->query("
 ")->fetch_assoc();
 $totalUnits = (int)($unitsRow['units'] ?? 0);
 
+// ── Expired products (batches past their expiry date inside the range) ──
+$expiredRows  = [];
+$expiredQty   = 0;
+$expiredValue = 0.0;
+$expRes = $conn->query("
+    SELECT p.name, p.unit, p.price,
+           SUM(sb.remaining) AS qty,
+           SUM(sb.remaining * p.price) AS total_price
+    FROM stock_batches sb
+    JOIN products p ON p.id = sb.product_id
+    WHERE sb.remaining > 0
+      AND sb.expires_at IS NOT NULL
+      AND sb.expires_at < CURDATE()
+      AND sb.status IN ('expired','active')
+      AND sb.expires_at BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
+      " . ($catFilter ? "AND p.category_id = {$catFilter}" : '') . "
+    GROUP BY p.id
+    ORDER BY total_price DESC
+");
+if ($expRes) {
+    while ($r = $expRes->fetch_assoc()) {
+        $expiredRows[] = $r;
+        $expiredQty   += (int)$r['qty'];
+        $expiredValue += (float)$r['total_price'];
+    }
+}
+
 // ── Top products by revenue ───────────────────────────────────
 $topProducts = $conn->query("
-    SELECT p.name, p.unit,
+    SELECT p.name, p.unit, p.price,
            SUM(oi.quantity) AS qty,
            SUM(oi.subtotal) AS revenue
     FROM order_items oi
@@ -628,14 +655,6 @@ $activePage = 'report_sales';
                     <div class="stat-value"><?= number_format($paidOrders) ?></div>
                     <div class="stat-foot">Completed &amp; paid</div>
                 </div>
-                <div class="stat-card tone-amber">
-                    <div class="stat-top">
-                        <span class="stat-eyebrow">Avg Order Value</span>
-                        <div class="stat-icon"><i class="fa-solid fa-receipt"></i></div>
-                    </div>
-                    <div class="stat-value money">₱<?= number_format($avgOrder, 0) ?></div>
-                    <div class="stat-foot">Revenue ÷ orders</div>
-                </div>
                 <div class="stat-card tone-violet">
                     <div class="stat-top">
                         <span class="stat-eyebrow">Units Sold</span>
@@ -643,6 +662,14 @@ $activePage = 'report_sales';
                     </div>
                     <div class="stat-value"><?= number_format($totalUnits) ?></div>
                     <div class="stat-foot">Total items sold</div>
+                </div>
+                <div class="stat-card tone-red">
+                    <div class="stat-top">
+                        <span class="stat-eyebrow">Expired Products</span>
+                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    </div>
+                    <div class="stat-value"><?= number_format($expiredQty) ?></div>
+                    <div class="stat-foot">Worth ₱<?= number_format($expiredValue, 2) ?></div>
                 </div>
             </div>
 
@@ -671,6 +698,7 @@ $activePage = 'report_sales';
                                     <th style="width:44px;">#</th>
                                     <th>Product</th>
                                     <th>Unit</th>
+                                    <th class="num">Price</th>
                                     <th class="num">Qty Sold</th>
                                     <th class="num">Revenue</th>
                                     <th>Share of Sales</th>
@@ -686,6 +714,7 @@ $activePage = 'report_sales';
                                         <td><span class="rank <?= $rank === 1 ? 'rank-1' : '' ?>"><?= $rank++ ?></span></td>
                                         <td style="font-weight:var(--fw-semi);color:var(--ink);"><?= htmlspecialchars($p['name']) ?></td>
                                         <td style="color:var(--ink-3);font-size:var(--fs-xs);"><?= htmlspecialchars($p['unit']) ?></td>
+                                        <td class="num">₱<?= number_format((float)$p['price'], 2) ?></td>
                                         <td class="num"><?= number_format((int)$p['qty']) ?></td>
                                         <td class="num amt">₱<?= number_format($rev, 2) ?></td>
                                         <td>
@@ -796,6 +825,45 @@ $activePage = 'report_sales';
                 </div>
             </div>
 
+            <!-- Expired products -->
+            <div class="section-title"><i class="fa-solid fa-triangle-exclamation"></i> Expired Products</div>
+            <div class="table-card">
+                <?php if (!empty($expiredRows)): ?>
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Unit</th>
+                                    <th class="num">Price</th>
+                                    <th class="num">Total Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($expiredRows as $x): ?>
+                                    <tr>
+                                        <td style="font-weight:var(--fw-semi);color:var(--ink);"><?= htmlspecialchars($x['name']) ?></td>
+                                        <td style="color:var(--ink-3);font-size:var(--fs-xs);"><?= htmlspecialchars($x['unit']) ?></td>
+                                        <td class="num">₱<?= number_format((float)$x['price'], 2) ?></td>
+                                        <td class="num amt">₱<?= number_format((float)$x['total_price'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                <tr>
+                                    <td colspan="3" style="font-weight:var(--fw-semi);">Total</td>
+                                    <td class="num amt">₱<?= number_format($expiredValue, 2) ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="empty">
+                        <div class="empty-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="empty-title">No expired products</div>
+                        <div class="empty-text">Nothing expired in this date range.</div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
         </div><!-- /.main-content -->
     </div><!-- /.admin-layout -->
 
@@ -879,17 +947,18 @@ $activePage = 'report_sales';
         rows.push([]);
         rows.push(['Total Sales', '<?= $totalRevenue ?>']);
         rows.push(['Paid Orders', '<?= $paidOrders ?>']);
-        rows.push(['Avg Order Value', '<?= round($avgOrder, 2) ?>']);
         rows.push(['Units Sold', '<?= $totalUnits ?>']);
+        rows.push(['Expired Products', '<?= $expiredQty ?>']);
+        rows.push(['Expired Value', '<?= round($expiredValue, 2) ?>']);
         rows.push([]);
         rows.push(['Top Products by Revenue']);
-        rows.push(['Rank', 'Product', 'Unit', 'Qty Sold', 'Revenue']);
+        rows.push(['Rank', 'Product', 'Unit', 'Price', 'Qty Sold', 'Revenue']);
         <?php
         $topProducts->data_seek(0);
         $rk = 1;
         while ($p = $topProducts->fetch_assoc()):
         ?>
-            rows.push(['<?= $rk++ ?>', <?= json_encode($p['name']) ?>, <?= json_encode($p['unit']) ?>, '<?= (int)$p['qty'] ?>', '<?= round((float)$p['revenue'], 2) ?>']);
+            rows.push(['<?= $rk++ ?>', <?= json_encode($p['name']) ?>, <?= json_encode($p['unit']) ?>, '<?= round((float)$p['price'], 2) ?>', '<?= (int)$p['qty'] ?>', '<?= round((float)$p['revenue'], 2) ?>']);
         <?php endwhile; ?>
         const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
         const blob = new Blob(['\uFEFF' + csv], {
