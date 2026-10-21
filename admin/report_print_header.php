@@ -402,14 +402,68 @@ if (!empty($_SESSION['user_id'])) {
 
             body {
                 background: #fff;
-                font-size: 11px;
+                font-size: 10px;
             }
 
             .sheet {
                 border: none;
                 margin: 0;
                 max-width: 100%;
-                padding: 14mm 12mm;
+                padding: 10mm 12mm;
+            }
+
+            /* Compact sizing so a full report fits one bond paper */
+            .rp-head {
+                padding-bottom: 8px;
+                margin-bottom: 8px;
+            }
+
+            .rp-brand-name {
+                font-size: 1.3rem;
+            }
+
+            .rp-title-block {
+                margin-top: 8px;
+            }
+
+            .rp-meta {
+                padding: 6px 0 8px;
+                margin-bottom: 8px;
+            }
+
+            .rp-kpis {
+                margin: 8px 0 10px !important;
+                padding-bottom: 6px !important;
+            }
+
+            .rp-section-title {
+                font-size: 0.82rem;
+                margin: 12px 0 5px;
+                padding-bottom: 3px;
+            }
+
+            table.rp-table {
+                font-size: 0.72rem;
+                margin-bottom: 4px;
+            }
+
+            table.rp-table thead th {
+                padding: 4px 8px;
+                font-size: 0.66rem;
+            }
+
+            table.rp-table tbody td {
+                padding: 3px 8px;
+            }
+
+            table.rp-table tfoot td {
+                padding: 5px 8px;
+                font-size: 0.74rem;
+            }
+
+            .rp-empty {
+                padding: 12px;
+                margin: 4px 0;
             }
 
             .rp-actions {

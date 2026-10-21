@@ -153,10 +153,32 @@ if ($paidAt) {
 }
 
 $lines[] = center_line('Thank you for your order!');
-$lines[] = '';
-$lines[] = '';
 
+// Receipt ends right at the thank-you line — no trailing blank lines.
 $receiptText = implode("\n", $lines);
+
+// Exact paper length so the printer stops at the thank-you line.
+// 7pt font * 1.3 line-height = ~3.21mm per line.
+const PRINT_LINE_MM = 3.21;
+const PRINT_LOGO_MM = 24;     // logo block height (logo + its padding)
+const PRINT_FEED_MM = 6;      // small tail so the last line clears the cutter
+$logoCandidates = [];
+if (defined('HATCH_LOGO_PATH')) $logoCandidates[] = HATCH_LOGO_PATH;
+$logoCandidates[] = __DIR__ . '/../assets/images/hineys_logo.png';
+$logoCandidates[] = __DIR__ . '/assets/images/hineys_logo.png';
+foreach ((array)glob(__DIR__ . '/../assets/images/*logo*.*') as $g) $logoCandidates[] = $g;
+$logoData = '';
+foreach ($logoCandidates as $logoPath) {
+    if ($logoPath && is_file($logoPath)) {
+        $ext  = strtolower(pathinfo($logoPath, PATHINFO_EXTENSION));
+        $mime = ($ext === 'jpg' || $ext === 'jpeg') ? 'image/jpeg' : ($ext === 'webp' ? 'image/webp' : ($ext === 'svg' ? 'image/svg+xml' : 'image/png'));
+        $logoData = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
+        break;
+    }
+}
+// Logo block is always reserved/rendered (falls back to the URL if no file was found server-side).
+$logoSrc = $logoData ?: '../assets/images/hineys_logo.png';
+$pageHeightMm = (int)ceil(count($lines) * PRINT_LINE_MM + PRINT_LOGO_MM + PRINT_FEED_MM);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -214,6 +236,8 @@ $receiptText = implode("\n", $lines);
         }
 
         .receipt-logo img {
+            display: block;
+            margin: 0 auto;
             max-width: 150px;
             max-height: 70px;
             filter: grayscale(1) contrast(1.4);
@@ -268,21 +292,95 @@ $receiptText = implode("\n", $lines);
         .status.err {
             color: #c0392b;
         }
+
+        /* ── Browser printing (58mm thermal paper) ──────────────────────
+           Without @page, Chrome prints on a Letter/A4 page, which is what
+           made the old printout "way too long". */
+        @page {
+            size: 58mm <?= (int)$pageHeightMm ?>mm;
+            margin: 0;
+        }
+
+        @media print {
+
+            html,
+            body {
+                background: #fff;
+                margin: 0;
+                padding: 0;
+                width: 58mm;
+                height: <?= (int)$pageHeightMm ?>mm;
+                overflow: hidden;
+            }
+
+            h2,
+            .actions,
+            .status {
+                display: none !important;
+            }
+
+            .receipt-logo,
+            pre.receipt {
+                width: 58mm;
+                margin: 0;
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+                background: #fff;
+            }
+
+            .receipt-logo {
+                height: <?= (int)PRINT_LOGO_MM ?>mm;
+                padding: 2mm 0 0;
+                text-align: center;
+            }
+
+            .receipt-logo img {
+                display: block;
+                margin: 0 auto;
+                max-width: 40mm;
+                max-height: 20mm;
+                filter: grayscale(1) contrast(1.6);
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* 32 chars must fit the ~48mm printable width. Tweak 7pt up/down
+               if lines wrap or leave too much empty space on the right. */
+            pre.receipt {
+                margin: 0;
+                padding: 0 4mm;
+                font-size: 7pt;
+                line-height: 1.3;
+                white-space: pre;
+                overflow: hidden;
+            }
+        }
     </style>
 </head>
 
 <body>
     <h2>Preview — confirm before printing</h2>
-    <div class="receipt-logo"><img src="../assets/images/hineys_logo.png" alt="Hiney's logo" onerror="this.parentNode.remove()"></div>
+    <div class="receipt-logo"><img id="receiptLogo" src="<?= $logoSrc ?>" alt="Hiney's logo"></div>
     <pre class="receipt"><?= htmlspecialchars($receiptText) ?></pre>
 
     <div class="actions">
         <button type="button" id="closeBtn" onclick="window.close()">Close</button>
+        <button type="button" id="browserBtn" onclick="browserPrint()">Browser print</button>
         <button type="button" class="primary" id="printBtn" onclick="confirmPrint()">Confirm &amp; Print</button>
     </div>
     <div class="status" id="status"></div>
 
     <script>
+        // How printing works from the hosted site:
+        // 1) Fetch the ESC/POS bytes from the server (order_receipt_bytes.php).
+        // 2) Send them to local_print_bridge.php running on the shop PC, which
+        //    copies them straight to the printer share (exact length, real logo,
+        //    stops right after "Thank you").
+        // 3) If the bridge fails, the real reason is shown; "Browser print" is a manual fallback.
+        const BRIDGE_URL = 'http://127.0.0.1:8765/';
+        const BRIDGE_TOKEN = 'dfshdvssbdidbksk'; // same as local_print_bridge.php
+
         async function confirmPrint() {
             var printBtn = document.getElementById('printBtn');
             var statusEl = document.getElementById('status');
@@ -291,9 +389,29 @@ $receiptText = implode("\n", $lines);
             statusEl.textContent = '';
             statusEl.className = 'status';
             try {
-                const res = await fetch('order_receipt_rawprint.php?id=<?= (int)$id ?>');
+                const res = await fetch('order_receipt_bytes.php?id=<?= (int)$id ?>');
                 const data = await res.json();
-                if (!data.ok) throw new Error(data.error || 'Unknown error');
+                if (!data.ok) throw new Error(data.error || 'Could not build receipt.');
+
+                const ctl = new AbortController();
+                const t = setTimeout(function() {
+                    ctl.abort();
+                }, 8000);
+                const pr = await fetch(BRIDGE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Bridge-Token': BRIDGE_TOKEN
+                    },
+                    body: JSON.stringify({
+                        data: data.data
+                    }),
+                    signal: ctl.signal
+                });
+                clearTimeout(t);
+                const out = await pr.json();
+                if (!out.ok) throw new Error(out.error || 'Printer error.');
+
                 statusEl.textContent = 'Sent to the printer.';
                 statusEl.className = 'status ok';
                 printBtn.textContent = 'Printed';
@@ -301,13 +419,31 @@ $receiptText = implode("\n", $lines);
                     window.close();
                 }, 1200);
             } catch (err) {
-                statusEl.textContent = 'Printing failed: ' + (err && err.message ? err.message : 'Unknown error');
+                var msg = (err && err.name === 'AbortError') ? 'the bridge did not answer in time' :
+                    (err instanceof TypeError) ? 'cannot reach the print bridge at ' + BRIDGE_URL + ' (is local_print_bridge.php running? did the browser block local network access for this site?)' :
+                    (err && err.message ? err.message : 'unknown error');
+                statusEl.textContent = 'Printing failed: ' + msg;
                 statusEl.className = 'status err';
                 printBtn.disabled = false;
                 printBtn.textContent = 'Confirm & Print';
             }
         }
+
+        // Plain browser print: needs a real printer driver for the logo/58mm paper,
+        // and "Headers and footers" must be unticked in the print dialog.
+        async function browserPrint() {
+            var logo = document.getElementById('receiptLogo');
+            if (logo && !logo.complete) {
+                await new Promise(function(r) {
+                    logo.onload = logo.onerror = r;
+                });
+            }
+            var oldTitle = document.title;
+            document.title = ' ';
+            window.print();
+            document.title = oldTitle;
+        }
     </script>
 </body>
 
-</html>x
+</html>

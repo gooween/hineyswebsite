@@ -828,9 +828,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="side-head"><i class="fa-solid fa-clock" style="color:var(--warn);"></i> Expiry Reminders</div>
                         <div class="side-body">
                             <div class="rem-row"><span class="rem-key">Eggs (any)</span><span class="rem-val">21 days</span></div>
-                            <div class="rem-row"><span class="rem-key">Cracked Eggs</span><span class="rem-val">2 days</span></div>
+                            <div class="rem-row"><span class="rem-key">Cracked Eggs(chilled)</span><span class="rem-val">7 days</span></div>
                             <div class="rem-row"><span class="rem-key">Alive Chicken</span><span class="rem-val">No expiry</span></div>
-                            <div class="rem-row"><span class="rem-key">Dressed Chicken (chilled)</span><span class="rem-val">2 days</span></div>
+                            <div class="rem-row"><span class="rem-key">Dressed Chicken (chilled)</span><span class="rem-val">14 days</span></div>
                         </div>
                     </div>
                     <div class="side-card">

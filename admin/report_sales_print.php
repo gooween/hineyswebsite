@@ -360,6 +360,7 @@ if ($catPerf && $catPerf->num_rows > 0) {
             <tr>
                 <th>Product</th>
                 <th>Unit</th>
+                <th class="num">Qty</th>
                 <th class="num">Price</th>
                 <th class="num">Total Price</th>
             </tr>
@@ -369,6 +370,7 @@ if ($catPerf && $catPerf->num_rows > 0) {
                 <tr>
                     <td style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></td>
                     <td class="muted"><?= htmlspecialchars($r['unit']) ?></td>
+                    <td class="num"><?= number_format((int)$r['qty']) ?></td>
                     <td class="num"><?= peso((float)$r['price']) ?></td>
                     <td class="num" style="font-weight:700;"><?= peso((float)$r['total_price']) ?></td>
                 </tr>
@@ -376,7 +378,9 @@ if ($catPerf && $catPerf->num_rows > 0) {
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="3">Total</td>
+                <td colspan="2">Total</td>
+                <td class="num"><?= number_format($expiredQty) ?></td>
+                <td></td>
                 <td class="num"><?= peso($expiredValue) ?></td>
             </tr>
         </tfoot>
@@ -387,9 +391,9 @@ if ($catPerf && $catPerf->num_rows > 0) {
 
 <?php
 $signRolePrepared = 'Prepared by';
-$signNamePrepared = 'Georgia Hiney Dupit';
+$signNamePrepared = 'Georgia Dupit';   // printed under the signature line
 $signPosPrepared  = 'Admin';
 $signRoleApproved = 'Approved by';
-$signNameApproved = 'Georgia Hiney Dupit';
+$signNameApproved = 'Georgia Dupit';
 $signPosApproved  = 'Admin';
 require '../admin/report_print_footer.php';

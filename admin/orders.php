@@ -112,6 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $valid_statuses = ['pending', 'approved', 'processing', 'out_for_delivery', 'delivered', 'cancelled'];
         $valid_payment  = ['unpaid', 'paid'];
         if ($id && in_array($status, $valid_statuses) && in_array($payment_status, $valid_payment)) {
+            $pr = $conn->query("SELECT status FROM orders WHERE id={$id} LIMIT 1");
+            $prevStatus = $pr ? ($pr->fetch_assoc()['status'] ?? '') : '';
             $conn->query("UPDATE orders SET status='{$status}', payment_status='{$payment_status}', updated_at=NOW() WHERE id={$id}");
             $newFee = (isset($_POST['delivery_fee']) && $_POST['delivery_fee'] !== '') ? (float)$_POST['delivery_fee'] : null;
             if ($newFee !== null && $newFee >= 0) {
@@ -139,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             // ── If status changed to cancelled, restore stock ──
-            if ($status === 'cancelled') {
+            if ($status === 'cancelled' && !in_array($prevStatus, ['delivered', 'cancelled'], true)) {
                 restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Returned from cancelled');
             }
             redirect('orders.php', 'success', 'Order updated successfully.');
@@ -153,7 +155,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reason = trim($_POST['cancel_reason'] ?? '');
         if ($id) {
             $rEsc = $conn->real_escape_string($reason);
+            $pr = $conn->query("SELECT status FROM orders WHERE id={$id} LIMIT 1");
+            $prevStatus = $pr ? ($pr->fetch_assoc()['status'] ?? '') : '';
+            if ($prevStatus === 'cancelled') redirect('orders.php', 'error', 'This order is already cancelled.');
             $conn->query("UPDATE orders SET status='cancelled', cancel_reason='{$rEsc}', cancelled_by='admin', updated_at=NOW() WHERE id={$id}");
+            if ($prevStatus === 'delivered') {
+                // Goods already left the shop — don't put them back into stock.
+                redirect('orders.php', 'success', 'Delivered order cancelled. Stock was not restored because the items were already delivered.');
+            }
             // ── Restore stock only if it was previously approved ──
             restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Returned from cancelled');
             redirect('orders.php', 'success', 'Order cancelled and stock restored.');
@@ -1354,7 +1363,7 @@ $activePage = 'orders';
                                                         </svg><span class="act-label">Reject</span></button>
                                                 <?php else: ?>
                                                     <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText, 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
-                                                    <?php if (!$isFinalised): ?>
+                                                    <?php if (!$isCancelled): ?>
                                                         <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
                                                     <?php endif; ?>
                                                 <?php endif; ?>

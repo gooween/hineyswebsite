@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
         redirect('orders.php', 'error', 'Please provide a reason for cancellation.');
     }
 
-    // Order must belong to this customer and be cancellable (pending or approved)
+    // Order must belong to this customer and be cancellable (pending, approved or processing)
     $chk = $conn->prepare("SELECT status FROM orders WHERE id=? AND user_id=? LIMIT 1");
     $chk->bind_param('ii', $oid, $uid);
     $chk->execute();
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
     if (!$row) {
         redirect('orders.php', 'error', 'Order not found.');
     }
-    if (!in_array($row['status'], ['pending', 'approved'], true)) {
+    if (!in_array($row['status'], ['pending', 'approved', 'processing'], true)) {
         redirect('orders.php', 'error', 'This order can no longer be cancelled.');
     }
 
@@ -1801,10 +1801,10 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                         <span class="order-address-text"><?= htmlspecialchars($o['delivery_address']) ?></span>
                                     </div>
                                     <div style="display:flex;gap:8px;align-items:center;">
-                                        <?php if (in_array($sid, ['pending', 'approved'], true)): ?>
+                                        <?php if (in_array($sid, ['pending', 'approved', 'processing'], true)): ?>
                                             <button class="btn-cancel-order" onclick="openCancelOrder(<?= $o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')">Cancel Order</button>
                                         <?php endif; ?>
-                                        <?php if ($sid !== 'cancelled' && $o['payment_status'] === 'paid'): ?>
+                                        <?php if ($sid === 'delivered'): ?>
                                             <a class="btn-receipt" href="order_receipt_pdf.php?id=<?= (int)$o['id'] ?>" title="Download receipt as PDF" onclick="return confirmReceipt(event, <?= (int)$o['id'] ?>, '#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')"><i class="fa-solid fa-file-pdf"></i> Receipt</a>
                                         <?php endif; ?>
                                         <button class="btn-view-order" onclick="viewOrder(<?= $o['id'] ?>)">View Details →</button>

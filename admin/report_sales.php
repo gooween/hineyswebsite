@@ -835,6 +835,7 @@ $activePage = 'report_sales';
                                 <tr>
                                     <th>Product</th>
                                     <th>Unit</th>
+                                    <th class="num">Qty</th>
                                     <th class="num">Price</th>
                                     <th class="num">Total Price</th>
                                 </tr>
@@ -844,12 +845,15 @@ $activePage = 'report_sales';
                                     <tr>
                                         <td style="font-weight:var(--fw-semi);color:var(--ink);"><?= htmlspecialchars($x['name']) ?></td>
                                         <td style="color:var(--ink-3);font-size:var(--fs-xs);"><?= htmlspecialchars($x['unit']) ?></td>
+                                        <td class="num"><?= number_format((int)$x['qty']) ?></td>
                                         <td class="num">₱<?= number_format((float)$x['price'], 2) ?></td>
                                         <td class="num amt">₱<?= number_format((float)$x['total_price'], 2) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr>
-                                    <td colspan="3" style="font-weight:var(--fw-semi);">Total</td>
+                                    <td colspan="2" style="font-weight:var(--fw-semi);">Total</td>
+                                    <td class="num"><?= number_format($expiredQty) ?></td>
+                                    <td></td>
                                     <td class="num amt">₱<?= number_format($expiredValue, 2) ?></td>
                                 </tr>
                             </tbody>
