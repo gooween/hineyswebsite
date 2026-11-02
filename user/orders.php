@@ -137,8 +137,21 @@ $validStatuses = ['pending', 'approved', 'processing', 'out_for_delivery', 'deli
 if ($filterStatus && !in_array($filterStatus, $validStatuses)) $filterStatus = '';
 $whereStatus = $filterStatus ? "AND o.status='{$filterStatus}'" : '';
 
+// Tracking number column (add it with tracking_no.sql). Safe if it isn't there yet.
+$trkSel = 'NULL AS tracking_no,';
+$tc = $conn->query("SHOW COLUMNS FROM orders LIKE 'tracking_no'");
+if ($tc && $tc->num_rows > 0) {
+    $trkSel = 'o.tracking_no,';
+    // Fill in any order that has no tracking number yet (e.g. placed before checkout.php was updated).
+    try {
+        $conn->query("UPDATE orders SET tracking_no = CONCAT('HT-', DATE_FORMAT(created_at, '%y%m%d'), '-', LPAD(id, 4, '0')) WHERE (tracking_no IS NULL OR tracking_no = '') AND id > 0");
+    } catch (Throwable $e) {
+        // ignore
+    }
+}
+
 $orders = $conn->query("
-    SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
+    SELECT o.id, {$trkSel} o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
            (SELECT t.payment_method FROM transactions t WHERE t.order_id = o.id ORDER BY t.id DESC LIMIT 1) AS txn_method,
            o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
            o.created_at, o.updated_at,
@@ -583,6 +596,15 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         .order-date {
             font-size: 0.78rem;
             color: var(--text-muted)
+        }
+
+        .order-trk {
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--primary, #e67e22);
+            margin-top: 2px;
+            letter-spacing: 0.02em;
         }
 
         .status-badge {
@@ -1603,7 +1625,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                         'approved'        => ['Approved', '✓'],
                         'processing'      => ['Processing', '<i class="fa-solid fa-gear"></i>'],
                         'out_for_delivery' => ['On the Way', '<i class="fa-solid fa-truck"></i>'],
-                        'delivered'       => ['Delivered', '✓'],
+                        'delivered'       => ['Delivered / Picked Up', '✓'],
                         'cancelled'       => ['Cancelled', '✕'],
                     ];
                     foreach ($tabs as $key => $info):
@@ -1621,7 +1643,9 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                     <div class="orders-list">
                         <?php foreach ($orderList as $o):
                             $sid    = $o['status'];
-                            $steps  = ['pending', 'approved', 'processing', 'out_for_delivery', 'delivered'];
+                            // Pick-up orders: Pending -> Approved -> Picked Up ("Picked Up" is stored as 'delivered').
+                            $isPickup = strncmp((string)$o['delivery_address'], 'PICKUP', 6) === 0;
+                            $steps  = $isPickup ? ['pending', 'approved', 'delivered'] : ['pending', 'approved', 'processing', 'out_for_delivery', 'delivered'];
                             $curIdx = array_search($sid, $steps);
                             $canUploadProof = ($sid === 'approved' && $o['payment_method'] === 'gcash' && $o['payment_status'] === 'unpaid');
                             $hasProof       = !empty($o['gcash_proof']);
@@ -1633,11 +1657,12 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                 <div class="order-card-header">
                                     <div>
                                         <div class="order-id">Order #<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?></div>
+                                        <?php if (!empty($o['tracking_no'])): ?><div class="order-trk">Tracking: <?= htmlspecialchars($o['tracking_no']) ?></div><?php endif; ?>
                                         <div class="order-date"><?= date('M j, Y · g:i A', strtotime($o['created_at'])) ?></div>
                                     </div>
                                     <span class="status-badge sb-<?= $sid ?>">
                                         <span class="status-dot sd-<?= $sid ?>"></span>
-                                        <?= $sid === 'out_for_delivery' ? 'On the Way' : ucwords(str_replace('_', ' ', $sid)) ?>
+                                        <?= ($isPickup && $sid === 'delivered') ? 'Picked Up' : ($sid === 'out_for_delivery' ? 'On the Way' : ucwords(str_replace('_', ' ', $sid))) ?>
                                     </span>
                                 </div>
 
@@ -1645,7 +1670,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                     <div class="tracking-strip">
                                         <div class="tracking-timeline">
                                             <?php
-                                            $stepLabels = ['pending' => 'Pending', 'approved' => 'Approved', 'processing' => 'Processing', 'out_for_delivery' => 'On the Way', 'delivered' => 'Delivered'];
+                                            $stepLabels = ['pending' => 'Pending', 'approved' => 'Approved', 'processing' => 'Processing', 'out_for_delivery' => 'On the Way', 'delivered' => ($isPickup ? 'Picked Up' : 'Delivered')];
                                             foreach ($steps as $idx => $step):
                                                 if ($curIdx === false) $cls = '';
                                                 elseif ($idx < $curIdx) $cls = 'done';
@@ -1967,7 +1992,11 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
 
         function renderModal(data) {
             const o = data.order;
-            const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.pending;
+            const cfg0 = STATUS_CONFIG[o.status] || STATUS_CONFIG.pending;
+            const isPickup = String(o.delivery_address || '').indexOf('PICKUP') === 0;
+            const cfg = (o.status === 'delivered' && isPickup) ? Object.assign({}, cfg0, {
+                label: 'Picked Up'
+            }) : cfg0;
             const fmtDate = d => {
                 if (!d) return '—';
                 const dt = new Date(d.replace(' ', 'T'));
@@ -2038,6 +2067,7 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
         <div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-clipboard-list"></i> Order Info</div>
             <div class="modal-info-grid">
                 <div><div class="modal-info-label">Order ID</div><div class="modal-info-value">#${String(o.id).padStart(4,'0')}</div></div>
+                <div><div class="modal-info-label">Tracking No.</div><div class="modal-info-value">${o.tracking_no ? String(o.tracking_no).replace(/[<>&"]/g, '') : '—'}</div></div>
                 <div><div class="modal-info-label">Date Placed</div><div class="modal-info-value">${fmtDate(o.created_at)}</div></div>
                 <div><div class="modal-info-label">Payment</div><div class="modal-info-value">${esc(o.payment_label || o.payment_method.toUpperCase())}</div></div>
                 <div><div class="modal-info-label">Payment Status</div><div class="modal-info-value" style="color:${o.payment_status==='paid'?'var(--success)':'var(--danger)'};">${o.payment_status.charAt(0).toUpperCase()+o.payment_status.slice(1)}</div></div>

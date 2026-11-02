@@ -14,6 +14,9 @@ session_start();
 require_once '../config/db.php';
 requireAdmin();
 
+// Philippine time — otherwise PHP uses the server default (often UTC, 8 hours behind)
+date_default_timezone_set('Asia/Manila');
+
 $today = date('Y-m-d');
 
 // ── Same date filter as report_sales.php ──────────────────────
@@ -92,7 +95,7 @@ $expRes = $conn->query("
     JOIN products p ON p.id = sb.product_id
     WHERE sb.remaining > 0
       AND sb.expires_at IS NOT NULL
-      AND sb.expires_at < CURDATE()
+      AND sb.expires_at < '{$today}'
       AND sb.status IN ('expired','active')
       AND sb.expires_at BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
       " . ($catFilter ? "AND p.category_id = {$catFilter}" : '') . "
@@ -106,6 +109,33 @@ if ($expRes) {
         $expiredValue += (float)$r['total_price'];
     }
 }
+
+// ── Items sold (particulars): every item line on paid orders in the range ──
+$partLimit = 300;   // cap on listed lines; totals below always cover ALL lines
+$partAgg = $conn->query("
+    SELECT COUNT(*) AS lines_cnt,
+           COALESCE(SUM(oi.quantity),0) AS qty,
+           COALESCE(SUM(oi.subtotal),0) AS amt
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN products p ON p.id = oi.product_id
+    {$paidWhere}{$catCond}
+")->fetch_assoc();
+$partLines = (int)($partAgg['lines_cnt'] ?? 0);
+$partQty   = (int)($partAgg['qty'] ?? 0);
+$partAmt   = (float)($partAgg['amt'] ?? 0);
+$partRows  = [];
+$partRes = $conn->query("
+    SELECT o.id AS order_id, o.created_at, p.name, p.unit,
+           oi.quantity, oi.unit_price, oi.subtotal
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN products p ON p.id = oi.product_id
+    {$paidWhere}{$catCond}
+    ORDER BY o.created_at DESC, o.id DESC, oi.id ASC
+    LIMIT {$partLimit}
+");
+if ($partRes) while ($r = $partRes->fetch_assoc()) $partRows[] = $r;
 
 // ── Top products by revenue ───────────────────────────────────
 $topProducts = $conn->query("
@@ -400,6 +430,50 @@ if ($catPerf && $catPerf->num_rows > 0) {
     </table>
 <?php else: ?>
     <div class="rp-empty">No expired products in this period.</div>
+<?php endif; ?>
+
+<!-- Items sold (particulars) -->
+<div class="rp-section-title">Items Sold (Particulars) <span class="count"><?= number_format($partLines) ?> line<?= $partLines !== 1 ? 's' : '' ?></span></div>
+<?php if (!empty($partRows)): ?>
+    <table class="rp-table rp-oneline">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Order #</th>
+                <th>Particulars</th>
+                <th>Unit</th>
+                <th class="num">Qty</th>
+                <th class="num">Unit Price</th>
+                <th class="num">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($partRows as $r): ?>
+                <tr>
+                    <td class="muted"><?= date('M j, Y', strtotime($r['created_at'])) ?></td>
+                    <td style="font-weight:700;">#<?= str_pad((string)$r['order_id'], 4, '0', STR_PAD_LEFT) ?></td>
+                    <td style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></td>
+                    <td class="muted"><?= htmlspecialchars($r['unit']) ?></td>
+                    <td class="num"><?= number_format((int)$r['quantity']) ?></td>
+                    <td class="num"><?= peso((float)$r['unit_price']) ?></td>
+                    <td class="num" style="font-weight:700;"><?= peso((float)$r['subtotal']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4">Total</td>
+                <td class="num"><?= number_format($partQty) ?></td>
+                <td></td>
+                <td class="num"><?= peso($partAmt) ?></td>
+            </tr>
+        </tfoot>
+    </table>
+    <?php if ($partLines > count($partRows)): ?>
+        <div class="muted" style="font-size:0.68rem;margin-top:4px;">Showing the <?= count($partRows) ?> most recent of <?= number_format($partLines) ?> lines. Totals cover all lines.</div>
+    <?php endif; ?>
+<?php else: ?>
+    <div class="rp-empty">No items sold in this period.</div>
 <?php endif; ?>
 
 <?php

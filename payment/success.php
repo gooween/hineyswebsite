@@ -1,12 +1,4 @@
 <?php
-// ============================================================
-// HATCH — Payment success landing
-// File: payment/success.php
-//
-// InfinityFree's bot-check blocks PayMongo webhooks, so this page
-// verifies the payment itself by asking PayMongo for the checkout
-// session status, then marks the order paid.
-// ============================================================
 session_start();
 require_once '../config/db.php';
 require_once '../config/paymongo.php';
@@ -27,7 +19,6 @@ if ($orderId) {
     $po = $ps->get_result()->fetch_assoc();
     $ps->close();
 
-    // Not marked paid yet? Ask PayMongo directly instead of waiting for a webhook.
     if ($po && $po['payment_status'] !== 'paid' && !empty($po['paymongo_checkout_id'])) {
         [$code, $data] = paymongoRequest('GET', '/checkout_sessions/' . rawurlencode($po['paymongo_checkout_id']));
         $payments = $data['data']['attributes']['payments'] ?? [];
@@ -53,8 +44,6 @@ if ($orderId) {
         $paidVia = (string)($po['paymongo_method'] ?? '');
     }
 }
-
-// Re-check every 3s (up to ~30s) until PayMongo reports the payment as paid
 $tries   = (int)($_GET['n'] ?? 0);
 $recheck = !$isPaid && $orderId && $tries < 10;
 ?>

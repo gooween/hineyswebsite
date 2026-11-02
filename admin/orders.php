@@ -4,6 +4,12 @@ require_once '../config/db.php';
 require_once '../config/paymongo.php';   // paymongoRequest()
 requireAdmin();
 
+// Pick-up orders are saved with a delivery_address that starts with "PICKUP".
+function isPickupAddr($addr): bool
+{
+    return strncmp((string)$addr, 'PICKUP', 6) === 0;
+}
+
 // ── Stock helpers ─────────────────────────────────────────────
 function deductStock(mysqli $conn, int $orderId, int $adminId): void
 {
@@ -114,6 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id && in_array($status, $valid_statuses) && in_array($payment_status, $valid_payment)) {
             $pr = $conn->query("SELECT status FROM orders WHERE id={$id} LIMIT 1");
             $prevStatus = $pr ? ($pr->fetch_assoc()['status'] ?? '') : '';
+            // Pick-up orders skip Processing / Out for Delivery: only Approved -> Picked Up.
+            // ("Picked Up" is stored as status 'delivered', so sales, stock and reports keep working.)
+            $pk = $conn->query("SELECT delivery_address FROM orders WHERE id={$id} LIMIT 1");
+            $pkAddr = $pk ? ($pk->fetch_assoc()['delivery_address'] ?? '') : '';
+            $isPickupOrder = isPickupAddr($pkAddr);
+            if ($isPickupOrder && in_array($status, ['processing', 'out_for_delivery'], true)) {
+                redirect('orders.php', 'error', 'Pick-up orders can only be Approved or Picked Up.');
+            }
             $conn->query("UPDATE orders SET status='{$status}', payment_status='{$payment_status}', updated_at=NOW() WHERE id={$id}");
             $newFee = (isset($_POST['delivery_fee']) && $_POST['delivery_fee'] !== '') ? (float)$_POST['delivery_fee'] : null;
             if ($newFee !== null && $newFee >= 0) {
@@ -144,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($status === 'cancelled' && !in_array($prevStatus, ['delivered', 'cancelled'], true)) {
                 restoreStock($conn, $id, (int)$_SESSION['user_id'], 'Returned from cancelled');
             }
-            redirect('orders.php', 'success', 'Order updated successfully.');
+            redirect('orders.php', 'success', ($isPickupOrder && $status === 'delivered') ? 'Order marked as Picked Up.' : 'Order updated successfully.');
         } else {
             redirect('orders.php', 'error', 'Invalid status values provided.');
         }
@@ -231,6 +245,21 @@ function syncPaymongoOrders(mysqli $conn): void
 }
 syncPaymongoOrders($conn);
 
+// Tracking number column (add it with tracking_no.sql). The page stays safe if it isn't there yet.
+$hasTracking = false;
+$tc = $conn->query("SHOW COLUMNS FROM orders LIKE 'tracking_no'");
+if ($tc && $tc->num_rows > 0) $hasTracking = true;
+// Fill in any order that has no tracking number yet (e.g. placed before checkout.php was updated).
+if ($hasTracking) {
+    try {
+        $conn->query("UPDATE orders SET tracking_no = CONCAT('HT-', DATE_FORMAT(created_at, '%y%m%d'), '-', LPAD(id, 4, '0')) WHERE (tracking_no IS NULL OR tracking_no = '') AND id > 0");
+    } catch (Throwable $e) {
+        // ignore
+    }
+}
+$trkSel = $hasTracking ? 'o.tracking_no,' : 'NULL AS tracking_no,';
+$trkGrp = $hasTracking ? 'o.tracking_no,' : '';
+
 $search        = trim($_GET['q'] ?? '');
 $filterStatus  = trim($_GET['status'] ?? '');
 $filterPayment = trim($_GET['payment'] ?? '');
@@ -242,7 +271,7 @@ $offset        = ($page - 1) * $perPage;
 $where = "WHERE 1=1";
 if ($search) {
     $s = $conn->real_escape_string($search);
-    $where .= " AND (u.full_name LIKE '%{$s}%' OR o.id LIKE '%{$s}%' OR o.delivery_address LIKE '%{$s}%')";
+    $where .= " AND (u.full_name LIKE '%{$s}%' OR o.id LIKE '%{$s}%' OR o.delivery_address LIKE '%{$s}%'" . ($hasTracking ? " OR o.tracking_no LIKE '%{$s}%'" : '') . ")";
 }
 if ($filterStatus) $where .= " AND o.status='{$conn->real_escape_string($filterStatus)}'";
 if ($filterPayment) $where .= " AND o.payment_status='{$conn->real_escape_string($filterPayment)}'";
@@ -253,7 +282,7 @@ $totalCount  = (int)($countResult->fetch_assoc()['cnt'] ?? 0);
 $totalPages  = max(1, (int)ceil($totalCount / $perPage));
 
 $orders = $conn->query("
-    SELECT o.id, o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
+    SELECT o.id, {$trkSel} o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
            o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
            o.created_at, o.updated_at,
            u.full_name, u.email, u.phone,
@@ -262,7 +291,7 @@ $orders = $conn->query("
     FROM orders o JOIN users u ON u.id=o.user_id
     LEFT JOIN order_items oi ON oi.order_id=o.id
     {$where}
-    GROUP BY o.id,o.status,o.total_amount,o.delivery_fee,o.payment_method,o.paymongo_method,
+    GROUP BY o.id,{$trkGrp}o.status,o.total_amount,o.delivery_fee,o.payment_method,o.paymongo_method,
              o.payment_status,o.delivery_address,o.notes,o.gcash_proof,
              o.created_at,o.updated_at,u.full_name,u.email,u.phone
     ORDER BY o.created_at DESC LIMIT {$perPage} OFFSET {$offset}
@@ -475,6 +504,15 @@ $activePage = 'orders';
             font-size: var(--fs-xs);
             color: var(--ink-3);
             margin-top: 1px;
+        }
+
+        .order-trk {
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: var(--fs-xs);
+            font-weight: var(--fw-semi);
+            color: var(--brand, #e67e22);
+            margin-top: 1px;
+            letter-spacing: 0.02em;
         }
 
         .cust-name {
@@ -1247,7 +1285,7 @@ $activePage = 'orders';
             <!-- Status tabs -->
             <div class="filter-tabs">
                 <?php
-                $tabDefs = ['' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'processing' => 'Processing', 'out_for_delivery' => 'Out for Delivery', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled/Rejected'];
+                $tabDefs = ['' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'processing' => 'Processing', 'out_for_delivery' => 'Out for Delivery', 'delivered' => 'Delivered / Picked Up', 'cancelled' => 'Cancelled/Rejected'];
                 foreach ($tabDefs as $val => $label):
                     $qs = http_build_query(array_merge($_GET, ['status' => $val, 'page' => 1]));
                     $cnt = ($val === '') ? $totalOrders : ($statusCounts[$val] ?? 0);
@@ -1265,7 +1303,7 @@ $activePage = 'orders';
                                 <circle cx="11" cy="11" r="8" />
                                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
                             </svg>
-                            <input type="text" name="q" class="search-input" placeholder="Search customer, order #…" value="<?= htmlspecialchars($search) ?>">
+                            <input type="text" name="q" class="search-input" placeholder="Search customer, order #, tracking no…" value="<?= htmlspecialchars($search) ?>">
                         </div>
                         <select name="payment" class="filter-select" onchange="this.form.submit()">
                             <option value="">All Payments</option>
@@ -1306,6 +1344,8 @@ $activePage = 'orders';
                                 while ($o = $orders->fetch_assoc()):
                                     $statusClass = 's-' . $o['status'];
                                     $statusLabel = ucwords(str_replace('_', ' ', $o['status']));
+                                    $rowIsPickup = isPickupAddr($o['delivery_address']);
+                                    if ($rowIsPickup && $o['status'] === 'delivered') $statusLabel = 'Picked Up';
                                     $initial = strtoupper(substr($o['full_name'], 0, 1));
                                     $isPending = ($o['status'] === 'pending');
                                     $isCancelled = ($o['status'] === 'cancelled');
@@ -1326,7 +1366,7 @@ $activePage = 'orders';
                                         <td style="color:var(--ink-3);font-size:var(--fs-xs);font-weight:var(--fw-semi);"><?= $rowNum++ ?></td>
                                         <td>
                                             <div class="order-id">#<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?></div>
-                                            <div class="order-date"><?= date('M j, Y · g:i A', strtotime($o['created_at'])) ?></div>
+                                            <?php if (!empty($o['tracking_no'])): ?><div class="order-trk"><?= htmlspecialchars($o['tracking_no']) ?></div><?php endif; ?>
                                         </td>
                                         <td>
                                             <div class="cell-lead">
@@ -1364,7 +1404,7 @@ $activePage = 'orders';
                                                             <line x1="6" y1="6" x2="18" y2="18" />
                                                         </svg><span class="act-label">Reject</span></button>
                                                 <?php else: ?>
-                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText, 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address']]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
+                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText, 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address'], 'is_pickup' => $rowIsPickup]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
                                                     <?php if (!$isCancelled): ?>
                                                         <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
                                                     <?php endif; ?>
@@ -1612,8 +1652,9 @@ $activePage = 'orders';
                 c.innerHTML = '<div style="display:flex;align-items:center;gap:10px;"><div style="width:28px;height:28px;border-radius:50%;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center;">✕</div><div style="font-size:0.85rem;font-weight:700;color:#ef4444;">Order Cancelled</div></div>';
                 return;
             }
-            var curIdx = STATUS_FLOW.indexOf(cur);
-            STATUS_FLOW.forEach(function(s, i) {
+            var flow = window._isPickup ? ['approved', 'delivered'] : STATUS_FLOW;
+            var curIdx = flow.indexOf(cur);
+            flow.forEach(function(s, i) {
                 if (i > 0) {
                     var conn = document.createElement('div');
                     conn.className = 'status-step-connector' + (i <= curIdx ? ' done' : '');
@@ -1637,7 +1678,7 @@ $activePage = 'orders';
                     lbl.className = 'status-step-label';
                 }
                 lbl.style.whiteSpace = 'pre-line';
-                lbl.textContent = STATUS_LABELS[s];
+                lbl.textContent = (window._isPickup && s === 'delivered') ? 'Picked Up' : STATUS_LABELS[s];
                 step.appendChild(dot);
                 step.appendChild(lbl);
                 c.appendChild(step);
@@ -1696,7 +1737,30 @@ $activePage = 'orders';
             document.getElementById('upd_order_label').textContent = '#' + String(data.id).padStart(4, '0');
             document.getElementById('upd_customer_label').textContent = data.full_name;
             document.getElementById('upd_method_label').textContent = (data.method_label || data.payment_method).toUpperCase();
-            document.getElementById('upd_status').value = data.status;
+            // Pick-up orders: only Approved -> Picked Up. Delivery orders keep the full flow.
+            window._isPickup = !!data.is_pickup;
+            var st = data.status;
+            var sel = document.getElementById('upd_status');
+            sel.innerHTML = '';
+            var opts = window._isPickup ? [
+                ['approved', 'Approved'],
+                ['delivered', 'Picked Up']
+            ] : [
+                ['approved', 'Approved'],
+                ['processing', 'Processing'],
+                ['out_for_delivery', 'Out for Delivery'],
+                ['delivered', 'Delivered'],
+                ['cancelled', 'Cancelled']
+            ];
+            if (window._isPickup && st === 'cancelled') opts.push(['cancelled', 'Cancelled']);
+            if (window._isPickup && (st === 'processing' || st === 'out_for_delivery')) st = 'approved';
+            opts.forEach(function(p) {
+                var op = document.createElement('option');
+                op.value = p[0];
+                op.textContent = p[1];
+                sel.appendChild(op);
+            });
+            sel.value = st;
             document.getElementById('upd_payment_status').value = data.payment_status;
             document.getElementById('gcash_note').style.display = data.payment_method === 'gcash' ? 'flex' : 'none';
             var addr = data.delivery_address || '';
@@ -1712,7 +1776,7 @@ $activePage = 'orders';
                 badgeEl.textContent = 'Not set';
             }
             document.getElementById('fee_preview').classList.remove('show');
-            updateStatusTracker(data.status);
+            updateStatusTracker(sel.value);
             openModal('updateModal');
         }
 

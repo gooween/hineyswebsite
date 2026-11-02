@@ -33,21 +33,41 @@ $stmt->close();
 $userAddresses = getUserAddresses($conn, $uid);
 $defaultAddress = $userAddresses[0] ?? null;
 
-$cartRows = $conn->query("
-    SELECT c.id AS cart_id, c.quantity,
-           p.id AS product_id, p.name, p.price, p.unit, p.image_url,
-           cat.name AS category,
-           COALESCE((
+// "Buy Now" mode: checkout.php?buy_now=<product id>&qty=<n> checks out ONLY that product
+// and leaves the saved cart untouched. Otherwise it reads the cart as usual.
+$buyNowId  = (int)($_POST['buy_now'] ?? $_GET['buy_now'] ?? 0);
+$buyNowQty = max(1, (int)($_POST['buy_qty'] ?? $_GET['qty'] ?? 1));
+
+$stockSql = "COALESCE((
                SELECT CASE WHEN p2.unit='per tray' THEN COUNT(sb.id) ELSE SUM(sb.remaining) END
                FROM stock_batches sb JOIN products p2 ON p2.id=sb.product_id
                WHERE sb.product_id=p.id AND sb.status='active'
-           ), 0) AS stock
+           ), 0) AS stock";
+
+if ($buyNowId > 0) {
+    $cartRows = $conn->query("
+        SELECT 0 AS cart_id, {$buyNowQty} AS quantity,
+               p.id AS product_id, p.name, p.price, p.unit, p.image_url,
+               cat.name AS category,
+               {$stockSql}
+        FROM products p
+        JOIN categories cat ON cat.id = p.category_id
+        WHERE p.id = {$buyNowId} AND p.is_active = 1
+        LIMIT 1
+    ");
+} else {
+    $cartRows = $conn->query("
+    SELECT c.id AS cart_id, c.quantity,
+           p.id AS product_id, p.name, p.price, p.unit, p.image_url,
+           cat.name AS category,
+           {$stockSql}
     FROM cart c
     JOIN products p ON p.id = c.product_id
     JOIN categories cat ON cat.id = p.category_id
     WHERE c.user_id = {$uid}
     ORDER BY c.added_at ASC
 ");
+}
 
 $cartData  = [];
 $cartTotal = 0.0;
@@ -58,6 +78,7 @@ while ($row = $cartRows->fetch_assoc()) {
 }
 
 if (count($cartData) === 0) {
+    if ($buyNowId > 0) redirect('products.php', 'warning', 'That product is not available right now.');
     redirect('cart.php', 'warning', 'Your cart is empty. Add some products first!');
 }
 
@@ -143,6 +164,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $orderId = (int)$conn->insert_id;
             $stmt->close();
 
+            // Tracking number, e.g. HT-261022-0054 (date placed + order number).
+            // Wrapped so checkout still works if the tracking_no column hasn't been added yet.
+            $trackingNo = '';
+            try {
+                $conn->query("UPDATE orders SET tracking_no = CONCAT('HT-', DATE_FORMAT(created_at, '%y%m%d'), '-', LPAD(id, 4, '0')) WHERE id = {$orderId}");
+                $tr = $conn->query("SELECT tracking_no FROM orders WHERE id = {$orderId} LIMIT 1");
+                if ($tr && $trow = $tr->fetch_assoc()) $trackingNo = (string)($trow['tracking_no'] ?? '');
+            } catch (Throwable $e) {
+                // column missing — order still goes through
+            }
+
+            // Remember HOW the order is fulfilled. Pick-up orders skip "Processing" and "On the Way"
+            // and finish as "Picked Up" instead of "Delivered".
+            try {
+                $dtype = ($deliveryType === 'pickup') ? 'pickup' : 'delivery';
+                $conn->query("UPDATE orders SET delivery_type = '{$dtype}' WHERE id = {$orderId}");
+            } catch (Throwable $e) {
+                // column missing — order still goes through
+            }
+
             foreach ($cartData as $item) {
                 $pid      = (int)$item['product_id'];
                 $qty      = (int)$item['quantity'];
@@ -158,17 +199,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Stock deduction happens on admin APPROVAL, not at checkout
             }
 
-            $conn->query("DELETE FROM cart WHERE user_id = {$uid}");
+            if ($buyNowId === 0) {
+                $conn->query("DELETE FROM cart WHERE user_id = {$uid}");   // Buy Now leaves the cart as it was
+            }
             $conn->commit();
 
             $orderNum = str_pad($orderId, 4, '0', STR_PAD_LEFT);
+            $trkTxt   = $trackingNo !== '' ? " Tracking no. {$trackingNo}." : '';
+            if ($deliveryType === 'pickup') $trkTxt .= " We'll mark it Picked Up once you collect it.";
             if ($paymentMethod === 'paymongo') {
                 // Online payment is only unlocked AFTER the admin approves the order
                 // (the admin may set the delivery fee first). The customer then pays
                 // from My Orders → "Pay Now" (payment/create_session.php).
-                redirect('orders.php', 'success', "Order #{$orderNum} placed! Once our team approves it, you can pay online from My Orders.");
+                redirect('orders.php', 'success', "Order #{$orderNum} placed! Once our team approves it, you can pay online from My Orders.{$trkTxt}");
             } else {
-                redirect('orders.php', 'success', "Order #{$orderNum} placed successfully! We'll confirm it shortly.");
+                redirect('orders.php', 'success', "Order #{$orderNum} placed successfully! We'll confirm it shortly.{$trkTxt}");
             }
         } catch (Exception $e) {
             $conn->rollback();
@@ -1205,7 +1250,7 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
         <?php include '../includes/navbar.php'; ?>
         <div class="page-banner">
             <div class="page-banner-inner">
-                <div class="breadcrumb"><a href="home.php">Home</a><span class="breadcrumb-sep">›</span><a href="cart.php">Cart</a><span class="breadcrumb-sep">›</span><span>Checkout</span></div>
+                <div class="breadcrumb"><a href="home.php">Home</a><span class="breadcrumb-sep">›</span><?php if ($buyNowId > 0): ?><a href="products.php">Products</a><?php else: ?><a href="cart.php">Cart</a><?php endif; ?><span class="breadcrumb-sep">›</span><span>Checkout</span></div>
                 <div class="page-banner-title">Checkout</div>
                 <div class="page-banner-sub">Complete your order below</div>
                 <div class="checkout-steps">
@@ -1233,6 +1278,10 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                         </div>
                     <?php endif; ?>
                     <form method="POST" action="checkout.php" id="checkoutForm">
+                        <?php if ($buyNowId > 0): ?>
+                            <input type="hidden" name="buy_now" value="<?= $buyNowId ?>">
+                            <input type="hidden" name="buy_qty" value="<?= $buyNowQty ?>">
+                        <?php endif; ?>
                         <!-- 1. Contact Info -->
                         <div class="form-card">
                             <div class="form-card-header">
@@ -1340,6 +1389,7 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                     <div class="pickup-info-title"><i class="fa-solid fa-location-dot"></i> Pickup Location</div>
                                     <div class="pickup-info-address"><?= htmlspecialchars($pickupAddress) ?></div>
                                     <div style="font-size:0.75rem;color:#065f46;margin-top:8px;"><i class="fa-solid fa-circle-check"></i> No delivery fee. Please coordinate pickup schedule via our contact page.</div>
+                                    <div style="font-size:0.75rem;color:#065f46;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Pick-up orders have no processing or delivery steps — your order goes Pending → Approved → Picked Up.</div>
                                 </div>
                                 <div class="form-group" style="margin-top:14px;">
                                     <label class="form-label">Order Notes (optional)</label>
@@ -1426,7 +1476,7 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                     </div>
                     <div class="summary-footer">
                         <button class="btn-place-order" id="btnPlaceOrder" onclick="submitOrder()">✓ Place Order — <span id="btnTotal">₱<?= number_format($grandTotal, 2) ?></span></button>
-                        <button class="btn-back-cart" onclick="location.href='cart.php'">← Back to Cart</button>
+                        <button class="btn-back-cart" onclick="location.href='<?= $buyNowId > 0 ? 'products.php' : 'cart.php' ?>'"><?= $buyNowId > 0 ? '← Back to Products' : '← Back to Cart' ?></button>
                         <div class="trust-row">
                             <div class="trust-item"><i class="fa-solid fa-lock"></i> Secure</div>
                             <div class="trust-item"><i class="fa-solid fa-leaf"></i> Farm Fresh</div>

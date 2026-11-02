@@ -10,6 +10,35 @@
 
 const HATCH_LOGO_PATH = __DIR__ . '/../assets/images/hineys_logo.png';
 
+// ── Order helpers ────────────────────────────────────────────
+/** Pick-up orders are saved with a delivery_address that starts with "PICKUP". */
+function hatch_is_pickup($address): bool
+{
+    return strncmp((string)$address, 'PICKUP', 6) === 0;
+}
+
+/**
+ * Status text for receipts. Pick-up orders are stored as status 'delivered'
+ * but should read "PICKED UP".
+ */
+function hatch_status_label(array $order): string
+{
+    $status = (string)($order['status'] ?? '');
+    if ($status === 'delivered' && hatch_is_pickup($order['delivery_address'] ?? '')) return 'PICKED UP';
+    return strtoupper(str_replace('_', ' ', $status));
+}
+
+/** True when orders.tracking_no exists (tracking_no.sql was run). */
+function hatch_has_tracking(mysqli $conn): bool
+{
+    static $has = null;
+    if ($has === null) {
+        $r = $conn->query("SHOW COLUMNS FROM orders LIKE 'tracking_no'");
+        $has = ($r && $r->num_rows > 0);
+    }
+    return $has;
+}
+
 // ── Payment method label ─────────────────────────────────────
 /**
  * Human-readable payment method. For PayMongo orders the order row only says
@@ -52,7 +81,20 @@ function hatch_payment_label(array $order, ?array $txn = null): string
  */
 function hatch_receipt_load(mysqli $conn, int $orderId, ?int $userId = null): ?array
 {
-    $sql = "SELECT o.id, o.status, o.payment_status, o.payment_method, o.paymongo_method,
+    // Tracking number (HT-yymmdd-0000). Safe if the column hasn't been added yet.
+    $hasTrk = hatch_has_tracking($conn);
+    if ($hasTrk) {
+        try {
+            // Fill it in if this order doesn't have one yet.
+            $conn->query("UPDATE orders SET tracking_no = CONCAT('HT-', DATE_FORMAT(created_at, '%y%m%d'), '-', LPAD(id, 4, '0'))
+                          WHERE id = {$orderId} AND (tracking_no IS NULL OR tracking_no = '')");
+        } catch (Throwable $e) {
+            // ignore
+        }
+    }
+    $trkSel = $hasTrk ? 'o.tracking_no,' : 'NULL AS tracking_no,';
+
+    $sql = "SELECT o.id, {$trkSel} o.status, o.payment_status, o.payment_method, o.paymongo_method,
                    o.total_amount, o.delivery_fee, o.delivery_address, o.created_at,
                    u.full_name, u.phone, u.email
             FROM orders o JOIN users u ON u.id = o.user_id
@@ -93,6 +135,7 @@ function hatch_receipt_load(mysqli $conn, int $orderId, ?int $userId = null): ?a
     return [
         'transaction_no' => 'HATCH-ORD-' . str_pad((string)$order['id'], 6, '0', STR_PAD_LEFT),
         'order_no'       => '#' . str_pad((string)$order['id'], 4, '0', STR_PAD_LEFT),
+        'tracking_no'    => (string)($order['tracking_no'] ?? ''),
         'order'          => $order,
         'items'          => $items,
         'items_subtotal' => $itemsSubtotal,
@@ -345,16 +388,18 @@ function hatch_receipt_pdf(array $d, string $logoPath = HATCH_LOGO_PATH): string
     $y += 20;
 
     // Info block
+    $isPickup = hatch_is_pickup($o['delivery_address'] ?? '');
     $rows = [
         ['Transaction No.', $d['transaction_no']],
         ['Order', $d['order_no']],
-        ['Date', date('M j, Y  g:i A', strtotime($o['created_at']))],
-        ['Customer', $o['full_name']],
     ];
+    if (!empty($d['tracking_no'])) $rows[] = ['Tracking No.', $d['tracking_no']];
+    $rows[] = ['Date', date('M j, Y  g:i A', strtotime($o['created_at']))];
+    $rows[] = ['Customer', $o['full_name']];
     $contact = $o['phone'] ?: $o['email'];
     if ($contact) $rows[] = ['Contact', $contact];
     $rows[] = ['Payment', $d['method'] . ' (' . strtoupper($o['payment_status']) . ')'];
-    $rows[] = ['Order Status', strtoupper(str_replace('_', ' ', $o['status']))];
+    $rows[] = ['Order Status', hatch_status_label($o)];
     if (!empty($d['txn']['transaction_date'])) $rows[] = ['Paid At', date('M j, Y  g:i A', strtotime($d['txn']['transaction_date']))];
     if (!empty($d['txn']['reference_no'])) $rows[] = ['Reference No.', $d['txn']['reference_no']];
     foreach ($rows as [$k, $v]) {
@@ -366,7 +411,7 @@ function hatch_receipt_pdf(array $d, string $logoPath = HATCH_LOGO_PATH): string
     }
     if (!empty($o['delivery_address'])) {
         $pdf->hex($muted);
-        $pdf->text($M, $y, 'Deliver To', 8.5);
+        $pdf->text($M, $y, $isPickup ? 'Pick-up' : 'Deliver To', 8.5);
         $pdf->hex($ink);
         foreach ($pdf->wrap($o['delivery_address'], $R - $M - 90, 9, true) as $ln) {
             $pdf->text($M + 90, $y, $ln, 9, true);

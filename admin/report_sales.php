@@ -110,6 +110,33 @@ if ($expRes) {
     }
 }
 
+// ── Items sold (particulars): every item line on paid orders in the range ──
+$partLimit = 300;   // cap on listed lines; totals below always cover ALL lines
+$partAgg = $conn->query("
+    SELECT COUNT(*) AS lines_cnt,
+           COALESCE(SUM(oi.quantity),0) AS qty,
+           COALESCE(SUM(oi.subtotal),0) AS amt
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN products p ON p.id = oi.product_id
+    {$paidWhere}{$catCond}
+")->fetch_assoc();
+$partLines = (int)($partAgg['lines_cnt'] ?? 0);
+$partQty   = (int)($partAgg['qty'] ?? 0);
+$partAmt   = (float)($partAgg['amt'] ?? 0);
+$partRows  = [];
+$partRes = $conn->query("
+    SELECT o.id AS order_id, o.created_at, p.name, p.unit,
+           oi.quantity, oi.unit_price, oi.subtotal
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN products p ON p.id = oi.product_id
+    {$paidWhere}{$catCond}
+    ORDER BY o.created_at DESC, o.id DESC, oi.id ASC
+    LIMIT {$partLimit}
+");
+if ($partRes) while ($r = $partRes->fetch_assoc()) $partRows[] = $r;
+
 // ── Top products by revenue ───────────────────────────────────
 $topProducts = $conn->query("
     SELECT p.name, p.unit, p.price,
@@ -616,15 +643,31 @@ $activePage = 'report_sales';
                             <div class="quick-ranges">
                                 <?php
                                 $ranges = [
-                                    'Today'      => [date('Y-m-d'), date('Y-m-d')],
-                                    'This Week'  => [date('Y-m-d', strtotime('monday this week')), date('Y-m-d')],
-                                    'This Month' => [date('Y-m-01'), date('Y-m-d')],
-                                    'This Year'  => [date('Y-01-01'), date('Y-m-d')],
+                                    'today' => ['Today',      date('Y-m-d'), date('Y-m-d')],
+                                    'week'  => ['This Week',  date('Y-m-d', strtotime('monday this week')), date('Y-m-d')],
+                                    'month' => ['This Month', date('Y-m-01'), date('Y-m-d')],
+                                    'year'  => ['This Year',  date('Y-01-01'), date('Y-m-d')],
                                 ];
-                                foreach ($ranges as $lbl => [$f, $t]):
-                                    $isActive = ($dateFrom === $f && $dateTo === $t && !$statusFilter);
+                                // Only ONE pill is highlighted. On days when ranges coincide (e.g. a Monday:
+                                // Today = This Week), the pill the user clicked wins; otherwise the first match.
+                                $pickedRange = trim($_GET['range'] ?? '');
+                                $activeKey   = '';
+                                if (!$statusFilter) {
+                                    if (isset($ranges[$pickedRange]) && $dateFrom === $ranges[$pickedRange][1] && $dateTo === $ranges[$pickedRange][2]) {
+                                        $activeKey = $pickedRange;
+                                    } else {
+                                        foreach ($ranges as $k => [$lbl, $f, $t]) {
+                                            if ($dateFrom === $f && $dateTo === $t) {
+                                                $activeKey = $k;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                foreach ($ranges as $k => [$lbl, $f, $t]):
+                                    $isActive = ($k === $activeKey);
                                 ?>
-                                    <a href="report_sales.php?from=<?= $f ?>&to=<?= $t ?><?= $catFilter ? '&cat=' . $catFilter : '' ?>" class="qr-link <?= $isActive ? 'active' : '' ?>"><?= $lbl ?></a>
+                                    <a href="report_sales.php?from=<?= $f ?>&to=<?= $t ?>&range=<?= $k ?><?= $catFilter ? '&cat=' . $catFilter : '' ?>" class="qr-link <?= $isActive ? 'active' : '' ?>"><?= $lbl ?></a>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -872,6 +915,56 @@ $activePage = 'report_sales';
                 <?php endif; ?>
             </div>
 
+            <!-- Items sold (particulars) -->
+            <div class="section-title"><i class="fa-solid fa-list"></i> Items Sold (Particulars)</div>
+            <div class="table-card">
+                <?php if (!empty($partRows)): ?>
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Order #</th>
+                                    <th>Particulars</th>
+                                    <th>Unit</th>
+                                    <th class="num">Qty</th>
+                                    <th class="num">Unit Price</th>
+                                    <th class="num">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($partRows as $pt): ?>
+                                    <tr>
+                                        <td style="color:var(--ink-3);white-space:nowrap;"><?= date('M j, Y', strtotime($pt['created_at'])) ?></td>
+                                        <td style="font-weight:var(--fw-semi);white-space:nowrap;">#<?= str_pad((string)$pt['order_id'], 4, '0', STR_PAD_LEFT) ?></td>
+                                        <td style="font-weight:var(--fw-semi);color:var(--ink);"><?= htmlspecialchars($pt['name']) ?></td>
+                                        <td style="color:var(--ink-3);font-size:var(--fs-xs);"><?= htmlspecialchars($pt['unit']) ?></td>
+                                        <td class="num"><?= number_format((int)$pt['quantity']) ?></td>
+                                        <td class="num">₱<?= number_format((float)$pt['unit_price'], 2) ?></td>
+                                        <td class="num amt">₱<?= number_format((float)$pt['subtotal'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                <tr>
+                                    <td colspan="4" style="font-weight:var(--fw-semi);">Total (<?= number_format($partLines) ?> line<?= $partLines !== 1 ? 's' : '' ?>)</td>
+                                    <td class="num"><?= number_format($partQty) ?></td>
+                                    <td></td>
+                                    <td class="num amt">₱<?= number_format($partAmt, 2) ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php if ($partLines > count($partRows)): ?>
+                        <div style="padding:10px 16px;font-size:var(--fs-xs);color:var(--ink-3);">Showing the <?= count($partRows) ?> most recent of <?= number_format($partLines) ?> lines. Totals cover all lines.</div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <div class="empty">
+                        <div class="empty-icon"><i class="fa-solid fa-box-open"></i></div>
+                        <div class="empty-title">No items sold</div>
+                        <div class="empty-text">No paid orders in this date range.</div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
         </div><!-- /.main-content -->
     </div><!-- /.admin-layout -->
 
@@ -968,6 +1061,13 @@ $activePage = 'report_sales';
         ?>
             rows.push(['<?= $rk++ ?>', <?= json_encode($p['name']) ?>, <?= json_encode($p['unit']) ?>, '<?= round((float)$p['price'], 2) ?>', '<?= (int)$p['qty'] ?>', '<?= round((float)$p['revenue'], 2) ?>']);
         <?php endwhile; ?>
+        rows.push([]);
+        rows.push(['Items Sold (Particulars)']);
+        rows.push(['Date', 'Order #', 'Particulars', 'Unit', 'Qty', 'Unit Price', 'Amount']);
+        <?php foreach ($partRows as $pt): ?>
+            rows.push([<?= json_encode(date('Y-m-d', strtotime($pt['created_at']))) ?>, '#<?= str_pad((string)$pt['order_id'], 4, '0', STR_PAD_LEFT) ?>', <?= json_encode($pt['name']) ?>, <?= json_encode($pt['unit']) ?>, '<?= (int)$pt['quantity'] ?>', '<?= round((float)$pt['unit_price'], 2) ?>', '<?= round((float)$pt['subtotal'], 2) ?>']);
+        <?php endforeach; ?>
+        rows.push(['Total', '', '', '', '<?= $partQty ?>', '', '<?= round($partAmt, 2) ?>']);
         const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
         const blob = new Blob(['\uFEFF' + csv], {
             type: 'text/csv;charset=utf-8;'

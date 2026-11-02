@@ -815,6 +815,41 @@ $totalFound = $products ? $products->num_rows : 0;
             cursor: not-allowed;
         }
 
+        /* Buy Now: skips the cart and goes straight to checkout with this one item */
+        .product-actions {
+            flex-wrap: wrap;
+        }
+
+        .btn-buy-now {
+            flex: 1 1 100%;
+            padding: 8px 0;
+            border: 1.5px solid var(--primary);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn-buy-now:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-buy-now:disabled {
+            border-color: #d1d5db;
+            color: #9ca3af;
+            background: transparent;
+            cursor: not-allowed;
+        }
+
         .empty-state {
             text-align: center;
             padding: 72px 20px;
@@ -1229,6 +1264,14 @@ $totalFound = $products ? $products->num_rows : 0;
                                                 onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>', '<?= htmlspecialchars(addslashes($p['unit'])) ?>', <?= $stock ?>)">
                                                 <i class="fa-solid fa-cart-shopping"></i> Add to Cart
                                             </button>
+                                            <?php
+                                            // "per piece" products have a 12-piece minimum at checkout
+                                            $buyQty = strtolower((string)$p['unit']) === 'per piece' ? 12 : 1;
+                                            ?>
+                                            <button class="btn-buy-now" <?= $stock < $buyQty ? 'disabled' : '' ?>
+                                                onclick="buyNow(<?= (int)$p['id'] ?>, <?= $buyQty ?>, <?= $stock ?>)">
+                                                <i class="fa-solid fa-bolt"></i> Buy Now
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1367,6 +1410,19 @@ $totalFound = $products ? $products->num_rows : 0;
                 .catch(() => showToast('✕ Network error. Please try again.', 'error'));
         }
 
+        // Buy Now: go straight to checkout with just this product (the cart is left untouched).
+        function buyNow(productId, qty, stock) {
+            if (!IS_LOGGED_IN) {
+                showLoginPrompt();
+                return;
+            }
+            if (stock < qty) {
+                showToast('✕ Only ' + stock + ' available — minimum order is ' + qty + '.', 'error');
+                return;
+            }
+            location.href = 'checkout.php?buy_now=' + productId + '&qty=' + qty;
+        }
+
         function showToast(msg, type = 'success') {
             const wrap = document.getElementById('toastWrap');
             const t = document.createElement('div');
@@ -1378,4 +1434,4 @@ $totalFound = $products ? $products->num_rows : 0;
     </script>
 </body>
 
-</html> 
+</html>
