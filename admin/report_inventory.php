@@ -9,6 +9,10 @@ session_start();
 require_once '../config/db.php';
 requireAdmin();
 
+// Philippine time — otherwise PHP uses the server default (often UTC, 8 hours behind),
+// which shows the previous day's date in the early morning.
+date_default_timezone_set('Asia/Manila');
+
 $thisYear  = date('Y');
 $today     = date('Y-m-d');
 $catFilter = (int)($_GET['cat'] ?? 0);

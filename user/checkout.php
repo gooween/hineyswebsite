@@ -1359,8 +1359,8 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                                         <input type="radio" name="payment_method" value="cod" <?= ($_POST['payment_method'] ?? 'cod') === 'cod' ? 'checked' : '' ?> onchange="selectPayment('cod')" id="codRadio">
                                         <div class="payment-option-icon"><i class="fa-solid fa-money-bill"></i></div>
                                         <div>
-                                            <div class="payment-option-name">Cash upon Pickup</div>
-                                            <div class="payment-option-desc">Pay with cash when you pick up your order.</div>
+                                            <div class="payment-option-name" id="codName"><?= $selectedDeliveryType === 'pickup' ? 'Cash upon Pickup' : 'Cash on Delivery' ?></div>
+                                            <div class="payment-option-desc" id="codDesc"><?= $selectedDeliveryType === 'pickup' ? 'Pay with cash when you pick up your order.' : 'Pay with cash when your order is delivered.' ?></div>
                                         </div>
                                     </label>
                                     <label class="payment-option <?= ($_POST['payment_method'] ?? '') === 'paymongo' ? 'selected' : '' ?>">
@@ -1504,7 +1504,19 @@ $grandTotal         = $cartTotal + $displayDeliveryFee;
                 brgySel.setAttribute('required', 'required');
                 streetIn.setAttribute('required', 'required');
             }
+            updateCodLabel(type);
             updateTotals(type);
+        }
+
+        // "Cash on Delivery" for delivery orders, "Cash upon Pickup" only for pick-up orders
+        function updateCodLabel(type) {
+            const isPickup = type === 'pickup';
+            const n = document.getElementById('codName');
+            const d = document.getElementById('codDesc');
+            if (n) n.textContent = isPickup ? 'Cash upon Pickup' : 'Cash on Delivery';
+            if (d) d.textContent = isPickup ?
+                'Pay with cash when you pick up your order.' :
+                'Pay with cash when your order is delivered.';
         }
 
         function updateTotals(type) {

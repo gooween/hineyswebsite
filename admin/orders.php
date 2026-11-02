@@ -1274,7 +1274,7 @@ $activePage = 'orders';
                         </select>
                         <select name="method" class="filter-select" onchange="this.form.submit()">
                             <option value="">All Methods</option>
-                            <option value="cod" <?= $filterMethod === 'cod' ? 'selected' : '' ?>>COD</option>
+                            <option value="cod" <?= $filterMethod === 'cod' ? 'selected' : '' ?>>Cash (On Delivery / Upon Pickup)</option>
                             <option value="paymongo" <?= $filterMethod === 'paymongo' ? 'selected' : '' ?>>Online (GCash/Maya/QR Ph)</option>
                         </select>
                         <?php if ($search || $filterPayment || $filterMethod): ?><a href="orders.php?status=<?= urlencode($filterStatus) ?>" class="clear-link">✕ Clear</a><?php endif; ?>
@@ -1316,7 +1316,9 @@ $activePage = 'orders';
                                     // Show the real method for PayMongo orders (GCash/Maya/QR Ph), else the method name
                                     $methodText = $isPaymongo
                                         ? (!empty($o['paymongo_method']) ? $o['paymongo_method'] : 'PayMongo')
-                                        : strtoupper($o['payment_method']);
+                                        : ($o['payment_method'] === 'cod'
+                                            ? (strncmp((string)$o['delivery_address'], 'PICKUP', 6) === 0 ? 'Cash on Pickup' : 'COD')
+                                            : strtoupper($o['payment_method']));
                                     $feeIsSet = $o['delivery_fee'] !== null;
                                     $itemsSubtotal = (float)$o['items_subtotal'];
                                 ?>

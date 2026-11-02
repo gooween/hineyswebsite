@@ -25,12 +25,75 @@ if (isset($signNamePrepared) && $signNamePrepared !== '') $preparedName = $signN
 $approvedName = (isset($signNameApproved) && $signNameApproved !== '') ? $signNameApproved : '';
 ?>
 
-<!-- Signature block — sits at the bottom of the page, never split across two pages -->
+<!-- Signature block — pinned to the bottom of the page, never split across two pages -->
 <style>
+    /* The measurements below use the SAME sizes as the print layout, so the
+       on-screen preview, the fit-to-page script and the printed page all agree. */
+    body {
+        font-size: 10px;
+    }
+
+    .sheet {
+        padding: 10mm 12mm;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rp-head {
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+    }
+
+    .rp-brand-name {
+        font-size: 1.3rem;
+    }
+
+    .rp-title-block {
+        margin-top: 8px;
+    }
+
+    .rp-meta {
+        padding: 6px 0 8px;
+        margin-bottom: 8px;
+    }
+
+    .rp-section-title {
+        font-size: 0.82rem;
+        margin: 12px 0 5px;
+        padding-bottom: 3px;
+    }
+
+    table.rp-table {
+        font-size: 0.72rem;
+        margin-bottom: 4px;
+    }
+
+    table.rp-table thead th {
+        padding: 4px 8px;
+        font-size: 0.66rem;
+    }
+
+    table.rp-table tbody td {
+        padding: 3px 8px;
+    }
+
+    table.rp-table tfoot td {
+        padding: 5px 8px;
+        font-size: 0.74rem;
+    }
+
+    .rp-empty {
+        padding: 12px;
+        margin: 4px 0;
+    }
+
+    /* margin-top:auto pushes the signatures to the bottom of the sheet (the
+       sheet is one A4 page tall); padding-top keeps a minimum gap above them. */
     .rp-signatures {
-        margin: 10mm 0 0;
-        padding: 0;
+        margin: auto 0 0;
+        padding: 10mm 0 0;
         gap: 40px;
+        flex-shrink: 0;
         break-inside: avoid;
         page-break-inside: avoid;
     }
@@ -46,7 +109,7 @@ $approvedName = (isset($signNameApproved) && $signNameApproved !== '') ? $signNa
     }
 
     .rp-sig-line {
-        margin-top: 24px;
+        margin-top: 26px;
     }
 
     .rp-sig-pos {
@@ -77,37 +140,32 @@ $approvedName = (isset($signNameApproved) && $signNameApproved !== '') ? $signNa
 
 <script>
     // 1) Shrink the report just enough to fit ONE page (A4), never below 55%.
-    // 2) Push the signatures down to the bottom of that page.
+    // 2) Make the sheet exactly one page tall so the CSS pins the signatures to its bottom.
     // 3) Then auto-open the print dialog.
     (function() {
-        // Page height in CSS px, with ~7mm of slack so print rounding can't spill onto a 2nd page.
-        var PAGE_H = 290 * 96 / 25.4;
+        var MM = 96 / 25.4;
+        var PAGE_H = 296 * MM; // A4 is 297mm; 1mm of slack so rounding can't spill onto a 2nd page
 
         function fitToPage() {
             var sheet = document.querySelector('.sheet');
             if (!sheet) return;
             try {
-                var z = 1;
+                // Measure the natural (unscaled) height of the content.
                 sheet.style.maxWidth = 'none';
                 sheet.style.width = '210mm';
                 sheet.style.zoom = 1;
-                var sig = document.querySelector('.rp-signatures');
-                if (sig) sig.style.marginTop = '';
+                sheet.style.minHeight = '0';
+                var natural = sheet.getBoundingClientRect().height;
 
-                for (var i = 0; i < 8; i++) {
-                    var h = sheet.getBoundingClientRect().height;
-                    if (h <= PAGE_H || z <= 0.55) break;
-                    z = Math.max(0.55, z * (PAGE_H / h) * 0.99);
+                var z = 1;
+                if (natural > PAGE_H) {
+                    z = Math.max(0.55, (PAGE_H / natural) * 0.985);
                     sheet.style.zoom = z;
                     sheet.style.width = (210 / z) + 'mm'; // keep the real width at 210mm
                 }
-
-                // Short report: add space above the signatures so they land at the page bottom.
-                var finalH = sheet.getBoundingClientRect().height;
-                if (sig && finalH < PAGE_H) {
-                    var base = parseFloat(getComputedStyle(sig).marginTop) || 0;
-                    sig.style.marginTop = (base + (PAGE_H - finalH) / z) + 'px';
-                }
+                // One page tall (in unscaled units, so after zoom it is 296mm):
+                // the signatures sit at the bottom, or flow after the content if it is longer.
+                sheet.style.minHeight = (296 / z) + 'mm';
             } catch (e) {}
         }
 

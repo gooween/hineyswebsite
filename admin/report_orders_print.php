@@ -12,6 +12,10 @@ session_start();
 require_once '../config/db.php';
 requireAdmin();
 
+// Philippine time — otherwise PHP uses the server default (often UTC, 8 hours behind),
+// which shows the previous day's date in the early morning.
+date_default_timezone_set('Asia/Manila');
+
 $today    = date('Y-m-d');
 $thisYear = date('Y');
 
@@ -118,68 +122,6 @@ $printMeta     = [
 require '../admin/report_print_header.php';
 ?>
 
-<style>
-    /* KPI summary: plain horizontal row (no cards) */
-    .rp-kpis {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        margin: 14px 0 18px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #d1d5db;
-    }
-
-    .rp-kpi {
-        flex: 1;
-        text-align: left;
-        border: 0;
-        padding: 0;
-        background: none;
-    }
-
-    .rp-kpi .k-label {
-        font-size: 0.68rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }
-
-    .rp-kpi .k-value {
-        font-size: 1.1rem;
-        font-weight: 800;
-        margin: 2px 0;
-    }
-
-    .rp-kpi .k-sub {
-        font-size: 0.68rem;
-        color: #6b7280;
-    }
-</style>
-
-<!-- KPI summary -->
-<div class="rp-kpis">
-    <div class="rp-kpi accent-blue">
-        <div class="k-label">Total Orders</div>
-        <div class="k-value"><?= number_format($totalOrders) ?></div>
-        <div class="k-sub">In selected period</div>
-    </div>
-    <div class="rp-kpi accent-green">
-        <div class="k-label">Delivered</div>
-        <div class="k-value"><?= number_format($deliveredOrders) ?></div>
-        <div class="k-sub"><?= $totalOrders > 0 ? round(($deliveredOrders / $totalOrders) * 100) . '% delivery rate' : '—' ?></div>
-    </div>
-    <div class="rp-kpi accent-amber">
-        <div class="k-label">Pending</div>
-        <div class="k-value"><?= number_format($pendingOrders) ?></div>
-        <div class="k-sub">Awaiting confirmation</div>
-    </div>
-    <div class="rp-kpi accent-red">
-        <div class="k-label">Cancelled</div>
-        <div class="k-value"><?= number_format($cancelledOrders) ?></div>
-        <div class="k-sub"><?= $totalOrders > 0 ? round(($cancelledOrders / $totalOrders) * 100) . '% cancellation' : '—' ?></div>
-    </div>
-</div>
-
 <!-- Status breakdown -->
 <div class="rp-section-title">Order Status Breakdown</div>
 <?php if (!empty($statusBreak)): ?>
@@ -229,7 +171,7 @@ if ($ordersTable && $ordersTable->num_rows > 0) {
     <span class="count"><?= count($ordersRows) ?> order<?= count($ordersRows) !== 1 ? 's' : '' ?></span>
 </div>
 <?php if (!empty($ordersRows)): ?>
-    <table class="rp-table">
+    <table class="rp-table rp-oneline">
         <thead>
             <tr>
                 <th style="width:34px;">#</th>
@@ -248,10 +190,7 @@ if ($ordersTable && $ordersTable->num_rows > 0) {
                 <tr>
                     <td class="muted"><?= $i + 1 ?></td>
                     <td style="font-weight:700;">#<?= str_pad((string)$o['id'], 4, '0', STR_PAD_LEFT) ?></td>
-                    <td>
-                        <div style="font-weight:600;"><?= htmlspecialchars($o['full_name']) ?></div>
-                        <div class="muted" style="font-size:0.7rem;"><?= htmlspecialchars($o['email']) ?></div>
-                    </td>
+                    <td style="font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($o['full_name']) ?></td>
                     <td class="num"><?= (int)$o['item_count'] ?></td>
                     <td class="num" style="font-weight:700;"><?= peso((float)$o['total_amount']) ?></td>
                     <td><?= strtoupper(htmlspecialchars($o['payment_method'])) ?></td>
@@ -263,7 +202,7 @@ if ($ordersTable && $ordersTable->num_rows > 0) {
                         <?php endif; ?>
                     </td>
                     <td><span class="rp-pill <?= orderStatusPill($o['status']) ?>"><?= htmlspecialchars($statusLabelMap[$o['status']] ?? ucfirst($o['status'])) ?></span></td>
-                    <td class="muted" style="white-space:nowrap;"><?= date('M j, Y', strtotime($o['created_at'])) ?><br><span style="font-size:0.68rem;"><?= date('g:i A', strtotime($o['created_at'])) ?></span></td>
+                    <td class="muted"><?= date('M j, Y g:i A', strtotime($o['created_at'])) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

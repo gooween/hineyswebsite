@@ -12,6 +12,10 @@ session_start();
 require_once '../config/db.php';
 requireAdmin();
 
+// Philippine time — without this PHP uses the server's default (often UTC, 8 hours behind),
+// so "Today", "This Week" and the date range roll over at the wrong hour.
+date_default_timezone_set('Asia/Manila');
+
 $today = date('Y-m-d');
 
 // ── Date range + status filter ────────────────────────────────
@@ -91,7 +95,7 @@ $expRes = $conn->query("
     JOIN products p ON p.id = sb.product_id
     WHERE sb.remaining > 0
       AND sb.expires_at IS NOT NULL
-      AND sb.expires_at < CURDATE()
+      AND sb.expires_at < '{$today}'
       AND sb.status IN ('expired','active')
       AND sb.expires_at BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
       " . ($catFilter ? "AND p.category_id = {$catFilter}" : '') . "

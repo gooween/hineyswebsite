@@ -6,7 +6,7 @@
 // Clean print view of the Sales report. Opened in a new tab
 // from report_sales.php, carrying the same ?from &to filters.
 //
-// Sales figures count PAID, non-cancelled orders — matching
+// Sales figures count DELIVERED + PAID orders — matching
 // the revenue basis used on the sales report page.
 // ============================================================
 
@@ -19,6 +19,7 @@ $today = date('Y-m-d');
 // ── Same date filter as report_sales.php ──────────────────────
 $dateFrom = trim($_GET['from'] ?? date('Y-m-01'));
 $dateTo   = trim($_GET['to']   ?? $today);
+$statusFilter = trim($_GET['status'] ?? '');
 if ($dateFrom > $dateTo) $dateFrom = $dateTo;
 
 $dateFromSql = $conn->real_escape_string($dateFrom);
@@ -27,6 +28,9 @@ $dateToSql   = $conn->real_escape_string($dateTo);
 // Revenue basis: paid, non-cancelled orders in range
 $paidWhere = "WHERE DATE(o.created_at) BETWEEN '{$dateFromSql}' AND '{$dateToSql}'
               AND o.status = 'delivered' AND o.payment_status = 'paid'";
+if ($statusFilter !== '') {
+    $paidWhere .= " AND o.status = '" . $conn->real_escape_string($statusFilter) . "'";
+}
 
 // ── Category filter (Eggs / Live Chicken / …) ─────────────────
 $catFilter  = (int)($_GET['cat'] ?? 0);
@@ -165,8 +169,11 @@ $printTitle    = 'Sales Report';
 $printSubtitle = $periodLabel;
 $printMeta     = [
     ['label' => 'Category', 'value' => $catLabel],
-    ['label' => 'Basis',       'value' => 'Paid, non-cancelled orders'],
+    ['label' => 'Basis',       'value' => 'Delivered & paid orders'],
 ];
+if ($statusFilter !== '') {
+    $printMeta[] = ['label' => 'Status', 'value' => ucwords(str_replace('_', ' ', $statusFilter))];
+}
 
 require '../admin/report_print_header.php';
 ?>
@@ -313,8 +320,14 @@ if ($payBreak && $payBreak->num_rows > 0) {
 <div class="rp-section-title">Category Performance</div>
 <?php
 $cp = [];
+$catTotalRevenue = 0.0;
+$catTotalUnits   = 0;
 if ($catPerf && $catPerf->num_rows > 0) {
-    while ($row = $catPerf->fetch_assoc()) $cp[] = $row;
+    while ($row = $catPerf->fetch_assoc()) {
+        $cp[] = $row;
+        $catTotalRevenue += (float)$row['revenue'];
+        $catTotalUnits   += (int)$row['qty'];
+    }
 }
 ?>
 <?php if (!empty($cp)): ?>
@@ -329,7 +342,7 @@ if ($catPerf && $catPerf->num_rows > 0) {
         </thead>
         <tbody>
             <?php foreach ($cp as $r):
-                $pct = $totalRevenue > 0 ? round(((float)$r['revenue'] / $totalRevenue) * 100, 1) : 0;
+                $pct = $catTotalRevenue > 0 ? round(((float)$r['revenue'] / $catTotalRevenue) * 100, 1) : 0;
             ?>
                 <tr>
                     <td style="font-weight:600;"><?= htmlspecialchars($r['category']) ?></td>
@@ -342,8 +355,8 @@ if ($catPerf && $catPerf->num_rows > 0) {
         <tfoot>
             <tr>
                 <td>Total</td>
-                <td class="num"><?= number_format($totalUnits) ?></td>
-                <td class="num"><?= peso($totalRevenue) ?></td>
+                <td class="num"><?= number_format($catTotalUnits) ?></td>
+                <td class="num"><?= peso($catTotalRevenue) ?></td>
                 <td class="num">100%</td>
             </tr>
         </tfoot>

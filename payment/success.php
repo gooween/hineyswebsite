@@ -1,36 +1,62 @@
 <?php
 // ============================================================
-// HATCH — Payment success landing (does NOT mark paid)
+// HATCH — Payment success landing
 // File: payment/success.php
-// The WEBHOOK marks the order paid; this page just reassures
-// the customer while that confirmation lands.
+//
+// InfinityFree's bot-check blocks PayMongo webhooks, so this page
+// verifies the payment itself by asking PayMongo for the checkout
+// session status, then marks the order paid.
 // ============================================================
 session_start();
 require_once '../config/db.php';
+require_once '../config/paymongo.php';
 requireCustomer();
 
 $activePage = 'orders';
 $orderId  = (int)($_GET['order_id'] ?? 0);
 $orderNum = $orderId ? str_pad($orderId, 4, '0', STR_PAD_LEFT) : '';
 
-// Show the real payment state. The webhook marks it paid a moment after the
-// customer returns, so re-check every 3s (up to ~30s) until it lands.
-$uid       = (int)$_SESSION['user_id'];
-$isPaid    = false;
-$paidVia   = '';
+$uid     = (int)$_SESSION['user_id'];
+$isPaid  = false;
+$paidVia = '';
+
 if ($orderId) {
-    $ps = $conn->prepare("SELECT payment_status, paymongo_method FROM orders WHERE id = ? AND user_id = ? LIMIT 1");
+    $ps = $conn->prepare("SELECT payment_status, paymongo_method, paymongo_checkout_id FROM orders WHERE id = ? AND user_id = ? LIMIT 1");
     $ps->bind_param('ii', $orderId, $uid);
     $ps->execute();
     $po = $ps->get_result()->fetch_assoc();
     $ps->close();
+
+    // Not marked paid yet? Ask PayMongo directly instead of waiting for a webhook.
+    if ($po && $po['payment_status'] !== 'paid' && !empty($po['paymongo_checkout_id'])) {
+        [$code, $data] = paymongoRequest('GET', '/checkout_sessions/' . rawurlencode($po['paymongo_checkout_id']));
+        $payments = $data['data']['attributes']['payments'] ?? [];
+        if ($code === 200 && is_array($payments)) {
+            foreach ($payments as $p) {
+                if (($p['attributes']['status'] ?? '') === 'paid') {
+                    $method = (string)($p['attributes']['source']['type'] ?? '');
+                    $up = $conn->prepare("UPDATE orders SET payment_status='paid', paymongo_method=?, updated_at=NOW()
+                                          WHERE id=? AND user_id=? AND payment_status <> 'paid'");
+                    $up->bind_param('sii', $method, $orderId, $uid);
+                    $up->execute();
+                    $up->close();
+                    $po['payment_status']  = 'paid';
+                    $po['paymongo_method'] = $method;
+                    break;
+                }
+            }
+        }
+    }
+
     if ($po && $po['payment_status'] === 'paid') {
         $isPaid  = true;
         $paidVia = (string)($po['paymongo_method'] ?? '');
     }
 }
-$tries     = (int)($_GET['n'] ?? 0);
-$recheck   = !$isPaid && $orderId && $tries < 10;
+
+// Re-check every 3s (up to ~30s) until PayMongo reports the payment as paid
+$tries   = (int)($_GET['n'] ?? 0);
+$recheck = !$isPaid && $orderId && $tries < 10;
 ?>
 <!DOCTYPE html>
 <html lang="en">
