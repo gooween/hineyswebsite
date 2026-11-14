@@ -63,6 +63,9 @@ if (!empty($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
         header('Location: admin/dashboard.php');
         exit;
+    } elseif ($_SESSION['role'] === 'rider') {
+        header('Location: rider/index.php');
+        exit;
     } else {
         header('Location: user/home.php');
         exit;
@@ -113,6 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($user['role'] === 'admin') {
                 redirect('admin/dashboard.php', 'success', 'Welcome back, ' . $user['full_name'] . '!');
+            } elseif ($user['role'] === 'rider') {
+                redirect('rider/index.php');
             } else {
                 redirect('user/home.php', 'success', 'Welcome back, ' . explode(' ', $user['full_name'])[0] . '!');
             }

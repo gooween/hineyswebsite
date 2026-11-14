@@ -150,10 +150,24 @@ if ($tc && $tc->num_rows > 0) {
     }
 }
 
+// Delivery photo column (add it with delivery_proof.sql). Safe if it isn't there yet.
+$dpSel = 'NULL AS delivery_proof,';
+$dc = $conn->query("SHOW COLUMNS FROM orders LIKE 'delivery_proof'");
+if ($dc && $dc->num_rows > 0) $dpSel = 'o.delivery_proof,';
+
+// Assigned rider (add it with rider_system.sql). Safe if it isn't there yet.
+$rdSel = 'NULL AS rider_name, NULL AS rider_phone,';
+$rc = $conn->query("SHOW COLUMNS FROM orders LIKE 'rider_id'");
+if ($rc && $rc->num_rows > 0) {
+    $rdSel = '(SELECT ru.full_name FROM users ru WHERE ru.id = o.rider_id) AS rider_name,
+           (SELECT ru.phone FROM users ru WHERE ru.id = o.rider_id) AS rider_phone,';
+}
+
 $orders = $conn->query("
     SELECT o.id, {$trkSel} o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
            (SELECT t.payment_method FROM transactions t WHERE t.order_id = o.id ORDER BY t.id DESC LIMIT 1) AS txn_method,
-           o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
+           o.payment_status, o.delivery_address, o.notes, o.gcash_proof, {$dpSel}
+           {$rdSel}
            o.created_at, o.updated_at,
            COUNT(oi.id) AS item_count,
            SUM(oi.quantity) AS total_units
@@ -188,6 +202,18 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
     if (!$order) {
         echo json_encode(['success' => false, 'message' => 'Order not found.']);
         exit;
+    }
+
+    // Assigned rider (if the rider system is installed)
+    $order['rider_name'] = null;
+    $order['rider_phone'] = null;
+    $rcol = $conn->query("SHOW COLUMNS FROM orders LIKE 'rider_id'");
+    if ($rcol && $rcol->num_rows > 0 && !empty($order['rider_id'])) {
+        $rq = $conn->query("SELECT full_name, phone FROM users WHERE id=" . (int)$order['rider_id'] . " LIMIT 1");
+        if ($rq && $rr = $rq->fetch_assoc()) {
+            $order['rider_name']  = $rr['full_name'];
+            $order['rider_phone'] = $rr['phone'];
+        }
     }
 
     // Include image_url for product thumbnails in modal
@@ -1820,6 +1846,29 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                                     <?php endif; ?>
                                 <?php endif; ?>
 
+                                <?php if (!$isPickup && !empty($o['rider_name']) && in_array($sid, ['approved', 'processing', 'out_for_delivery', 'delivered'], true)): ?>
+                                    <div class="proof-upload-section" style="border-top:1px solid #ebe8e3;display:flex;align-items:center;gap:12px;">
+                                        <div style="width:38px;height:38px;border-radius:50%;background:#fff3e6;color:#e8761e;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-motorcycle"></i></div>
+                                        <div>
+                                            <div class="proof-upload-title">Your rider: <?= htmlspecialchars($o['rider_name']) ?></div>
+                                            <div class="proof-upload-desc" style="margin-bottom:0;">
+                                                <?= $sid === 'out_for_delivery' ? 'On the way to you' : ($sid === 'delivered' ? 'Delivered your order' : 'Assigned to your order') ?>
+                                                <?php if (!empty($o['rider_phone'])): ?> · <a href="tel:<?= htmlspecialchars(preg_replace('/[^0-9+]/', '', $o['rider_phone'])) ?>" style="color:inherit;font-weight:600;"><?= htmlspecialchars($o['rider_phone']) ?></a><?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($sid === 'delivered' && !$isPickup && !empty($o['delivery_proof'])): ?>
+                                    <div class="proof-upload-section" style="border-top:1px solid #ebe8e3;display:flex;align-items:center;gap:12px;">
+                                        <img src="<?= htmlspecialchars(mediaSrc($o['delivery_proof'])) ?>" class="proof-thumb" alt="Proof of delivery" onclick="viewProofImg(<?= htmlspecialchars(json_encode(mediaSrc($o['delivery_proof']))) ?>)">
+                                        <div>
+                                            <div class="proof-upload-title"><i class="fa-solid fa-camera"></i> Proof of delivery</div>
+                                            <div class="proof-upload-desc" style="margin-bottom:0;">Photo taken when your order was delivered. Tap it to enlarge.</div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <div class="order-card-footer">
                                     <div class="order-address">
                                         <span><i class="fa-solid fa-location-dot"></i></span>
@@ -2044,6 +2093,19 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
                 proofHtml = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:0.82rem;color:#1e40af;margin-top:10px;"><i class="fa-solid fa-paperclip"></i> No payment proof uploaded yet. Please upload it from the order list.</div>`;
             }
 
+            let riderHtml = '';
+            if (o.rider_name && !isPickup && ['approved', 'processing', 'out_for_delivery', 'delivered'].indexOf(o.status) !== -1) {
+                riderHtml = `<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-motorcycle"></i> Your Rider</div>
+            <div style="font-weight:600;">${esc(o.rider_name)}</div>
+            ${o.rider_phone ? `<div style="margin-top:2px;"><a href="tel:${esc(String(o.rider_phone).replace(/[^0-9+]/g, ''))}" style="color:inherit;">${esc(o.rider_phone)}</a></div>` : ''}</div>`;
+            }
+
+            let deliveryProofHtml = '';
+            if (o.status === 'delivered' && o.delivery_proof && !isPickup) {
+                deliveryProofHtml = `<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-camera"></i> Proof of Delivery</div>
+            <div class="modal-proof-wrap"><img src="${mSrc(o.delivery_proof)}" alt="Proof of delivery" style="max-width:100%;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="viewProofImg(mSrc(o.delivery_proof))"></div></div>`;
+            }
+
             let txnHtml = '';
             if (data.txn) {
                 txnHtml = `<div class="modal-section"><div class="modal-section-title"><i class="fa-solid fa-credit-card"></i> Transaction</div>
@@ -2086,6 +2148,8 @@ if (isset($_GET['get_order']) && is_numeric($_GET['get_order'])) {
             <div class="modal-total-row"><span class="modal-total-label">Grand Total</span><span class="modal-total-value">${fmtPeso(o.total_amount)}</span></div>
         </div>
         ${proofHtml}
+        ${riderHtml}
+        ${deliveryProofHtml}
         ${txnHtml}
     `;
         }

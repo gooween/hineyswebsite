@@ -27,6 +27,7 @@ $navItems = [
     ['key' => 'inventory',      'icon' => 'fa-warehouse',           'label' => 'Inventory',        'href' => 'inventory.php'],
     ['key' => 'orders',         'icon' => 'fa-receipt',             'label' => 'Orders',           'href' => 'orders.php'],
     ['key' => 'customers',      'icon' => 'fa-users',               'label' => 'Customers',        'href' => 'customers.php'],
+    ['key' => 'riders',         'icon' => 'fa-motorcycle',          'label' => 'Riders',           'href' => 'riders.php'],
     ['key' => 'transactions',   'icon' => 'fa-money-bill-transfer', 'label' => 'Transactions',     'href' => 'transactions.php'],
     ['key' => 'contacts',       'icon' => 'fa-envelope-open-text',  'label' => 'Messages',         'href' => 'contacts.php'],
 ];

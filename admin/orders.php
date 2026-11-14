@@ -2,7 +2,19 @@
 session_start();
 require_once '../config/db.php';
 require_once '../config/paymongo.php';   // paymongoRequest()
+require_once '../config/cloudinary.php'; // cloudinaryUpload() — same helper the GCash proof upload uses
 requireAdmin();
+
+// True when the orders table has the given column (keeps the page working before the SQL is run).
+function orderHasCol(mysqli $conn, string $col): bool
+{
+    static $cache = [];
+    if (!isset($cache[$col])) {
+        $r = $conn->query("SHOW COLUMNS FROM orders LIKE '" . $conn->real_escape_string($col) . "'");
+        $cache[$col] = ($r && $r->num_rows > 0);
+    }
+    return $cache[$col];
+}
 
 // Pick-up orders are saved with a delivery_address that starts with "PICKUP".
 function isPickupAddr($addr): bool
@@ -128,7 +140,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($isPickupOrder && in_array($status, ['processing', 'out_for_delivery'], true)) {
                 redirect('orders.php', 'error', 'Pick-up orders can only be Approved or Picked Up.');
             }
+            // ── Rider assignment (delivery orders only) ──
+            $riderCol    = orderHasCol($conn, 'rider_id');
+            $curRider    = 0;
+            $newRiderId  = null;   // null = leave the assignment as it is
+            if ($riderCol && !$isPickupOrder) {
+                $cr = $conn->query("SELECT rider_id FROM orders WHERE id={$id} LIMIT 1");
+                $curRider = $cr ? (int)($cr->fetch_assoc()['rider_id'] ?? 0) : 0;
+                if (isset($_POST['rider_id'])) {
+                    $rid = (int)$_POST['rider_id'];
+                    if ($rid > 0 && $rid !== $curRider) {
+                        $rc = $conn->query("SELECT u.id FROM users u JOIN riders rd ON rd.user_id=u.id WHERE u.id={$rid} AND u.role='rider' AND u.is_active=1 LIMIT 1");
+                        if (!$rc || $rc->num_rows === 0) {
+                            redirect('orders.php', 'error', 'That rider is not available.');
+                        }
+                    }
+                    $newRiderId = $rid;
+                }
+                $effectiveRider = $newRiderId !== null ? $newRiderId : $curRider;
+                if ($status === 'out_for_delivery' && $effectiveRider === 0) {
+                    $anyRider = $conn->query("SELECT 1 FROM users WHERE role='rider' AND is_active=1 LIMIT 1");
+                    if ($anyRider && $anyRider->num_rows > 0) {
+                        redirect('orders.php', 'error', 'Assign a rider before marking this order Out for Delivery.');
+                    }
+                }
+            }
+            // ── Proof of delivery: a photo is required to mark a DELIVERY order Delivered ──
+            $proofUrl = null;
+            if (!$isPickupOrder && $status === 'delivered' && orderHasCol($conn, 'delivery_proof')) {
+                $ex = $conn->query("SELECT delivery_proof FROM orders WHERE id={$id} LIMIT 1");
+                $existingProof = $ex ? (string)($ex->fetch_assoc()['delivery_proof'] ?? '') : '';
+                $pf = null;
+                $pfErr = UPLOAD_ERR_NO_FILE;
+                foreach (['delivery_proof', 'delivery_proof_cam'] as $k) {
+                    if (isset($_FILES[$k]) && $_FILES[$k]['error'] !== UPLOAD_ERR_NO_FILE) {
+                        $pf = $_FILES[$k];
+                        $pfErr = $pf['error'];
+                        if ($pfErr === UPLOAD_ERR_OK) break;
+                    }
+                }
+                if ($pf === null && $existingProof === '') {
+                    redirect('orders.php', 'error', 'Please attach a photo as proof of delivery before marking this order Delivered.');
+                }
+                if ($pf !== null) {
+                    if ($pfErr !== UPLOAD_ERR_OK) {
+                        redirect('orders.php', 'error', 'The photo could not be uploaded (it may be too large). Please try again.');
+                    }
+                    $pfExt = strtolower(pathinfo($pf['name'], PATHINFO_EXTENSION));
+                    if (!in_array($pfExt, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+                        redirect('orders.php', 'error', 'Invalid photo type. Use JPG, PNG, GIF or WEBP.');
+                    }
+                    if ($pf['size'] > 8 * 1024 * 1024) {
+                        redirect('orders.php', 'error', 'Photo too large. Max 8MB.');
+                    }
+                    $proofUrl = cloudinaryUpload($pf['tmp_name'], 'delivery_proofs');
+                    if (!$proofUrl) {
+                        redirect('orders.php', 'error', 'Failed to upload the delivery photo. The order was not changed — please try again.');
+                    }
+                }
+            }
             $conn->query("UPDATE orders SET status='{$status}', payment_status='{$payment_status}', updated_at=NOW() WHERE id={$id}");
+            if ($proofUrl) {
+                $pEsc = $conn->real_escape_string($proofUrl);
+                $conn->query("UPDATE orders SET delivery_proof='{$pEsc}' WHERE id={$id}");
+            }
+            if ($riderCol && !$isPickupOrder && $newRiderId !== null && $newRiderId !== $curRider) {
+                $conn->query("UPDATE orders SET rider_id=" . ($newRiderId > 0 ? $newRiderId : 'NULL') . ", assigned_at=" . ($newRiderId > 0 ? 'NOW()' : 'NULL') . " WHERE id={$id}");
+            }
+            if ($status === 'delivered' && $prevStatus !== 'delivered' && orderHasCol($conn, 'delivered_at')) {
+                $conn->query("UPDATE orders SET delivered_at=NOW() WHERE id={$id}");
+            }
             $newFee = (isset($_POST['delivery_fee']) && $_POST['delivery_fee'] !== '') ? (float)$_POST['delivery_fee'] : null;
             if ($newFee !== null && $newFee >= 0) {
                 $itemsResult = $conn->query("SELECT COALESCE(SUM(subtotal),0) AS t FROM order_items WHERE order_id={$id}");
@@ -259,6 +340,27 @@ if ($hasTracking) {
 }
 $trkSel = $hasTracking ? 'o.tracking_no,' : 'NULL AS tracking_no,';
 $trkGrp = $hasTracking ? 'o.tracking_no,' : '';
+$hasProofCol = orderHasCol($conn, 'delivery_proof');
+$proofSel = $hasProofCol ? 'o.delivery_proof,' : 'NULL AS delivery_proof,';
+$proofGrp = $hasProofCol ? 'o.delivery_proof,' : '';
+$hasRiderCol = orderHasCol($conn, 'rider_id');
+$riderSel  = $hasRiderCol ? 'o.rider_id, ru.full_name AS rider_name,' : 'NULL AS rider_id, NULL AS rider_name,';
+$riderJoin = $hasRiderCol ? 'LEFT JOIN users ru ON ru.id=o.rider_id' : '';
+$riderGrp  = $hasRiderCol ? 'o.rider_id,ru.full_name,' : '';
+
+// Riders for the "Assigned Rider" dropdown (name + availability + current load)
+$riderOptions = [];
+if ($hasRiderCol) {
+    try {
+        $rq = $conn->query("SELECT u.id, u.full_name, rd.availability,
+                                   (SELECT COUNT(*) FROM orders x WHERE x.rider_id=u.id AND x.status='out_for_delivery') AS active_n
+                            FROM users u JOIN riders rd ON rd.user_id=u.id
+                            WHERE u.role='rider' AND u.is_active=1 ORDER BY u.full_name");
+        while ($rq && $rr = $rq->fetch_assoc()) $riderOptions[] = $rr;
+    } catch (Throwable $e) {
+        $riderOptions = [];
+    }
+}
 
 $search        = trim($_GET['q'] ?? '');
 $filterStatus  = trim($_GET['status'] ?? '');
@@ -283,16 +385,17 @@ $totalPages  = max(1, (int)ceil($totalCount / $perPage));
 
 $orders = $conn->query("
     SELECT o.id, {$trkSel} o.status, o.total_amount, o.delivery_fee, o.payment_method, o.paymongo_method,
-           o.payment_status, o.delivery_address, o.notes, o.gcash_proof,
+           o.payment_status, o.delivery_address, o.notes, o.gcash_proof, {$proofSel} {$riderSel}
            o.created_at, o.updated_at,
            u.full_name, u.email, u.phone,
            COUNT(oi.id) AS item_count,
            COALESCE(SUM(oi.subtotal),0) AS items_subtotal
     FROM orders o JOIN users u ON u.id=o.user_id
     LEFT JOIN order_items oi ON oi.order_id=o.id
+    {$riderJoin}
     {$where}
     GROUP BY o.id,{$trkGrp}o.status,o.total_amount,o.delivery_fee,o.payment_method,o.paymongo_method,
-             o.payment_status,o.delivery_address,o.notes,o.gcash_proof,
+             o.payment_status,o.delivery_address,o.notes,o.gcash_proof,{$proofGrp}{$riderGrp}
              o.created_at,o.updated_at,u.full_name,u.email,u.phone
     ORDER BY o.created_at DESC LIMIT {$perPage} OFFSET {$offset}
 ");
@@ -1383,7 +1486,7 @@ $activePage = 'orders';
                                         </td>
                                         <td><span class="method-badge"><?= $methodIcon ?> <?= htmlspecialchars($methodText) ?></span></td>
                                         <td><span class="st-pill <?= $o['payment_status'] === 'paid' ? 'pay-paid' : 'pay-unpaid' ?>"><?= $o['payment_status'] === 'paid' ? 'Paid' : 'Unpaid' ?></span></td>
-                                        <td><span class="st-pill <?= $statusClass ?>"><?= $statusLabel ?></span></td>
+                                        <td><span class="st-pill <?= $statusClass ?>"><?= $statusLabel ?></span><?php if (!empty($o['rider_name'])): ?><div class="cust-sub" style="margin-top:4px;white-space:nowrap;"><i class="fa-solid fa-motorcycle"></i> <?= htmlspecialchars($o['rider_name']) ?></div><?php endif; ?></td>
                                         <td style="text-align:center;">
                                             <div class="row-actions">
                                                 <button class="oact oact-view" onclick="openView(<?= $o['id'] ?>)" title="View"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1395,6 +1498,9 @@ $activePage = 'orders';
                                                         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                                                         <rect x="6" y="14" width="12" height="8" />
                                                     </svg><span class="act-label">Print</span></button>
+                                                <?php if (!empty($o['delivery_proof'])): ?>
+                                                    <button class="oact oact-view" onclick="viewDeliveryPhoto(<?= htmlspecialchars(json_encode($o['delivery_proof']), ENT_QUOTES) ?>, '<?= str_pad($o['id'], 4, '0', STR_PAD_LEFT) ?>')" title="Delivery photo"><i class="fa-solid fa-camera"></i><span class="act-label">Photo</span></button>
+                                                <?php endif; ?>
                                                 <?php if ($isPending): ?>
                                                     <button class="oact oact-approve" onclick="openApprove(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'total_amount' => $o['total_amount'], 'items_subtotal' => $itemsSubtotal, 'delivery_fee' => $o['delivery_fee'], 'delivery_address' => $o['delivery_address'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText]), ENT_QUOTES) ?>)" title="Approve"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                                             <polyline points="20 6 9 17 4 12" />
@@ -1404,7 +1510,7 @@ $activePage = 'orders';
                                                             <line x1="6" y1="6" x2="18" y2="18" />
                                                         </svg><span class="act-label">Reject</span></button>
                                                 <?php else: ?>
-                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText, 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address'], 'is_pickup' => $rowIsPickup]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
+                                                    <button class="oact oact-update" onclick="openUpdate(<?= htmlspecialchars(json_encode(['id' => $o['id'], 'full_name' => $o['full_name'], 'status' => $o['status'], 'payment_status' => $o['payment_status'], 'payment_method' => $o['payment_method'], 'method_label' => $methodText, 'total_amount' => $o['total_amount'], 'delivery_fee' => $o['delivery_fee'], 'items_subtotal' => $itemsSubtotal, 'delivery_address' => $o['delivery_address'], 'is_pickup' => $rowIsPickup, 'delivery_proof' => $o['delivery_proof'] ?? '', 'proof_enabled' => $hasProofCol, 'rider_id' => (int)($o['rider_id'] ?? 0)]), ENT_QUOTES) ?>)" title="Update"><i class="fa-solid fa-pen-to-square"></i><span class="act-label">Update</span></button>
                                                     <?php if (!$isCancelled): ?>
                                                         <button class="oact oact-cancel" onclick="openCancel(<?= $o['id'] ?>,'<?= htmlspecialchars(addslashes($o['full_name'])) ?>')" title="Cancel order"><i class="fa-solid fa-xmark"></i></button>
                                                     <?php endif; ?>
@@ -1546,7 +1652,7 @@ $activePage = 'orders';
                         <polyline points="20 6 9 17 4 12" />
                     </svg> Update Order</div><button class="modal-close" onclick="closeModal('updateModal')">✕</button>
             </div>
-            <form method="POST" action="orders.php"><input type="hidden" name="action" value="update_status"><input type="hidden" name="id" id="upd_id">
+            <form method="POST" action="orders.php" enctype="multipart/form-data" onsubmit="return checkProofBeforeSave()"><input type="hidden" name="action" value="update_status"><input type="hidden" name="id" id="upd_id">
                 <div class="modal-body modal-body-pad">
                     <div class="order-summary-box">
                         <div style="font-size:1.5rem;"><i class="fa-solid fa-cart-shopping"></i></div>
@@ -1567,7 +1673,7 @@ $activePage = 'orders';
                             <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg><span>GCash order — verify the customer's payment proof before marking as Paid.</span></div>
                     <div class="form-grid">
-                        <div class="form-group"><label class="form-label">Order Status <span class="req">*</span></label><select name="status" id="upd_status" class="form-select" required onchange="updateStatusTracker(this.value)">
+                        <div class="form-group"><label class="form-label">Order Status <span class="req">*</span></label><select name="status" id="upd_status" class="form-select" required onchange="updateStatusTracker(this.value); toggleProofSection()">
                                 <option value="approved">Approved</option>
                                 <option value="processing">Processing</option>
                                 <option value="out_for_delivery">Out for Delivery</option>
@@ -1578,6 +1684,40 @@ $activePage = 'orders';
                                 <option value="unpaid">Unpaid</option>
                                 <option value="paid">🟢 Paid</option>
                             </select></div>
+                    </div>
+                    <?php if (!empty($riderOptions)): ?>
+                        <div class="form-group" id="rider_section" style="display:none;margin-bottom:var(--s4);">
+                            <label class="form-label"><i class="fa-solid fa-motorcycle"></i> Assigned Rider</label>
+                            <select name="rider_id" id="upd_rider_id" class="form-select">
+                                <option value="">— Unassigned —</option>
+                                <?php foreach ($riderOptions as $rd):
+                                    $busy = (int)$rd['active_n'];
+                                    $lbl  = $busy > 0 ? 'On delivery (' . $busy . ')' : ($rd['availability'] === 'available' ? 'Available' : 'Off duty');
+                                ?>
+                                    <option value="<?= (int)$rd['id'] ?>" data-off="<?= ($rd['availability'] === 'off_duty' && $busy === 0) ? 1 : 0 ?>"><?= htmlspecialchars($rd['full_name']) ?> — <?= $lbl ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="form-hint">Riders who are off duty can't be newly assigned. The customer sees the assigned rider.</span>
+                        </div>
+                    <?php endif; ?>
+                    <div class="fee-section" id="proof_section" style="display:none;">
+                        <div class="fee-section-title"><i class="fa-solid fa-camera"></i> Proof of Delivery <span class="fee-unset-badge" id="proof_required_badge">Required</span></div>
+                        <div id="proof_existing" style="display:none;margin-bottom:10px;">
+                            <img id="proof_existing_img" src="" alt="Current delivery photo" style="max-width:140px;max-height:140px;border-radius:8px;border:1px solid #e5e7eb;">
+                            <div class="form-hint">Current photo. Choose a new one below to replace it.</div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <label class="btn btn-primary" style="cursor:pointer;margin:0;"><i class="fa-solid fa-camera"></i> Take Photo
+                                <input type="file" name="delivery_proof_cam" id="proof_cam" accept="image/*" capture="environment" style="display:none;" onchange="prepProofFile(this, 'proof_file')">
+                            </label>
+                            <label class="btn btn-ghost" style="cursor:pointer;margin:0;"><i class="fa-solid fa-image"></i> Choose from Gallery
+                                <input type="file" name="delivery_proof" id="proof_file" accept="image/*" style="display:none;" onchange="prepProofFile(this, 'proof_cam')">
+                            </label>
+                        </div>
+                        <div id="proof_preview_wrap" style="display:none;margin-top:10px;">
+                            <img id="proof_preview" src="" alt="Selected photo" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #e5e7eb;">
+                        </div>
+                        <span class="form-hint">Take a clear photo of the parcel at the customer's door. It is shown to the customer and to admins.</span>
                     </div>
                     <div class="fee-section">
                         <div class="fee-section-title"><i class="fa-solid fa-truck"></i> Delivery Fee <span id="upd_fee_current_badge"></span></div>
@@ -1591,6 +1731,19 @@ $activePage = 'orders';
                             <polyline points="20 6 9 17 4 12" />
                         </svg> Save Changes</button></div>
             </form>
+        </div>
+    </div>
+
+    <!-- DELIVERY PHOTO MODAL -->
+    <div class="modal-backdrop" id="photoModal" onclick="backdropClose(event,'photoModal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-camera"></i> <span id="photo_order_label">Proof of Delivery</span></div><button class="modal-close" onclick="closeModal('photoModal')">✕</button>
+            </div>
+            <div class="modal-body modal-body-pad" style="text-align:center;">
+                <img id="photo_img_el" src="" alt="Proof of delivery" style="max-width:100%;border-radius:10px;border:1px solid #e5e7eb;">
+            </div>
+            <div class="modal-footer"><a id="photo_open_link" href="#" target="_blank" rel="noopener" class="btn btn-ghost">Open full size</a><button type="button" class="btn btn-primary" onclick="closeModal('photoModal')">Close</button></div>
         </div>
     </div>
 
@@ -1633,7 +1786,10 @@ $activePage = 'orders';
         }
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                ['viewModal', 'approveModal', 'rejectModal', 'updateModal', 'cancelModal', 'proofModal'].forEach(id => document.getElementById(id).classList.remove('open'));
+                ['viewModal', 'approveModal', 'rejectModal', 'updateModal', 'cancelModal', 'proofModal', 'photoModal'].forEach(id => {
+                    var m = document.getElementById(id);
+                    if (m) m.classList.remove('open');
+                });
                 document.body.style.overflow = '';
             }
         });
@@ -1731,6 +1887,76 @@ $activePage = 'orders';
         }
         var _itemsSubtotal = 0;
 
+        // ── Proof of delivery (photo) ───────────────────────────────
+        function toggleProofSection() {
+            var sec = document.getElementById('proof_section');
+            if (!sec) return;
+            var show = window._proofEnabled && !window._isPickup && document.getElementById('upd_status').value === 'delivered';
+            sec.style.display = show ? 'block' : 'none';
+            document.getElementById('proof_required_badge').style.display = window._hasProof ? 'none' : 'inline-block';
+        }
+
+        // Shrinks phone photos (usually 3-8 MB) to ~1600px JPEG before upload, so it is fast on mobile data.
+        function prepProofFile(input, otherId) {
+            var other = document.getElementById(otherId);
+            if (other) other.value = '';
+            var f = input.files && input.files[0];
+            var wrap = document.getElementById('proof_preview_wrap');
+            if (!f) {
+                wrap.style.display = 'none';
+                return;
+            }
+            var url = URL.createObjectURL(f);
+            var img = new Image();
+            img.onload = function() {
+                document.getElementById('proof_preview').src = url;
+                wrap.style.display = 'block';
+                var max = 1600,
+                    s = Math.min(1, max / Math.max(img.width, img.height));
+                if (s >= 1 && f.size < 1.5 * 1024 * 1024) return; // already small
+                var c = document.createElement('canvas');
+                c.width = Math.round(img.width * s);
+                c.height = Math.round(img.height * s);
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                c.toBlob(function(blob) {
+                    if (!blob) return;
+                    try {
+                        var dt = new DataTransfer();
+                        dt.items.add(new File([blob], 'delivery.jpg', {
+                            type: 'image/jpeg'
+                        }));
+                        input.files = dt.files;
+                    } catch (e) {
+                        /* keep the original file */
+                    }
+                }, 'image/jpeg', 0.82);
+            };
+            img.onerror = function() {
+                wrap.style.display = 'none';
+            };
+            img.src = url;
+        }
+
+        function checkProofBeforeSave() {
+            var sec = document.getElementById('proof_section');
+            if (sec && sec.style.display !== 'none' && !window._hasProof) {
+                var has = (document.getElementById('proof_cam').files.length || document.getElementById('proof_file').files.length);
+                if (!has) {
+                    alert('Please take or choose a photo as proof of delivery before marking this order Delivered.');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function viewDeliveryPhoto(path, orderNum) {
+            var src = /^https?:\/\//.test(path) ? path : '../' + path;
+            document.getElementById('photo_order_label').textContent = 'Order #' + orderNum + ' — Proof of Delivery';
+            document.getElementById('photo_img_el').src = src;
+            document.getElementById('photo_open_link').href = src;
+            openModal('photoModal');
+        }
+
         function openUpdate(data) {
             _itemsSubtotal = parseFloat(data.items_subtotal) || 0;
             document.getElementById('upd_id').value = data.id;
@@ -1739,6 +1965,15 @@ $activePage = 'orders';
             document.getElementById('upd_method_label').textContent = (data.method_label || data.payment_method).toUpperCase();
             // Pick-up orders: only Approved -> Picked Up. Delivery orders keep the full flow.
             window._isPickup = !!data.is_pickup;
+            var rs = document.getElementById('rider_section');
+            if (rs) {
+                rs.style.display = window._isPickup ? 'none' : 'block';
+                var rsel = document.getElementById('upd_rider_id');
+                rsel.value = data.rider_id ? String(data.rider_id) : '';
+                Array.prototype.forEach.call(rsel.options, function(o) {
+                    o.disabled = (o.dataset.off === '1' && o.value !== rsel.value);
+                });
+            }
             var st = data.status;
             var sel = document.getElementById('upd_status');
             sel.innerHTML = '';
@@ -1776,7 +2011,21 @@ $activePage = 'orders';
                 badgeEl.textContent = 'Not set';
             }
             document.getElementById('fee_preview').classList.remove('show');
+            // proof-of-delivery section
+            window._proofEnabled = !!data.proof_enabled;
+            window._hasProof = !!data.delivery_proof;
+            document.getElementById('proof_cam').value = '';
+            document.getElementById('proof_file').value = '';
+            document.getElementById('proof_preview_wrap').style.display = 'none';
+            var exBox = document.getElementById('proof_existing');
+            if (data.delivery_proof) {
+                document.getElementById('proof_existing_img').src = /^https?:\/\//.test(data.delivery_proof) ? data.delivery_proof : '../' + data.delivery_proof;
+                exBox.style.display = 'block';
+            } else {
+                exBox.style.display = 'none';
+            }
             updateStatusTracker(sel.value);
+            toggleProofSection();
             openModal('updateModal');
         }
 
@@ -1832,7 +2081,7 @@ $activePage = 'orders';
         // Pick up new online (PayMongo) payments without a manual refresh:
         // reload every 30s unless a modal is open, a field is being edited, or the tab is hidden.
         setInterval(function() {
-            var modalOpen = ['viewModal', 'approveModal', 'rejectModal', 'updateModal', 'cancelModal', 'proofModal']
+            var modalOpen = ['viewModal', 'approveModal', 'rejectModal', 'updateModal', 'cancelModal', 'proofModal', 'photoModal']
                 .some(function(id) {
                     var m = document.getElementById(id);
                     return m && m.classList.contains('open');

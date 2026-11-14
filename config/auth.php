@@ -7,6 +7,7 @@
 // HOW TO USE:
 //   Every admin page:   requireAdmin();
 //   Every user page:    requireCustomer();
+//   Every rider page:   requireRider();
 //   Optional redirect:  redirectIfLoggedIn();  ← use on login/register
 //
 // Already called by db.php after connection; you do NOT need to
@@ -48,12 +49,13 @@ function authRedirect(string $url): void
 // Returns the path prefix needed to reach hineys_system/ root.
 // admin/ pages  → '../'
 // user/  pages  → '../'
+// rider/ pages  → '../'
 // root   pages  → './'
 function rootPath(): string
 {
     $script = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
     // Count how many levels below the project root we are
-    if (str_contains($script, '/admin/') || str_contains($script, '/user/')) {
+    if (str_contains($script, '/admin/') || str_contains($script, '/user/') || str_contains($script, '/rider/')) {
         return '../';
     }
     return './';
@@ -82,13 +84,16 @@ function requireAdmin(): void
     }
 
     if (($_SESSION['role'] ?? '') !== 'admin') {
-        // Wrong role (customer trying to access admin)
+        // Wrong role (customer / rider trying to access admin)
         $_SESSION['flash_type']    = 'error';
         $_SESSION['flash_message'] = 'Access denied. You do not have admin privileges.';
 
         // Send them to their correct area
         if (($_SESSION['role'] ?? '') === 'customer') {
             authRedirect($root . 'user/home.php');
+        }
+        if (($_SESSION['role'] ?? '') === 'rider') {
+            authRedirect($root . 'rider/index.php');
         }
         authRedirect($root . 'index.php');
     }
@@ -123,9 +128,12 @@ function requireCustomer(): void
     }
 
     if (($_SESSION['role'] ?? '') !== 'customer') {
-        // Admin trying to access user pages
+        // Admin / rider trying to access user pages
         if (($_SESSION['role'] ?? '') === 'admin') {
             authRedirect($root . 'admin/dashboard.php');
+        }
+        if (($_SESSION['role'] ?? '') === 'rider') {
+            authRedirect($root . 'rider/index.php');
         }
         authRedirect($root . 'index.php');
     }
@@ -136,6 +144,45 @@ function requireCustomer(): void
         session_start();
         $_SESSION['flash_type']    = 'error';
         $_SESSION['flash_message'] = 'Your account has been deactivated. Please contact us for assistance.';
+        authRedirect($root . 'index.php');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// requireRider()
+//   • Must be called at the very top of every rider/*.php file
+//   • Sends no-cache headers
+//   • Redirects to login if not logged in or wrong role
+// ─────────────────────────────────────────────────────────────
+function requireRider(): void
+{
+    noCacheHeaders();
+
+    $root = rootPath();
+
+    if (empty($_SESSION['user_id'])) {
+        $_SESSION['flash_type']    = 'error';
+        $_SESSION['flash_message'] = 'Please log in to continue.';
+        authRedirect($root . 'index.php');
+    }
+
+    if (($_SESSION['role'] ?? '') !== 'rider') {
+        // Admin / customer trying to access rider pages
+        if (($_SESSION['role'] ?? '') === 'admin') {
+            authRedirect($root . 'admin/dashboard.php');
+        }
+        if (($_SESSION['role'] ?? '') === 'customer') {
+            authRedirect($root . 'user/home.php');
+        }
+        authRedirect($root . 'index.php');
+    }
+
+    if (empty($_SESSION['is_active'])) {
+        session_unset();
+        session_destroy();
+        session_start();
+        $_SESSION['flash_type']    = 'error';
+        $_SESSION['flash_message'] = 'Your account has been deactivated. Please contact the shop.';
         authRedirect($root . 'index.php');
     }
 }
@@ -153,6 +200,10 @@ function redirectIfLoggedIn(): void
 
     if (($_SESSION['role'] ?? '') === 'admin') {
         authRedirect($root . 'admin/dashboard.php');
+    }
+
+    if (($_SESSION['role'] ?? '') === 'rider') {
+        authRedirect($root . 'rider/index.php');
     }
 
     authRedirect($root . 'user/home.php');
@@ -180,4 +231,12 @@ function isAdmin(): bool
 function isCustomer(): bool
 {
     return isLoggedIn() && ($_SESSION['role'] ?? '') === 'customer';
+}
+
+// ─────────────────────────────────────────────────────────────
+// isRider() — simple boolean check (no redirect)
+// ─────────────────────────────────────────────────────────────
+function isRider(): bool
+{
+    return isLoggedIn() && ($_SESSION['role'] ?? '') === 'rider';
 }

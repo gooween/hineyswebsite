@@ -44,6 +44,7 @@ if ($orderId) {
         $paidVia = (string)($po['paymongo_method'] ?? '');
     }
 }
+
 $tries   = (int)($_GET['n'] ?? 0);
 $recheck = !$isPaid && $orderId && $tries < 10;
 ?>
